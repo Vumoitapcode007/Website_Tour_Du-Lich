@@ -14,6 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
         </ul>
         <form class="nav-search" id="navSearchForm">
           <input type="text" id="navSearch" placeholder="Tìm tour...">
+          <button type="submit" class="nav-search-btn" aria-label="Tìm kiếm">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
         </form>
       </nav>`;
 
