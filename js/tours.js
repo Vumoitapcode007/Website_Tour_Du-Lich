@@ -3,9 +3,6 @@ const search = document.getElementById("search");
 const locationSelect = document.getElementById("location");
 const sort = document.getElementById("sort");
 
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get("q")) search.value = urlParams.get("q");
-
 [...new Set(tours.map(t => t.location))].forEach(location => {
   locationSelect.innerHTML += `<option value="${location}">${location}</option>`;
 });
