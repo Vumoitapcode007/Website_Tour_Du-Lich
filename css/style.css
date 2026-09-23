@@ -7,6 +7,11 @@ header{background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-inde
 .logo{font-size:24px;font-weight:700;color:#1677ff}
 .menu{display:flex;gap:24px;list-style:none}
 .menu a:hover{color:#1677ff}
+.nav-search{display:flex;align-items:center;gap:8px}
+.nav-search input{padding:9px 12px;border:1px solid #ddd;border-radius:20px;width:200px;font-size:14px}
+.nav-search input:focus{outline:none;border-color:#1677ff}
+.nav-search-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:50%;background:#1677ff;color:#fff;cursor:pointer}
+.nav-search-btn:hover{opacity:.9}
 .hero{min-height:430px;display:flex;align-items:center;background:linear-gradient(90deg,#0d47a1aa,#00000022),url('https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80') center/cover}
 .hero-content{width:min(1100px,92%);margin:auto;color:white}
 .hero h1{font-size:48px;max-width:650px;margin-bottom:12px}
@@ -37,4 +42,6 @@ th,td{padding:12px;border-bottom:1px solid #eee;text-align:left}
   .hero h1{font-size:34px}
   .tour-grid{grid-template-columns:1fr}
   .nav{flex-direction:column;gap:10px}
+  .nav-search{width:100%}
+  .nav-search input{width:100%}
 }
