@@ -73,7 +73,7 @@ export function renderFooter() {
       <div>
         <h4>Liên hệ</h4>
         <ul class="footer-links">
-          <li>Hotline: <a href="tel:19001234">${contactInfo.hotline}</a></li>
+          <li>Hotline: <a href="tel:${contactInfo.hotlineDigits}">${contactInfo.hotline}</a></li>
           <li>Email: <a href="mailto:${contactInfo.email}">${contactInfo.email}</a></li>
           <li>${contactInfo.address}</li>
         </ul>

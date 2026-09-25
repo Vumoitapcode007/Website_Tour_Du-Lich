@@ -1,3 +1,5 @@
+import { team, contactInfo } from "../data.js";
+
 export function About() {
   return `
   <section class="page-hero">
@@ -16,6 +18,12 @@ export function About() {
         lượng đến gần hơn với mọi người. Từ những chuyến đi nhỏ lẻ đến các tour
         trọn gói, chúng tôi luôn đặt sự hài lòng và an toàn của khách hàng lên
         hàng đầu.
+      </p>
+      <p>
+        Dự án bắt đầu từ anh <strong>Trịnh Minh Vũ</strong> - Giám đốc điều hành,
+        người luôn tin rằng mỗi chuyến đi đáng nhớ đều bắt đầu bằng một kế hoạch
+        tử tế. Bên anh là đội ngũ nhỏ nhưng tận tâm gồm những người không ngừng học
+        hỏi để mỗi tour ngày một hoàn thiện hơn.
       </p>
       <p>
         Với hơn 10 năm kinh nghiệm trong lĩnh vực lữ hành, chúng tôi tự hào là
@@ -76,25 +84,28 @@ export function About() {
       <p>Những con người làm nên TravelGo</p>
     </div>
     <div class="team-grid">
-      <div class="team-card">
-        <div class="avatar">NV</div>
-        <h3>Nguyễn Văn Nam</h3>
-        <p>Giám đốc điều hành</p>
+      ${team
+        .map(
+          (member) => `
+        <div class="team-card">
+          <div class="avatar">${member.initials}</div>
+          <h3>${member.name}</h3>
+          <p>${member.role}</p>
+        </div>`
+        )
+        .join("")}
+    </div>
+  </section>
+
+  <section class="section contact-band">
+    <div class="container contact-band-inner">
+      <div>
+        <h2>Ghé thăm văn phòng của chúng tôi</h2>
+        <p>${contactInfo.address}</p>
       </div>
-      <div class="team-card">
-        <div class="avatar">TL</div>
-        <h3>Trần Lan</h3>
-        <p>Trưởng phòng tư vấn</p>
-      </div>
-      <div class="team-card">
-        <div class="avatar">PM</div>
-        <h3>Phạm Minh</h3>
-        <p>Quản lý tour tuyến</p>
-      </div>
-      <div class="team-card">
-        <div class="avatar">HT</div>
-        <h3>Hoàng Thu</h3>
-        <p>Chăm sóc khách hàng</p>
+      <div class="contact-band-actions">
+        <a class="btn btn-light" href="tel:${contactInfo.hotlineDigits}">Gọi ${contactInfo.hotline}</a>
+        <a class="btn btn-ghost" href="#/contact">Gửi tin nhắn</a>
       </div>
     </div>
   </section>

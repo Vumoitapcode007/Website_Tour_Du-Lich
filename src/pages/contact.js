@@ -3,10 +3,15 @@ import { saveMessage } from "../store.js";
 import { isEmail, isName, isPhone } from "../validate.js";
 
 const infoCards = [
-  { icon: "📞", title: "Hotline", lines: [contactInfo.hotline, contactInfo.hotline2], href: "tel:19001234" },
-  { icon: "✉️", title: "Email", lines: [contactInfo.email], href: "mailto:hello@travelgo.vn" },
+  {
+    icon: "📞",
+    title: "Hotline",
+    lines: [contactInfo.hotline, contactInfo.workingHours],
+    href: `tel:${contactInfo.hotlineDigits}`,
+  },
+  { icon: "✉️", title: "Email", lines: [contactInfo.email], href: `mailto:${contactInfo.email}` },
   { icon: "📍", title: "Văn phòng", lines: [contactInfo.address] },
-  { icon: "🕘", title: "Giờ làm việc", lines: [contactInfo.hours, contactInfo.workingHours] },
+  { icon: "🕘", title: "Giờ làm việc", lines: [contactInfo.hours] },
 ];
 
 const faqs = [
@@ -68,7 +73,7 @@ export function Contact(path, params = {}, query = new URLSearchParams()) {
         <p>
           Điền thông tin bên cạnh, chúng tôi sẽ phản hồi trong vòng 24 giờ làm việc.
           Nếu cần tư vấn ngay, hãy gọi hotline
-          <a href="tel:19001234">${contactInfo.hotline}</a>.
+          <a href="tel:${contactInfo.hotlineDigits}">${contactInfo.hotline}</a>.
         </p>
         <ul class="contact-points">
           <li>✔ Tư vấn miễn phí, không ràng buộc</li>
