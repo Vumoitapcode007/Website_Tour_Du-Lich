@@ -21,7 +21,7 @@ export function About() {
         Với hơn 10 năm kinh nghiệm trong lĩnh vực lữ hành, chúng tôi tự hào là
         điểm đến tin cậy của hàng chục nghìn khách hàng trên khắp cả nước.
       </p>
-      <a class="btn btn-primary" href="#/about">Khám phá tour</a>
+      <a class="btn btn-primary" href="#/tours">Khám phá tour</a>
     </div>
     <div class="story-img">
       <img
@@ -103,7 +103,7 @@ export function About() {
     <div class="container cta-inner">
       <h2>Vẫn còn thắc mắc?</h2>
       <p>Liên hệ ngay để được tư vấn miễn phí.</p>
-      <a class="btn btn-light btn-lg" href="#/about">Liên hệ ngay</a>
+      <a class="btn btn-light btn-lg" href="#/contact">Liên hệ ngay</a>
     </div>
   </section>`;
 }

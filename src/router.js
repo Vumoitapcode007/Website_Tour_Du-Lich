@@ -1,27 +1,70 @@
+function matchRoute(routes, path) {
+  for (const route of routes) {
+    if (!route.path.includes(":")) {
+      if (route.path === path) return { route, params: {} };
+      continue;
+    }
+
+    const keys = [];
+    const pattern = route.path
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+      .replace(/:(\w+)/g, (_, key) => {
+        keys.push(key);
+        return "([^/]+)";
+      });
+
+    const matched = new RegExp(`^${pattern}$`).exec(path);
+    if (matched) {
+      return {
+        route,
+        params: Object.fromEntries(
+          keys.map((key, index) => [key, decodeURIComponent(matched[index + 1])])
+        ),
+      };
+    }
+  }
+  return null;
+}
+
 export function createRouter(routes, root = "app") {
   const app = document.getElementById(root);
-  console.log(app)
+
+  function parseHash() {
+    const raw = window.location.hash.replace(/^#\/?/, "");
+    const [pathPart, ...rest] = raw.split("?");
+    return {
+      path: decodeURIComponent(pathPart).trim(),
+      queryString: rest.join("?"),
+    };
+  }
 
   function currentPath() {
-    const hash = window.location.hash.replace(/^#\/?/, "");
-    return decodeURIComponent(hash).trim();
+    return parseHash().path;
+  }
+
+  function currentQuery() {
+    return new URLSearchParams(parseHash().queryString);
   }
 
   function navigate() {
-    const path = currentPath();
-    const route =
-      routes.find((r) => r.path === path) ||
-      routes.find((r) => r.path === "404") ||
-      routes[0];
+    const { path, queryString } = parseHash();
+    const query = new URLSearchParams(queryString);
+    const matched = matchRoute(routes, path);
+    const route = matched?.route || routes.find((r) => r.path === "404") || routes[0];
+    const params = matched?.params || {};
 
     document.title = route.title
       ? `${route.title} - TravelGo`
       : "TravelGo - Đặt tour du lịch";
 
-    app.innerHTML = `${route.layout(path)}${route.render(path)}${route.footer(path)}`;
+    app.innerHTML = `${route.layout(path)}${route.render(path, params, query)}${route.footer(path)}`;
     window.scrollTo({ top: 0, behavior: "auto" });
+    app.querySelector(".menu-wrap")?.classList.remove("open");
 
-    document.dispatchEvent(new CustomEvent("route:changed", { detail: { path } }));
+    document.dispatchEvent(
+      new CustomEvent("route:changed", { detail: { path, params, query, queryString } }
+      )
+    );
   }
 
   function go(path) {
@@ -35,7 +78,7 @@ export function createRouter(routes, root = "app") {
   }
 
   navigate();
-  return { navigate, go, currentPath };
+  return { navigate, go, currentPath, currentQuery };
 }
 
 export function link(path, label, extra = "") {
