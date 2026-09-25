@@ -1,4 +1,3 @@
-import { getSession, isStaffRole } from "../auth.js";
 import {
   NOTIFICATION_TYPE,
   countUnreadNotifications,
@@ -6,6 +5,7 @@ import {
   markNotificationRead,
   myNotifications,
 } from "../store.js";
+import { getSession } from '../auth.js'
 import { escapeHtml } from "../validate.js";
 
 const BELL_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2A5.8 5.8 0 0 1 17.8 9v3.5l1.5 3a1 1 0 0 1-.9 1.5H5.6a1 1 0 0 1-.9-1.5l1.5-3V9A5.8 5.8 0 0 1 12 3.2Z"/><path d="M9.9 19.1a2.2 2.2 0 0 0 4.2 0"/></svg>`;
@@ -46,10 +46,9 @@ function panelHTML(session) {
       <strong>Thông báo</strong>
       <button class="notif-read-all" type="button" data-notif-read-all>Đánh dấu đã đọc</button>
     </div>
-    ${
-      list.length
-        ? `<ul class="notif-list">${list.map(itemHTML).join("")}</ul>`
-        : `<p class="notif-empty">Bạn chưa có thông báo nào.</p>`
+    ${list.length
+      ? `<ul class="notif-list">${list.map(itemHTML).join("")}</ul>`
+      : `<p class="notif-empty">Bạn chưa có thông báo nào.</p>`
     }
     <a class="notif-more" href="#/account">Xem tất cả trong tài khoản</a>
   </div>`;

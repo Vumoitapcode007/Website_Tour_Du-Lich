@@ -8,6 +8,8 @@ import { Compare } from "./pages/compare.js";
 import { TourDetail } from "./pages/tour-detail.js";
 import { Booking } from "./pages/booking.js";
 import { About } from "./pages/about.js";
+import { Auth } from "./pages/auth.js";
+import { login, register } from "./auth.js";
 import { Contact } from "./pages/contact.js";
 import { Login } from "./pages/login.js";
 import { Register } from "./pages/register.js";
@@ -156,6 +158,52 @@ const router = createRouter(routes);
 
 document.addEventListener("app:refresh", () => router.navigate());
 
+// Hàm hiển thị thông báo alert trên form auth
+function showAuthAlert(message, type = "error") {
+  const alertEl = document.getElementById("auth-alert");
+  if (!alertEl) return;
+  alertEl.className = `auth-alert auth-alert-${type}`;
+  alertEl.innerHTML = `
+    <span class="alert-icon">${type === "success" ? "✓" : "⚠"}</span>
+    <span class="alert-text">${message}</span>
+  `;
+  alertEl.classList.remove("hidden");
+}
+
+function clearAuthAlert() {
+  const alertEl = document.getElementById("auth-alert");
+  if (alertEl) {
+    alertEl.className = "auth-alert hidden";
+    alertEl.innerHTML = "";
+  }
+}
+
+// Xử lý chuyển đổi giữa Đăng nhập và Đăng ký trên trang Auth
+function switchAuthTab(targetTab) {
+  clearAuthAlert();
+  const formLogin = document.getElementById("form-login");
+  const formRegister = document.getElementById("form-register");
+  const tabLogin = document.getElementById("tab-login");
+  const tabRegister = document.getElementById("tab-register");
+
+  if (!formLogin || !formRegister) return;
+
+  if (targetTab === "register") {
+    formLogin.classList.add("hidden");
+    formRegister.classList.remove("hidden");
+    tabLogin?.classList.remove("active");
+    tabRegister?.classList.add("active");
+    window.location.hash = "#/register";
+  } else {
+    formRegister.classList.add("hidden");
+    formLogin.classList.remove("hidden");
+    tabRegister?.classList.remove("active");
+    tabLogin?.classList.add("active");
+    window.location.hash = "#/login";
+  }
+}
+
+// Lắng nghe sự kiện click toàn cục
 document.addEventListener("click", (event) => {
   const logoutButton = event.target.closest("[data-logout]");
   if (logoutButton) {
