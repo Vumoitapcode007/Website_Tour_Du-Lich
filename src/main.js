@@ -9,6 +9,7 @@ import { Booking } from "./pages/booking.js";
 import { About } from "./pages/about.js";
 import { Contact } from "./pages/contact.js";
 import { Login } from "./pages/login.js";
+import { Register } from "./pages/register.js";
 import { Admin } from "./pages/admin.js";
 
 function NotFound() {
@@ -69,6 +70,13 @@ const routes = [
     path: "login",
     title: "Đăng nhập",
     render: Login,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "register",
+    title: "Đăng ký tài khoản",
+    render: Register,
     layout: renderHeader,
     footer: renderFooter,
   },

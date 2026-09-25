@@ -211,8 +211,6 @@ export const tours = [
   },
 ];
 
-export const destinations = [...new Set(tours.map((tour) => tour.location))];
-
 export const contactInfo = {
   hotline: "0326 794 336",
   hotlineDigits: "0326794336",
@@ -228,17 +226,6 @@ export const team = [
   { name: "Bùi Đức Hiệp", initials: "BDH", role: "Quản lý tour tuyến" },
   { name: "Nguyễn Tuấn Dương", initials: "NTD", role: "Chăm sóc khách hàng" },
 ];
-
-export function getTourById(id) {
-  return tours.find((tour) => String(tour.id) === String(id));
-}
-
-export function relatedTours(tour, limit = 3) {
-  return tours
-    .filter((item) => item.id !== tour.id)
-    .sort((a, b) => Number(b.location === tour.location) - Number(a.location === tour.location))
-    .slice(0, limit);
-}
 
 export function formatPrice(price) {
   return new Intl.NumberFormat("vi-VN").format(price) + " VNĐ";

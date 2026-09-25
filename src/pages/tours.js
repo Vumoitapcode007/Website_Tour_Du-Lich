@@ -1,11 +1,13 @@
-import { tours, destinations } from "../data.js";
+import { listTours, getDestinations } from "../tour-repository.js";
 import { tourCard } from "../components/tour-card.js";
-
-const locationOptions = destinations
-  .map((place) => `<option value="${place}">${place}</option>`)
-  .join("");
+import { searchKey } from "../validate.js";
 
 export function Tours() {
+  const allTours = listTours();
+  const locationOptions = getDestinations()
+    .map((place) => `<option value="${place}">${place}</option>`)
+    .join("");
+
   return `
   <section class="page-hero">
     <div class="container">
@@ -41,7 +43,7 @@ export function Tours() {
     </form>
 
     <p class="result-count" id="tour-count" role="status"></p>
-    <div class="tour-grid" id="tour-list">${tours.map(tourCard).join("")}</div>
+    <div class="tour-grid" id="tour-list">${allTours.map(tourCard).join("")}</div>
     <p class="search-empty" id="tour-empty" hidden>
       Không tìm thấy tour phù hợp. Hãy thử điểm đến khác hoặc xóa bộ lọc nhé.
     </p>
@@ -57,7 +59,7 @@ export function Tours() {
 }
 
 function normalize(value) {
-  return value.trim().toLocaleLowerCase("vi");
+  return searchKey(value);
 }
 
 document.addEventListener("route:changed", ({ detail }) => {

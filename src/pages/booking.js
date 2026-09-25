@@ -1,14 +1,13 @@
-import { tours, getTourById, formatPrice, formatDate } from "../data.js";
+import { formatPrice, formatDate } from "../data.js";
+import { listTours, getTourById } from "../tour-repository.js";
 import { saveBooking } from "../store.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
 
-const tourOptions = tours
-  .map((tour) => `<option value="${tour.id}">${tour.name} - ${formatPrice(tour.price)}</option>`)
-  .join("");
-
 export function Booking(path, params = {}, query = new URLSearchParams()) {
-  const preselect = getTourById(query.get("tour"));
-  const preselectDate = query.get("date") || preselect?.departures[0] || tours[0].departures[0];
+  const allTours = listTours();
+  const tourOptions = allTours
+    .map((tour) => `<option value="${tour.id}">${tour.name} - ${formatPrice(tour.price)}</option>`)
+    .join("");
   const preselectPeople = Number(query.get("people")) || 1;
 
   return `

@@ -11,7 +11,9 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
         <h2>Bạn đã đăng nhập</h2>
         <p>Xin chào <strong>${session.name}</strong> (${session.role}).</p>
         <div class="success-actions">
-          <a class="btn btn-primary" href="#/admin">Vào trang quản lý</a>
+          <a class="btn btn-primary" href="#/${session.role === "Khách hàng" ? "" : "admin"}">${
+            session.role === "Khách hàng" ? "Tiếp tục đặt tour" : "Vào trang quản lý"
+          }</a>
           <a class="btn btn-outline" href="#/">Về trang chủ</a>
         </div>
       </div>
@@ -48,6 +50,7 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
 
       <button class="btn btn-primary btn-lg btn-block" type="submit">Đăng nhập</button>
       <p class="form-hint">Tài khoản demo: <strong>admin</strong> / <strong>123456</strong></p>
+      <p class="form-hint">Chưa có tài khoản? <a href="#/register">Đăng ký ngay</a></p>
     </form>
   </section>`;
 }
@@ -89,8 +92,9 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
-    const allowed = ["admin"];
+    const allowed = ["tours", "booking", "about", "contact", "admin"];
     const next = new URLSearchParams(detail.queryString).get("next");
-    window.location.hash = `#/${allowed.includes(next) ? next : "admin"}`;
+    const fallback = session.role === "Khách hàng" ? "" : "admin";
+    window.location.hash = `#/${allowed.includes(next) ? next : fallback}`;
   });
 });

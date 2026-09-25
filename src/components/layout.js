@@ -75,6 +75,7 @@ export function renderFooter() {
           <li><a href="#/tours">Danh sách tour</a></li>
           <li><a href="#/about">Giới thiệu</a></li>
           <li><a href="#/contact">Liên hệ</a></li>
+          <li><a href="#/register">Đăng ký tài khoản</a></li>
           <li><a href="#/admin">Quản lý đơn</a></li>
         </ul>
       </div>

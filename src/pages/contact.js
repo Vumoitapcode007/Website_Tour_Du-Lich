@@ -1,4 +1,5 @@
-import { contactInfo, getTourById } from "../data.js";
+import { contactInfo } from "../data.js";
+import { getTourById } from "../tour-repository.js";
 import { saveMessage } from "../store.js";
 import { isEmail, isName, isPhone } from "../validate.js";
 

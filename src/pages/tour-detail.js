@@ -1,4 +1,5 @@
-import { getTourById, relatedTours, formatPrice, formatDate, contactInfo } from "../data.js";
+import { formatPrice, formatDate, contactInfo } from "../data.js";
+import { getTourById, relatedTours } from "../tour-repository.js";
 import { tourCard } from "../components/tour-card.js";
 
 function stars(rating) {
@@ -24,12 +25,15 @@ export function TourDetail(path, params = {}) {
   const tour = getTourById(params.id);
   if (!tour) return NotFoundTour();
 
-  const departures = tour.departures
-    .map(
-      (date) =>
-        `<option value="${date}">${formatDate(date)} - còn ${tour.seatsLeft} chỗ</option>`
-    )
-    .join("");
+  const gallery = tour.gallery.length ? tour.gallery : [tour.image];
+  const departures = tour.departures.length
+    ? tour.departures
+        .map(
+          (date) =>
+            `<option value="${date}">${formatDate(date)} - còn ${tour.seatsLeft} chỗ</option>`
+        )
+        .join("")
+    : `<option value="">Liên hệ để biết lịch khởi hành</option>`;
 
   return `
   <section class="detail-top">
@@ -53,10 +57,10 @@ export function TourDetail(path, params = {}) {
     <div class="detail-main">
       <div class="gallery">
         <div class="gallery-main">
-          <img id="gallery-main-img" src="${tour.gallery[0]}" alt="${tour.name} - ảnh 1">
+          <img id="gallery-main-img" src="${gallery[0]}" alt="${tour.name} - ảnh 1">
         </div>
         <div class="gallery-thumbs" id="gallery-thumbs">
-          ${tour.gallery
+          ${gallery
             .map(
               (src, index) => `
             <button type="button" class="thumb${index === 0 ? " active" : ""}" data-src="${src}" data-index="${index}">
@@ -71,26 +75,33 @@ export function TourDetail(path, params = {}) {
         <h2>Giới thiệu tour</h2>
         <p class="detail-desc">${tour.description}</p>
         <ul class="highlight-list">
-          ${tour.highlights.map((item) => `<li>${item}</li>`).join("")}
+          ${
+            tour.highlights.length
+              ? tour.highlights.map((item) => `<li>${item}</li>`).join("")
+              : "<li>Liên hệ TravelGo để biết thêm chi tiết.</li>"
+          }
         </ul>
       </div>
 
       <div class="detail-block">
         <h2>Lịch trình chi tiết</h2>
         <div class="timeline">
-          ${tour.itinerary
-            .map(
-              (step) => `
+      ${(
+        tour.itinerary.length
+          ? tour.itinerary
+          : [{ day: "Lưu ý", title: "Lịch trình đang được cập nhật", items: ["Vui lòng liên hệ hotline để biết chi tiết."] }]
+      )
+        .map(
+          (step) => `
             <div class="timeline-item">
               <span class="timeline-day">${step.day}</span>
               <div>
                 <h3>${step.title}</h3>
-                <ul>${step.items.map((item) => `<li>${item}</li>`).join("")}</ul>
+                <ul>${(step.items || []).map((item) => `<li>${item}</li>`).join("")}</ul>
               </div>
             </div>`
-            )
-            .join("")}
-        </div>
+        )
+        .join("")}
       </div>
 
       <div class="detail-block">
@@ -98,11 +109,11 @@ export function TourDetail(path, params = {}) {
         <div class="include-grid">
           <div>
             <h3 class="include-title include-yes">✔ Bao gồm</h3>
-            <ul class="include-list">${tour.includes.map((item) => `<li>${item}</li>`).join("")}</ul>
+            <ul class="include-list">${tour.includes.map((item) => `<li>${item}</li>`).join("") || "<li>Đang cập nhật</li>"}</ul>
           </div>
           <div>
             <h3 class="include-title include-no">✖ Không bao gồm</h3>
-            <ul class="include-list">${tour.excludes.map((item) => `<li>${item}</li>`).join("")}</ul>
+            <ul class="include-list">${tour.excludes.map((item) => `<li>${item}</li>`).join("") || "<li>Chi phí cá nhân</li>"}</ul>
           </div>
         </div>
       </div>

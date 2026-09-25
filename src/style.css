@@ -852,6 +852,77 @@ a {
   color: #b91c1c;
 }
 
+.status-open {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-limited {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-closed {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+/* ---------- Admin tabs & tour manager ---------- */
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.admin-tab {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-tab:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.admin-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.admin-panel[hidden],
+.admin-form[hidden] {
+  display: none;
+}
+
+.admin-panel-title {
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+.admin-form {
+  margin: 20px 0 24px;
+}
+
+.admin-form h2 {
+  font-size: 20px;
+  margin-bottom: 16px;
+}
+
+.admin-form .success-actions {
+  justify-content: flex-start;
+}
+
 .admin-messages {
   margin-top: 32px;
 }
@@ -1813,6 +1884,15 @@ a {
 
   .admin-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .admin-tabs {
+    gap: 6px;
+  }
+
+  .admin-tab {
+    padding: 8px 14px;
+    font-size: 13px;
   }
 }
 

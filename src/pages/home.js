@@ -1,7 +1,25 @@
-import { tours } from "../data.js";
+import { listTours } from "../tour-repository.js";
 import { tourCard } from "../components/tour-card.js";
+import { searchKey } from "../validate.js";
+
+const destNotes = {
+  "Ninh Bình": "Tràng An - Hang Múa",
+  "Đà Nẵng": "Bà Nà Hills - biển Mỹ Khê",
+  "Quảng Ninh": "Vịnh Hạ Long",
+  "Đà Lạt": "Thành phố ngàn hoa",
+  "Sa Pa": "Ruộng bậc thang Tây Bắc",
+  "Phú Quốc": "Đảo ngọc biển xanh",
+};
 
 export function Home() {
+  const allTours = listTours();
+  const destinations = Object.entries(destNotes)
+    .map(([name, note]) => {
+      const tour = allTours.find((item) => item.location === name);
+      return tour ? { name, note, img: tour.image } : null;
+    })
+    .filter(Boolean);
+
   return `
   <section class="hero">
     <div class="hero-content container">
@@ -34,7 +52,7 @@ export function Home() {
       <a class="section-link" href="#/tours">Xem tất cả tour →</a>
     </div>
     <div class="tour-grid" id="tour-results">
-      ${tours.slice(0, 6).map(tourCard).join("")}
+      ${allTours.slice(0, 6).map(tourCard).join("")}
     </div>
     <p class="search-empty" id="search-empty" role="status" hidden>Không tìm thấy tour phù hợp. Hãy thử điểm đến khác nhé.</p>
   </section>
@@ -71,14 +89,7 @@ export function Home() {
       <p>Ghé thăm những miền đất đẹp nhất Việt Nam</p>
     </div>
     <div class="dest-grid">
-      ${[
-        { name: "Ninh Bình", note: "Tràng An - Hang Múa", img: tours[0].image },
-        { name: "Đà Nẵng", note: "Bà Nà Hills - biển Mỹ Khê", img: tours[1].image },
-        { name: "Quảng Ninh", note: "Vịnh Hạ Long", img: tours[2].image },
-        { name: "Đà Lạt", note: "Thành phố ngàn hoa", img: tours[3].image },
-        { name: "Sa Pa", note: "Ruộng bậc thang Tây Bắc", img: tours[4].image },
-        { name: "Phú Quốc", note: "Đảo ngọc biển xanh", img: tours[5].image },
-      ]
+      ${destinations
         .map(
           (dest) => `
         <a class="dest-card" href="#/tours">
@@ -132,11 +143,11 @@ document.addEventListener("route:changed", ({ detail }) => {
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const query = form.elements.q.value.trim().toLocaleLowerCase("vi");
+    const query = searchKey(form.elements.q.value);
     const cards = [...document.querySelectorAll("#tour-results .tour-card")];
     let visibleCount = 0;
     cards.forEach((card) => {
-      const text = (card.dataset.search || card.textContent).toLocaleLowerCase("vi");
+      const text = card.dataset.search || searchKey(card.textContent);
       const matches = !query || text.includes(query);
       card.hidden = !matches;
       if (matches) visibleCount++;

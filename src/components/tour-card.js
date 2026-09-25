@@ -1,7 +1,10 @@
 import { formatPrice } from "../data.js";
+import { searchKey } from "../validate.js";
 
 export function tourCard(tour) {
-  const searchText = `${tour.name} ${tour.location} ${tour.description} ${tour.highlights.join(" ")}`;
+  const searchText = searchKey(
+    `${tour.name} ${tour.location} ${tour.description} ${(tour.highlights || []).join(" ")}`
+  );
 
   return `
   <article class="tour-card" data-tour-id="${tour.id}" data-search="${searchText}">
