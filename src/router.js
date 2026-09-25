@@ -1,5 +1,6 @@
-export function createRouter(routes, root = "#app") {
+export function createRouter(routes, root = "app") {
   const app = document.getElementById(root);
+  console.log(app)
 
   function currentPath() {
     const hash = window.location.hash.replace(/^#\/?/, "");
