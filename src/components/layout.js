@@ -1,10 +1,16 @@
 import { contactInfo } from "../data.js";
+import { isLoggedIn } from "../auth.js";
 
 export const navItems = [
   { path: "", label: "Trang chủ" },
   { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
   { path: "about", label: "Giới thiệu" },
   { path: "contact", label: "Liên hệ" },
+];
+
+const adminItems = [
+  { path: "admin", label: "Quản lý đơn", aliases: [] },
+  { path: "login", label: "Đăng xuất", aliases: [] },
 ];
 
 function isActive(active, item) {
@@ -14,7 +20,8 @@ function isActive(active, item) {
 }
 
 export function renderHeader(active = "") {
-  const nav = navItems
+  const items = isLoggedIn() ? [...navItems, adminItems[0]] : navItems;
+  const nav = items
     .map(
       (item) => `
       <li>
@@ -68,6 +75,7 @@ export function renderFooter() {
           <li><a href="#/tours">Danh sách tour</a></li>
           <li><a href="#/about">Giới thiệu</a></li>
           <li><a href="#/contact">Liên hệ</a></li>
+          <li><a href="#/admin">Quản lý đơn</a></li>
         </ul>
       </div>
       <div>

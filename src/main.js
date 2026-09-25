@@ -1,12 +1,15 @@
 import "./style.css";
 import { createRouter } from "./router.js";
 import { renderHeader, renderFooter } from "./components/layout.js";
+import { isLoggedIn } from "./auth.js";
 import { Home } from "./pages/home.js";
 import { Tours } from "./pages/tours.js";
 import { TourDetail } from "./pages/tour-detail.js";
 import { Booking } from "./pages/booking.js";
 import { About } from "./pages/about.js";
 import { Contact } from "./pages/contact.js";
+import { Login } from "./pages/login.js";
+import { Admin } from "./pages/admin.js";
 
 function NotFound() {
   return `
@@ -63,6 +66,20 @@ const routes = [
     footer: renderFooter,
   },
   {
+    path: "login",
+    title: "Đăng nhập",
+    render: Login,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "admin",
+    title: "Quản lý đơn đặt tour",
+    render: Admin,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
     path: "404",
     title: "Không tìm thấy",
     render: NotFound,
@@ -71,9 +88,18 @@ const routes = [
   },
 ];
 
-createRouter(routes);
+const router = createRouter(routes);
+
+document.addEventListener("app:refresh", () => router.navigate());
 
 document.addEventListener("click", (event) => {
+  const adminLink = event.target.closest('a[href="#/admin"]');
+  if (adminLink && !isLoggedIn()) {
+    event.preventDefault();
+    window.location.hash = "#/login?next=admin";
+    return;
+  }
+
   const toggle = event.target.closest(".nav-toggle");
   if (!toggle) return;
 
