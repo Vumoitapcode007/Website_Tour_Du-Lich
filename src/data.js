@@ -214,13 +214,20 @@ export const tours = [
 export const destinations = [...new Set(tours.map((tour) => tour.location))];
 
 export const contactInfo = {
-  hotline: "1900 1234",
-  hotline2: "0909 888 777",
-  email: "hello@travelgo.vn",
-  address: "123 Đường Biển, Quảng 1, TP. Hồ Chí Minh",
+  hotline: "0326 794 336",
+  hotlineDigits: "0326794336",
+  email: "mvu191107@gmail.com",
+  address: "Tòa nhà FPT Polytechnic, Trịnh Văn Bô, Xuân Phương, Hà Nội 100000, Việt Nam",
   hours: "Thứ 2 - Chủ nhật: 8:00 - 20:00",
-  workingHours: "Hotline 24/7: 1900 1234",
+  workingHours: "Hỗ trợ ngoài giờ: 0326 794 336",
 };
+
+export const team = [
+  { name: "Trịnh Minh Vũ", initials: "TMV", role: "Giám đốc điều hành" },
+  { name: "Hà Quốc Việt", initials: "HQV", role: "Trưởng phòng tư vấn" },
+  { name: "Bùi Đức Hiệp", initials: "BDH", role: "Quản lý tour tuyến" },
+  { name: "Nguyễn Tuấn Dương", initials: "NTD", role: "Chăm sóc khách hàng" },
+];
 
 export function getTourById(id) {
   return tours.find((tour) => String(tour.id) === String(id));

@@ -595,6 +595,36 @@ a {
   font-size: 14px;
 }
 
+/* ---------- Contact band (about) ---------- */
+.contact-band {
+  background: linear-gradient(120deg, var(--primary), var(--primary-dark));
+  color: #fff;
+}
+
+.contact-band-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 40px 0;
+}
+
+.contact-band-inner h2 {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+.contact-band-inner p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.contact-band-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 /* ---------- Footer ---------- */
 .site-footer {
   background: #0f172a;

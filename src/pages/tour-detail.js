@@ -1,4 +1,4 @@
-import { getTourById, relatedTours, formatPrice, formatDate } from "../data.js";
+import { getTourById, relatedTours, formatPrice, formatDate, contactInfo } from "../data.js";
 import { tourCard } from "../components/tour-card.js";
 
 function stars(rating) {
@@ -129,7 +129,7 @@ export function TourDetail(path, params = {}) {
 
         <a class="btn btn-primary btn-block" id="quick-submit" href="#/booking?tour=${tour.id}">Đặt tour ngay</a>
         <a class="btn btn-outline btn-block" href="#/contact?tour=${tour.id}">Liên hệ tư vấn</a>
-        <p class="booking-hotline">Hotline: <a href="tel:19001234">1900 1234</a></p>
+        <p class="booking-hotline">Hotline: <a href="tel:${contactInfo.hotlineDigits}">${contactInfo.hotline}</a></p>
       </form>
     </aside>
   </section>
