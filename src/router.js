@@ -53,11 +53,12 @@ export function createRouter(routes, root = "app") {
     const route = matched?.route || routes.find((r) => r.path === "404") || routes[0];
     const params = matched?.params || {};
 
-    document.title = route.title
-      ? `${route.title} - TravelGo`
-      : "TravelGo - Đặt tour du lịch";
+    const title =
+      typeof route.title === "function" ? route.title(path, params, query) : route.title;
 
-    app.innerHTML = `${route.layout(path)}${route.render(path, params, query)}${route.footer(path)}`;
+    document.title = title ? `${title} - TravelGo` : "TravelGo - Đặt tour du lịch";
+
+    app.innerHTML = `${route.layout(path, params, query)}${route.render(path, params, query)}${route.footer(path, params, query)}`;
     window.scrollTo({ top: 0, behavior: "auto" });
     app.querySelector(".menu-wrap")?.classList.remove("open");
 
