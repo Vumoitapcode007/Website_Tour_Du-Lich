@@ -1,4 +1,4 @@
-import { changePassword, getSession, logout, updateProfile } from "../auth.js";
+import { changePassword, getSession, updateProfile } from "../auth.js";
 import { BOOKING_STATUS, myBookings, updateBooking } from "../store.js";
 import { formatDate, formatPrice } from "../data.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
@@ -140,7 +140,7 @@ export function Account() {
     </div>
 
     <div class="account-danger">
-      <button class="btn btn-ghost-soft" type="button" id="account-logout">Đăng xuất</button>
+      <button class="btn btn-ghost-soft" type="button" data-logout>Đăng xuất</button>
     </div>
   </section>`;
 }
@@ -182,7 +182,7 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
-    const result = updateProfile(session, { name, email, phone });
+    const result = updateProfile(session.username, { name, email, phone });
     if (result.errors) {
       profileSuccess.hidden = true;
       showErrors(profileForm, result.errors);
@@ -193,7 +193,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     profileSuccess.hidden = false;
 
     const hero = document.querySelector(".page-hero h1");
-    if (hero) hero.textContent = `Xin chào ${result.session.name}`;
+    if (hero) hero.textContent = `Xin chào ${result.account?.name || name}`;
   });
 
   passwordForm.addEventListener("submit", (event) => {
@@ -207,6 +207,7 @@ document.addEventListener("route:changed", ({ detail }) => {
 
     if (!currentPassword) errors.currentPassword = "Vui lòng nhập mật khẩu hiện tại.";
     if (!newPassword) errors.newPassword = "Vui lòng nhập mật khẩu mới.";
+    else if (newPassword.length < 6) errors.newPassword = "Mật khẩu mới cần tối thiểu 6 ký tự.";
     if (confirm !== newPassword) errors.confirm = "Xác nhận mật khẩu không khớp.";
 
     if (Object.keys(errors).length) {
@@ -215,10 +216,10 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
-    const result = changePassword(session, { currentPassword, newPassword });
+    const result = changePassword(session.username, currentPassword, newPassword);
     if (result.errors) {
       passwordSuccess.hidden = true;
-      showErrors(passwordForm, result.errors);
+      showErrors(passwordForm, { currentPassword: result.errors.password });
       return;
     }
 
@@ -237,9 +238,4 @@ document.addEventListener("route:changed", ({ detail }) => {
       document.dispatchEvent(new CustomEvent("app:refresh"));
     });
   }
-
-  document.getElementById("account-logout").addEventListener("click", () => {
-    logout();
-    window.location.hash = "#/";
-  });
 });
