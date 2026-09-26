@@ -52,6 +52,19 @@ export function listBookings() {
   return read(BOOKING_KEY);
 }
 
+const digits = (value) => String(value || "").replace(/\D/g, "");
+
+export function myBookings(profile = {}) {
+  const phone = digits(profile.phone);
+  const email = String(profile.email || "").trim().toLowerCase();
+
+  return listBookings().filter((item) => {
+    const samePhone = phone && digits(item.phone) === phone;
+    const sameEmail = email && String(item.email || "").trim().toLowerCase() === email;
+    return samePhone || sameEmail;
+  });
+}
+
 export function updateBooking(code, patch) {
   const list = listBookings().map((item) =>
     item.code === code ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item

@@ -11,10 +11,12 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
         <h2>Bạn đã đăng nhập</h2>
         <p>Xin chào <strong>${session.name}</strong> (${session.role}).</p>
         <div class="success-actions">
-          <a class="btn btn-primary" href="#/${session.role === "Khách hàng" ? "" : "admin"}">${
-            session.role === "Khách hàng" ? "Tiếp tục đặt tour" : "Vào trang quản lý"
-          }</a>
-          <a class="btn btn-outline" href="#/">Về trang chủ</a>
+          <a class="btn btn-primary" href="#/account">Tài khoản của tôi</a>
+          ${
+            session.role === "Khách hàng"
+              ? ""
+              : `<a class="btn btn-outline" href="#/admin">Trang quản trị</a>`
+          }
         </div>
       </div>
     </section>`;
@@ -92,7 +94,7 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
-    const allowed = ["tours", "booking", "about", "contact", "admin"];
+    const allowed = ["tours", "booking", "about", "contact", "admin", "account"];
     const next = new URLSearchParams(detail.queryString).get("next");
     const fallback = session.role === "Khách hàng" ? "" : "admin";
     window.location.hash = `#/${allowed.includes(next) ? next : fallback}`;

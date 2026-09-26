@@ -35,7 +35,17 @@ function writeUsers(list) {
 }
 
 function allAccounts() {
-  return [...demoAccounts, ...readUsers()];
+  return demoAccounts.map((account) => {
+    const saved = readUsers().find((item) => item.username === account.username);
+    if (!saved) return account;
+    return {
+      ...account,
+      name: saved.name || account.name,
+      email: saved.email || "",
+      phone: saved.phone || "",
+      password: saved.password || account.password,
+    };
+  }).concat(readUsers().filter((item) => !demoAccounts.some((acc) => acc.username === item.username)));
 }
 
 export function getSession() {
@@ -56,6 +66,7 @@ function startSession(account) {
     name: account.name,
     role: account.role,
     email: account.email || "",
+    phone: account.phone || "",
     loginAt: new Date().toISOString(),
   };
 
@@ -111,4 +122,60 @@ export function logout() {
   } catch {
     /* bỏ qua */
   }
+}
+
+function findRecord(username) {
+  return readUsers().find((item) => item.username === username) || null;
+}
+
+function upsertRecord(record) {
+  const users = readUsers();
+  const index = users.findIndex((item) => item.username === record.username);
+  if (index >= 0) users[index] = { ...users[index], ...record };
+  else users.push(record);
+  return writeUsers(users);
+}
+
+export function updateProfile(session, { name, email, phone }) {
+  const current = findRecord(session.username);
+  const info = {
+    name: String(name || "").trim(),
+    email: String(email || "").trim().toLowerCase(),
+    phone: String(phone || "").trim(),
+  };
+
+  const duplicated = allAccounts().some(
+    (item) =>
+      item.username !== session.username && info.email && item.email?.toLowerCase() === info.email
+  );
+  if (duplicated) return { errors: { email: "Email này đã được tài khoản khác sử dụng." } };
+
+  upsertRecord({ ...(current || {}), ...info, username: session.username });
+
+  const updated = { ...session, ...info, loginAt: session.loginAt };
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+  } catch {
+    /* bỏ qua */
+  }
+  return { session: updated };
+}
+
+export function changePassword(session, { currentPassword, newPassword }) {
+  const account = allAccounts().find((item) => item.username === session.username);
+  if (!account || account.password !== currentPassword) {
+    return { errors: { currentPassword: "Mật khẩu hiện tại không đúng." } };
+  }
+  if (String(newPassword || "").length < 6) {
+    return { errors: { newPassword: "Mật khẩu mới cần tối thiểu 6 ký tự." } };
+  }
+
+  upsertRecord({
+    username: session.username,
+    name: account.name,
+    email: account.email || "",
+    phone: account.phone || "",
+    password: newPassword,
+  });
+  return { ok: true };
 }

@@ -10,6 +10,7 @@ export const navItems = [
 
 const adminItems = [
   { path: "admin", label: "Quản lý đơn", aliases: [] },
+  { path: "account", label: "Tài khoản", aliases: [] },
   { path: "login", label: "Đăng xuất", aliases: [] },
 ];
 
@@ -20,7 +21,7 @@ function isActive(active, item) {
 }
 
 export function renderHeader(active = "") {
-  const items = isLoggedIn() ? [...navItems, adminItems[0]] : navItems;
+  const items = isLoggedIn() ? [...navItems, adminItems[0], adminItems[1]] : navItems;
   const nav = items
     .map(
       (item) => `
@@ -76,6 +77,7 @@ export function renderFooter() {
           <li><a href="#/about">Giới thiệu</a></li>
           <li><a href="#/contact">Liên hệ</a></li>
           <li><a href="#/register">Đăng ký tài khoản</a></li>
+          <li><a href="#/account">Tài khoản của tôi</a></li>
           <li><a href="#/admin">Quản lý đơn</a></li>
         </ul>
       </div>

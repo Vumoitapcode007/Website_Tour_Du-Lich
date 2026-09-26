@@ -1,6 +1,7 @@
 import { tours as seedTours } from "./data.js";
 
 const TOUR_KEY = "travelgo.tours";
+const SEED_VERSION = 2;
 
 export const TOUR_STATUS = {
   open: "Đang nhận khách",
@@ -49,26 +50,51 @@ export function normalizeTour(tour = {}) {
 
 function read() {
   try {
-    const list = JSON.parse(localStorage.getItem(TOUR_KEY));
-    return Array.isArray(list) ? list.map(normalizeTour) : null;
+    const raw = localStorage.getItem(TOUR_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return { list: parsed, customized: false, version: 0 };
+    if (parsed && Array.isArray(parsed.list)) {
+      return {
+        list: parsed.list,
+        customized: Boolean(parsed.customized),
+        version: Number(parsed.version) || 0,
+      };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-function write(list) {
+function write(list, customized) {
   try {
-    localStorage.setItem(TOUR_KEY, JSON.stringify(list));
+    localStorage.setItem(
+      TOUR_KEY,
+      JSON.stringify({ version: SEED_VERSION, customized, list })
+    );
   } catch {
     /* bộ nhớ không khả dụng - dùng dữ liệu trong phiên */
   }
   return list;
 }
 
+function seed() {
+  return seedTours.map((tour) => normalizeTour(clone(tour)));
+}
+
 export function listTours() {
-  const saved = read();
-  if (saved) return saved;
-  return write(seedTours.map((tour) => normalizeTour(clone(tour))));
+  const stored = read();
+  if (!stored) return write(seed(), false);
+  if (stored.version === SEED_VERSION) return stored.list.map(normalizeTour);
+
+  if (!stored.customized) return write(seed(), false);
+
+  // đã tự chỉnh danh sách: giữ thay đổi, chỉ bổ sung tour mới từ dữ liệu gốc
+  const known = new Set(stored.list.map((tour) => String(tour.id)));
+  const added = seed().filter((tour) => !known.has(String(tour.id)));
+  return write([...added, ...stored.list], true);
 }
 
 export function getTourById(id) {
@@ -95,19 +121,20 @@ export function saveTour(tour) {
   if (index >= 0) {
     const updated = { ...list[index], ...payload };
     list[index] = updated;
-    return write(list)[index];
+    write(list, true);
+    return updated;
   }
 
   payload.id = list.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
   list.unshift(payload);
-  write(list);
+  write(list, true);
   return payload;
 }
 
 export function removeTour(id) {
-  return write(listTours().filter((tour) => String(tour.id) !== String(id)));
+  return write(listTours().filter((tour) => String(tour.id) !== String(id)), true);
 }
 
 export function resetTours() {
-  return write(seedTours.map((tour) => normalizeTour(clone(tour))));
+  return write(seed(), false);
 }

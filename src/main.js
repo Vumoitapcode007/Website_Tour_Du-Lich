@@ -10,6 +10,7 @@ import { About } from "./pages/about.js";
 import { Contact } from "./pages/contact.js";
 import { Login } from "./pages/login.js";
 import { Register } from "./pages/register.js";
+import { Account } from "./pages/account.js";
 import { Admin } from "./pages/admin.js";
 
 function NotFound() {
@@ -81,8 +82,15 @@ const routes = [
     footer: renderFooter,
   },
   {
+    path: "account",
+    title: "Tài khoản của tôi",
+    render: Account,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
     path: "admin",
-    title: "Quản lý đơn đặt tour",
+    title: "Trang quản trị",
     render: Admin,
     layout: renderHeader,
     footer: renderFooter,
@@ -101,11 +109,17 @@ const router = createRouter(routes);
 document.addEventListener("app:refresh", () => router.navigate());
 
 document.addEventListener("click", (event) => {
-  const adminLink = event.target.closest('a[href="#/admin"]');
-  if (adminLink && !isLoggedIn()) {
-    event.preventDefault();
-    window.location.hash = "#/login?next=admin";
-    return;
+  if (!isLoggedIn()) {
+    for (const [hash, next] of [
+      ["#/admin", "admin"],
+      ["#/account", "account"],
+    ]) {
+      const link = event.target.closest(`a[href="${hash}"]`);
+      if (!link) continue;
+      event.preventDefault();
+      window.location.hash = `#/login?next=${next}`;
+      return;
+    }
   }
 
   const toggle = event.target.closest(".nav-toggle");
