@@ -1,24 +1,53 @@
-import { login, getSession } from "../auth.js";
+import { DEMO_CREDENTIALS, ROLES, getSession, isStaffRole, login } from "../auth.js";
+import { escapeHtml } from "../validate.js";
+
+const PUBLIC_ROUTES = ["", "tours", "booking", "about", "contact", "login", "register", "404"];
+
+function sanitizeNext(value) {
+  const next = String(value || "").replace(/^#?\/?/, "");
+  if (!next) return "";
+  if (next.startsWith("admin")) return next;
+  return PUBLIC_ROUTES.includes(next) ? next : "";
+}
 
 export function Login(path, params = {}, query = new URLSearchParams()) {
   const session = getSession();
+  const staff = isStaffRole(session?.roleKey);
 
   if (session) {
+    const target = sanitizeNext(query.get("next")) || (staff ? "admin/dashboard" : "");
     return `
     <section class="section container center">
       <div class="form-card login-card">
         <div class="success-icon">✓</div>
         <h2>Bạn đã đăng nhập</h2>
-        <p>Xin chào <strong>${session.name}</strong> (${session.role}).</p>
+        <p>Xin chào <strong>${escapeHtml(session.name)}</strong> · ${escapeHtml(session.role)}</p>
+        ${
+          staff
+            ? ""
+            : `<p class="form-hint">Tài khoản khách hàng không được phép truy cập khu vực quản trị.</p>`
+        }
         <div class="success-actions">
-          <a class="btn btn-primary" href="#/${session.role === "Khách hàng" ? "" : "admin"}">${
-            session.role === "Khách hàng" ? "Tiếp tục đặt tour" : "Vào trang quản lý"
+          <a class="btn btn-primary" href="#/${target}">${
+            staff ? "Vào trang quản trị" : "Tiếp tục đặt tour"
           }</a>
           <a class="btn btn-outline" href="#/">Về trang chủ</a>
+        </div>
+        <div class="success-actions">
+          <button class="btn btn-ghost-soft" type="button" data-logout>Đăng xuất</button>
         </div>
       </div>
     </section>`;
   }
+
+  const demoCards = DEMO_CREDENTIALS.map(
+    (item) => `
+    <button class="demo-account" type="button" data-demo-user="${escapeHtml(item.username)}" data-demo-pass="${escapeHtml(item.password)}">
+      <strong>${escapeHtml(item.username)}</strong>
+      <span>${escapeHtml(item.password)}</span>
+      <small>${escapeHtml(item.name)} · ${escapeHtml(item.title || ROLES[item.roleKey]?.label || "")}</small>
+    </button>`
+  ).join("");
 
   return `
   <section class="page-hero">
@@ -29,7 +58,7 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
     </div>
   </section>
 
-  <section class="section container">
+  <section class="section container container-narrow">
     <form class="form-card login-card" id="login-form" novalidate>
       <h2>Đăng nhập hệ thống</h2>
 
@@ -49,14 +78,21 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
       </div>
 
       <button class="btn btn-primary btn-lg btn-block" type="submit">Đăng nhập</button>
-      <p class="form-hint">Tài khoản demo: <strong>admin</strong> / <strong>123456</strong></p>
       <p class="form-hint">Chưa có tài khoản? <a href="#/register">Đăng ký ngay</a></p>
     </form>
+
+    <aside class="login-demo">
+      <h3>Tài khoản trải nghiệm</h3>
+      <p>Chọn một tài khoản để điền nhanh vào biểu mẫu.</p>
+      <div class="demo-list">${demoCards}</div>
+      <p class="form-hint">Mọi tài khoản demo đều dùng mật khẩu <strong>123456</strong>.</p>
+    </aside>
   </section>`;
 }
 
 document.addEventListener("route:changed", ({ detail }) => {
   if (detail.path !== "login") return;
+
   const form = document.getElementById("login-form");
   if (!form) return;
 
@@ -69,10 +105,19 @@ document.addEventListener("route:changed", ({ detail }) => {
     });
   });
 
+  form.querySelectorAll("[data-demo-user]").forEach((button) => {
+    button.addEventListener("click", () => {
+      form.elements.username.value = button.dataset.demoUser;
+      form.elements.password.value = button.dataset.demoPass;
+      form.querySelectorAll("[data-error]").forEach((node) => (node.textContent = ""));
+    });
+  });
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const username = form.elements.username.value.trim();
     const password = form.elements.password.value;
+    const errorBox = form.querySelector('[data-error="password"]');
 
     form.querySelectorAll("[data-error]").forEach((node) => (node.textContent = ""));
 
@@ -81,20 +126,27 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
     if (!password) {
-      form.querySelector('[data-error="password"]').textContent = "Vui lòng nhập mật khẩu.";
+      errorBox.textContent = "Vui lòng nhập mật khẩu.";
       return;
     }
 
-    const session = login(username, password);
-    if (!session) {
-      form.querySelector('[data-error="password"]').textContent =
-        "Tài khoản hoặc mật khẩu không đúng.";
+    const result = login(username, password);
+    if (result?.locked) {
+      errorBox.textContent = "Tài khoản đã bị khoá. Vui lòng liên hệ quản trị viên.";
+      return;
+    }
+    if (!result) {
+      errorBox.textContent = "Tài khoản hoặc mật khẩu không đúng.";
       return;
     }
 
-    const allowed = ["tours", "booking", "about", "contact", "admin"];
-    const next = new URLSearchParams(detail.queryString).get("next");
-    const fallback = session.role === "Khách hàng" ? "" : "admin";
-    window.location.hash = `#/${allowed.includes(next) ? next : fallback}`;
+    const staff = isStaffRole(result.roleKey);
+    const next = sanitizeNext(new URLSearchParams(detail.queryString).get("next"));
+    if (next?.startsWith("admin") && !staff) {
+      errorBox.textContent = "Tài khoản của bạn không có quyền vào khu vực quản trị.";
+      return;
+    }
+
+    window.location.hash = `#/${next || (staff ? "admin/dashboard" : "")}`;
   });
 });

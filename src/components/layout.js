@@ -1,33 +1,44 @@
-import { contactInfo } from "../data.js";
-import { isLoggedIn } from "../auth.js";
+import { getSession, isStaffRole } from "../auth.js";
+import { getSettings } from "../store.js";
 
 export const navItems = [
-  { path: "", label: "Trang chủ" },
+  { path: "", label: "Trang chủ", aliases: [] },
   { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
-  { path: "about", label: "Giới thiệu" },
-  { path: "contact", label: "Liên hệ" },
+  { path: "about", label: "Giới thiệu", aliases: [] },
+  { path: "contact", label: "Liên hệ", aliases: [] },
 ];
 
-const adminItems = [
-  { path: "admin", label: "Quản lý đơn", aliases: [] },
-  { path: "login", label: "Đăng xuất", aliases: [] },
-];
+const adminItem = { path: "admin", label: "Quản trị", aliases: [] };
+const loginItem = { path: "login", label: "Đăng nhập", aliases: [] };
+const profileItem = { path: "admin/profile", label: "Hồ sơ", aliases: [] };
+const logoutItem = { path: "login", label: "Đăng xuất", aliases: ["logout"] };
 
 function isActive(active, item) {
+  if (item.aliases?.includes("logout")) return false;
   return [item.path, ...(item.aliases || [])].some(
     (key) => active === key || active.startsWith(`${key}/`)
   );
 }
 
 export function renderHeader(active = "") {
-  const items = isLoggedIn() ? [...navItems, adminItems[0]] : navItems;
+  const session = getSession();
+  const staff = isStaffRole(session?.roleKey);
+  const items = staff
+    ? [...navItems, adminItem, profileItem, logoutItem]
+    : session
+      ? [...navItems, loginItem]
+      : [...navItems, loginItem];
+
   const nav = items
-    .map(
-      (item) => `
+    .map((item) => {
+      if (item.aliases?.includes("logout")) {
+        return `<li><a href="#/login" data-logout="1" class="${isActive(active, item) ? "active" : ""}">${item.label}</a></li>`;
+      }
+      return `
       <li>
         <a href="#/${item.path}" class="${isActive(active, item) ? "active" : ""}">${item.label}</a>
-      </li>`
-    )
+      </li>`;
+    })
     .join("");
 
   return `
@@ -55,6 +66,8 @@ export function renderHeader(active = "") {
 }
 
 export function renderFooter() {
+  const settings = getSettings();
+
   return `
   <footer class="site-footer">
     <div class="container footer-grid">
@@ -66,25 +79,26 @@ export function renderFooter() {
           </svg>
           <span>Travel<span>Go</span></span>
         </a>
-        <p class="muted">Website đặt tour du lịch - đồng hành cùng mọi chuyến đi của bạn.</p>
+        <p class="muted">${settings.footerNote}</p>
       </div>
       <div>
         <h4>Liên kết</h4>
         <ul class="footer-links">
           <li><a href="#/">Trang chủ</a></li>
           <li><a href="#/tours">Danh sách tour</a></li>
-          <li><a href="#/about">Giới thiệu</a></li>
+          <li><a href="#/about">Giới thiện</a></li>
           <li><a href="#/contact">Liên hệ</a></li>
           <li><a href="#/register">Đăng ký tài khoản</a></li>
-          <li><a href="#/admin">Quản lý đơn</a></li>
+          <li><a href="#/admin">Quản trị</a></li>
         </ul>
       </div>
       <div>
         <h4>Liên hệ</h4>
         <ul class="footer-links">
-          <li>Hotline: <a href="tel:${contactInfo.hotlineDigits}">${contactInfo.hotline}</a></li>
-          <li>Email: <a href="mailto:${contactInfo.email}">${contactInfo.email}</a></li>
-          <li>${contactInfo.address}</li>
+          <li>Hotline: <a href="tel:${String(settings.hotline).replace(/\D/g, "")}">${settings.hotline}</a></li>
+          <li>Email: <a href="mailto:${settings.email}">${settings.email}</a></li>
+          <li>${settings.address}</li>
+          <li>${settings.hours}</li>
         </ul>
       </div>
       <div>
@@ -97,7 +111,7 @@ export function renderFooter() {
       </div>
     </div>
     <div class="container footer-bottom">
-      <p>&copy; 2026 TravelGo. Bản quyền thuộc về TravelGo.</p>
+      <p>&copy; 2026 ${settings.siteName}. Bản quyền thuộc về ${settings.siteName}.</p>
     </div>
   </footer>`;
 }
