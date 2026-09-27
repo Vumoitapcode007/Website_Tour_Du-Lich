@@ -1,5 +1,5 @@
 import { listTours } from "../tour-repository.js";
-import { tourCard } from "../components/tour-card.js";
+import { tourCard, imgFallback } from "../components/tour-card.js";
 import { searchKey } from "../validate.js";
 
 const destNotes = {
@@ -93,7 +93,7 @@ export function Home() {
         .map(
           (dest) => `
         <a class="dest-card" href="#/tours">
-          <img src="${dest.img}" alt="${dest.name}" loading="lazy">
+          <img src="${dest.img}" alt="${dest.name}" loading="lazy" onerror="${imgFallback}">
           <span class="dest-info">
             <strong>${dest.name}</strong>
             <em>${dest.note}</em>

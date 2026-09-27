@@ -1,4 +1,7 @@
-import { team, contactInfo } from "../data.js";
+import { team, contactInfo, FALLBACK_IMAGE } from "../data.js";
+import { imgFallback } from "../components/tour-card.js";
+
+const STORY_IMAGE = "https://live.staticflickr.com/2896/33523102930_d62efe60a4_b.jpg";
 
 export function About() {
   return `
@@ -33,9 +36,10 @@ export function About() {
     </div>
     <div class="story-img">
       <img
-        src="https://images.unsplash.com/photo-1556012018-50c5900c1935?auto=format&fit=crop&w=800&q=80"
+        src="${STORY_IMAGE}"
         alt="Đội ngũ TravelGo"
         loading="lazy"
+        onerror="${imgFallback}"
       >
     </div>
   </section>
@@ -88,7 +92,14 @@ export function About() {
         .map(
           (member) => `
         <div class="team-card">
-          <div class="avatar">${member.initials}</div>
+          <div class="avatar">
+            <img
+              src="${member.photo}"
+              alt="${member.name} - ${member.role}"
+              loading="lazy"
+              onerror="${imgFallback}"
+            >
+          </div>
           <h3>${member.name}</h3>
           <p>${member.role}</p>
         </div>`

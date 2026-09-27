@@ -1,6 +1,7 @@
 import { formatPrice, formatDate } from "../data.js";
 import { listTours, getTourById } from "../tour-repository.js";
 import { saveBooking } from "../store.js";
+import { imgFallback } from "../components/tour-card.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
 
 export function Booking(path, params = {}, query = new URLSearchParams()) {
@@ -77,7 +78,7 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
 
     <aside class="summary-card" id="booking-summary">
       <h2>Tóm tắt đơn</h2>
-      <img class="summary-img" id="sum-img" src="" alt="">
+      <img class="summary-img" id="sum-img" src="" alt="" onerror="${imgFallback}">
       <h3 id="sum-name"></h3>
       <ul class="summary-list">
         <li><span>Điểm đến</span><strong id="sum-location"></strong></li>

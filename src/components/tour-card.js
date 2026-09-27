@@ -1,5 +1,7 @@
-import { formatPrice } from "../data.js";
+import { FALLBACK_IMAGE, formatPrice } from "../data.js";
 import { searchKey } from "../validate.js";
+
+export const imgFallback = `this.onerror=null;this.src='${FALLBACK_IMAGE}'`;
 
 export function tourCard(tour) {
   const searchText = searchKey(
@@ -9,7 +11,7 @@ export function tourCard(tour) {
   return `
   <article class="tour-card" data-tour-id="${tour.id}" data-search="${searchText}">
     <a class="card-img" href="#/tour/${tour.id}" aria-label="Xem chi tiết ${tour.name}">
-      <img src="${tour.image}" alt="${tour.name}" loading="lazy">
+      <img src="${tour.image}" alt="${tour.name}" loading="lazy" onerror="${imgFallback}">
       ${tour.oldPrice ? `<span class="badge badge-sale">-${Math.round((1 - tour.price / tour.oldPrice) * 100)}%</span>` : ""}
       <span class="badge badge-place">${tour.location}</span>
     </a>

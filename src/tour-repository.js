@@ -1,7 +1,11 @@
 import { tours as seedTours } from "./data.js";
 
 const TOUR_KEY = "travelgo.tours";
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
+
+/* Ảnh Unsplash đã hỏng (trả 404) - thay bằng ảnh trong dữ liệu gốc */
+const DEAD_IMAGE_IDS = ["1556012018-50c5900c1935"];
+const isDeadImage = (url) => DEAD_IMAGE_IDS.some((id) => String(url || "").includes(id));
 
 export const TOUR_STATUS = {
   open: "Đang nhận khách",
@@ -84,17 +88,57 @@ function seed() {
   return seedTours.map((tour) => normalizeTour(clone(tour)));
 }
 
+/* Tour đã lưu trước đây vẫn giữ link ảnh hỏng, kể cả khi người dùng đã tự chỉnh danh sách */
+function fixDeadImages(tour) {
+  if (!isDeadImage(tour.image) && !tour.gallery.some(isDeadImage)) return tour;
+
+  const fresh = seedTours.find((item) => String(item.id) === String(tour.id)) || {};
+  const candidates = toArray(fresh.gallery).filter((url) => !isDeadImage(url));
+  const gallery = [];
+
+  tour.gallery.forEach((url) => {
+    if (!isDeadImage(url)) {
+      gallery.push(url);
+      return;
+    }
+    const next = candidates.find((item) => !gallery.includes(item) && item !== tour.image);
+    gallery.push(next || candidates[0] || tour.image);
+  });
+
+  return {
+    ...tour,
+    image: isDeadImage(tour.image) ? fresh.image || tour.image : tour.image,
+    gallery,
+  };
+}
+
+/* Trả về đúng mảng cũ nếu không có gì cần sửa, để không ghi localStorage mỗi lần render */
+function repairList(list) {
+  const repaired = list.map((tour) => fixDeadImages(normalizeTour(tour)));
+  const changed = repaired.some((tour, index) => {
+    const source = list[index] || {};
+    return (
+      source.image !== tour.image || toArray(source.gallery).join("|") !== tour.gallery.join("|")
+    );
+  });
+
+  return changed ? repaired : list;
+}
+
 export function listTours() {
   const stored = read();
   if (!stored) return write(seed(), false);
-  if (stored.version === SEED_VERSION) return stored.list.map(normalizeTour);
+  if (stored.version === SEED_VERSION) {
+    const list = repairList(stored.list);
+    return list === stored.list ? list : write(list, stored.customized);
+  }
 
   if (!stored.customized) return write(seed(), false);
 
   // đã tự chỉnh danh sách: giữ thay đổi, chỉ bổ sung tour mới từ dữ liệu gốc
   const known = new Set(stored.list.map((tour) => String(tour.id)));
   const added = seed().filter((tour) => !known.has(String(tour.id)));
-  return write([...added, ...stored.list], true);
+  return write([...added, ...stored.list].map((tour) => fixDeadImages(normalizeTour(tour))), true);
 }
 
 export function getTourById(id) {

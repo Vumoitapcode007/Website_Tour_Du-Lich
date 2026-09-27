@@ -1,6 +1,6 @@
 import { formatPrice, formatDate, contactInfo } from "../data.js";
 import { getTourById, relatedTours } from "../tour-repository.js";
-import { tourCard } from "../components/tour-card.js";
+import { tourCard, imgFallback } from "../components/tour-card.js";
 
 function stars(rating) {
   const full = Math.round(rating);
@@ -57,14 +57,14 @@ export function TourDetail(path, params = {}) {
     <div class="detail-main">
       <div class="gallery">
         <div class="gallery-main">
-          <img id="gallery-main-img" src="${gallery[0]}" alt="${tour.name} - ảnh 1">
+          <img id="gallery-main-img" src="${gallery[0]}" alt="${tour.name} - ảnh 1" onerror="${imgFallback}">
         </div>
         <div class="gallery-thumbs" id="gallery-thumbs">
           ${gallery
             .map(
               (src, index) => `
             <button type="button" class="thumb${index === 0 ? " active" : ""}" data-src="${src}" data-index="${index}">
-              <img src="${src}" alt="${tour.name} - ảnh ${index + 1}" loading="lazy">
+              <img src="${src}" alt="${tour.name} - ảnh ${index + 1}" loading="lazy" onerror="${imgFallback}">
             </button>`
             )
             .join("")}

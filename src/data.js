@@ -1,6 +1,29 @@
 const img = (id, w = 1200) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 
+/* Ảnh đại diện thành viên, cùng kho ảnh theo tên nên đổi ảnh không vỡ giao diện */
+const avatar = (slug) => `https://i.pravatar.cc/320?u=${slug}`;
+
+/* Ảnh Hạ Long (nguồn CC0) - link trực tiếp vì Unsplash không có ảnh này còn hoạt động */
+const halong = (n) =>
+  [
+    "https://live.staticflickr.com/3836/33523114580_bb89d2cc22_b.jpg",
+    "https://live.staticflickr.com/3715/33064722834_9c9dd1fb72_b.jpg",
+    "https://live.staticflickr.com/2896/33523102930_d62efe60a4_b.jpg",
+    "https://live.staticflickr.com/3886/33870331086_61a63c443c_b.jpg",
+  ][n % 4];
+
+/* Ảnh dự phòng khi link ảnh hỏng, nhúng sẵn nên không phụ thuộc mạng */
+export const FALLBACK_IMAGE =
+  "data:image/svg+xml;charset=utf-8," +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+      <rect width="800" height="600" fill="#e8f1ff"/>
+      <path fill="#1677ff" opacity=".18" d="M400 470 300 320l60-60-20-70 60 20 60-70 60 70 60-20-20 70 60 60-100 150z"/>
+      <text x="400" y="530" font-family="Segoe UI,Arial,sans-serif" font-size="30" fill="#5b6b82" text-anchor="middle">TravelGo</text>
+    </svg>`
+  );
+
 export const tours = [
   {
     id: 1,
@@ -14,7 +37,7 @@ export const tours = [
     reviews: 214,
     seatsLeft: 8,
     image: img("1528127269322-539801943592", 800),
-    gallery: [img("1528127269322-539801943592"), img("1507525428034-b723cf961d3e"), img("1556012018-50c5900c1935")],
+    gallery: [img("1528127269322-539801943592"), img("1507525428034-b723cf961d3e"), img("1666160416071-f760a7af9ea6")],
     description:
       "Khám phá Tràng An, Hang Múa và các điểm nổi bật tại Ninh Bình.",
     highlights: ["Vịnh Tràng An bằng thuyền row", "Hang Múa - Hang Bích", "Tràm miếu Văn Long"],
@@ -81,8 +104,8 @@ export const tours = [
     rating: 4.7,
     reviews: 302,
     seatsLeft: 12,
-    image: img("1528127269322-539801943592", 800),
-    gallery: [img("1528127269322-539801943592"), img("1507525428034-b723cf961d3e"), img("1556012018-50c5900c1935")],
+    image: halong(0),
+    gallery: [halong(0), halong(1), halong(2)],
     description: "Du thuyền và khám phá Vịnh Hạ Long.",
     highlights: ["Du thuyền ngủ đêm", "Hang Sự Tiên", "Đảo Cô Đảo"],
     itinerary: [
@@ -113,7 +136,7 @@ export const tours = [
     reviews: 187,
     seatsLeft: 6,
     image: img("1750021875875-c6151cf78269", 800),
-    gallery: [img("1750021875875-c6151cf78269"), img("1666160416071-f760a7af9ea6"), img("1556012018-50c5900c1935")],
+    gallery: [img("1750021875875-c6151cf78269"), img("1666160416071-f760a7af9ea6"), img("1732243395944-cb3ff9311091")],
     description: "Khám phá thành phố ngàn hoa.",
     highlights: ["Chợ hoa Đà Lạt & Đồi Mứ", "Cầu Đà Lạt", "Thung lũng Tà Đùng"],
     itinerary: [
@@ -149,7 +172,7 @@ export const tours = [
     reviews: 143,
     seatsLeft: 4,
     image: img("1666160416071-f760a7af9ea6", 800),
-    gallery: [img("1666160416071-f760a7af9ea6"), img("1556012018-50c5900c1935"), img("1750021875875-c6151cf78269")],
+    gallery: [img("1666160416071-f760a7af9ea6"), img("1732243395944-cb3ff9311091"), img("1750021875875-c6151cf78269")],
     description: "Khám phá ruộng bậc thang và núi rừng Tây Bắc.",
     highlights: ["Ruộng bậc thang Mùa Hoa", "Đỉnh Fansipan", "Thị trấn Sa Pa mùa sương"],
     itinerary: [
@@ -293,7 +316,7 @@ export const tours = [
     reviews: 174,
     seatsLeft: 11,
     image: img("1528127269322-539801943592", 800),
-    gallery: [img("1528127269322-539801943592"), img("1674296067534-0f9769040781"), img("1556012018-50c5900c1935")],
+    gallery: [img("1528127269322-539801943592"), img("1674296067534-0f9769040781"), img("1507525428034-b723cf961d3e")],
     description: "Cung đình, lăng tẩm và phố cổ Huế trước khi dừng chân ở Hội An.",
     highlights: ["Cung đình và Đại Nội", "Lăng tẩm Minh Mạng", "Phố cổ Hội An đêm"],
     itinerary: [
@@ -329,7 +352,7 @@ export const tours = [
     reviews: 132,
     seatsLeft: 14,
     image: img("1507525428034-b723cf961d3e", 800),
-    gallery: [img("1507525428034-b723cf961d3e"), img("1556012018-50c5900c1935"), img("1528127269322-539801943592")],
+    gallery: [img("1507525428034-b723cf961d3e"), img("1732243395944-cb3ff9311091"), img("1528127269322-539801943592")],
     description: "Hang Sơn Doòng và những hang động kỳ vĩ của Phong Nha.",
     highlights: ["Tham quan Hang Sơn Doòng", "Hang Tiên Sơn", "Đèo Bảo Lạc - Vẻ núi rợn người"],
     itinerary: [
@@ -360,7 +383,7 @@ export const tours = [
     reviews: 118,
     seatsLeft: 6,
     image: img("1732243395944-cb3ff9311091", 800),
-    gallery: [img("1732243395944-cb3ff9311091"), img("1507525428034-b723cf961d3e"), img("1556012018-50c5900c1935")],
+    gallery: [img("1732243395944-cb3ff9311091"), img("1507525428034-b723cf961d3e"), img("1674296067534-0f9769040781")],
     description: "Hòn đảo yên tĩnh với bãi biển hoang sơ và lịch sử hào hùng.",
     highlights: ["Bãi Cát Tiên hoang sơ", "Nhà tù Côn Đảo", "Bãi Đầm tranh xanh trong"],
     itinerary: [
@@ -436,8 +459,8 @@ export const tours = [
     rating: 4.9,
     reviews: 264,
     seatsLeft: 5,
-    image: img("1528127269322-539801943592", 800),
-    gallery: [img("1528127269322-539801943592"), img("1556012018-50c5900c1935"), img("1507525428034-b723cf961d3e")],
+    image: halong(1),
+    gallery: [halong(1), halong(0), halong(3)],
     description: "Du thuyền 5 sao với phòng ngủ view biển và thuyền bè riêng.",
     highlights: ["Phòng ngủ hạng phòng view vịnh", "Kayak và lặn đá", "Đón trả khách tại tận bến"],
     itinerary: [
@@ -499,7 +522,7 @@ export const tours = [
     reviews: 143,
     seatsLeft: 12,
     image: img("1674296067534-0f9769040781", 800),
-    gallery: [img("1674296067534-0f9769040781"), img("1732243395944-cb3ff9311091"), img("1556012018-50c5900c1935")],
+    gallery: [img("1674296067534-0f9769040781"), img("1732243395944-cb3ff9311091"), img("1750021875875-c6151cf78269")],
     description: "Nghỉ dưỡng biển Vũng Tàu kết hợp tham quan khu du lịch Bình Điền.",
     highlights: ["Tượng Chúa Kitê", "Bãi Trước Vũng Tàu", "Khu du lịch Bình Điền"],
     itinerary: [
@@ -601,8 +624,8 @@ export const tours = [
     rating: 4.7,
     reviews: 167,
     seatsLeft: 8,
-    image: img("1556012018-50c5900c1935", 800),
-    gallery: [img("1556012018-50c5900c1935"), img("1528127269322-539801943592"), img("1507525428034-b723cf961d3e")],
+    image: halong(2),
+    gallery: [halong(2), halong(3), halong(1)],
     description: "Câu cá lý tưởng trên vịnh Lan Hạ và tham quan đảo khỉ, đảo Cù Lao.",
     highlights: ["Câu cá trên vịnh Lan Hạ", "Đảo Khỉ", "Bãi tắm Cù Lao Phụ"],
     itinerary: [
@@ -633,10 +656,10 @@ export const contactInfo = {
 };
 
 export const team = [
-  { name: "Trịnh Minh Vũ", initials: "TMV", role: "Giám đốc điều hành" },
-  { name: "Hà Quốc Việt", initials: "HQV", role: "Trưởng phòng tư vấn" },
-  { name: "Bùi Đức Hiệp", initials: "BDH", role: "Quản lý tour tuyến" },
-  { name: "Nguyễn Tuấn Dương", initials: "NTD", role: "Chăm sóc khách hàng" },
+  { name: "Trịnh Minh Vũ", initials: "TMV", role: "Giám đốc điều hành", photo: avatar("trinhminhvu") },
+  { name: "Hà Quốc Việt", initials: "HQV", role: "Trưởng phòng tư vấn", photo: avatar("haquocviet") },
+  { name: "Bùi Đức Hiệp", initials: "BDH", role: "Quản lý tour tuyến", photo: avatar("buiduchiep") },
+  { name: "Nguyễn Tuấn Dương", initials: "NTD", role: "Chăm sóc khách hàng", photo: avatar("ngotuanduong") },
 ];
 
 export function formatPrice(price) {
