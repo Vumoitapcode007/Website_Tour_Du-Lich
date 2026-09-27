@@ -80,7 +80,7 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
       <h2>Tóm tắt đơn</h2>
       <img class="summary-img" id="sum-img" src="" alt="" onerror="${imgFallback}">
       <h3 id="sum-name"></h3>
-      <ul class="summary-list">
+      <ul class="order-summary">
         <li><span>Điểm đến</span><strong id="sum-location"></strong></li>
         <li><span>Thời lượng</span><strong id="sum-time"></strong></li>
         <li><span>Khởi hành</span><strong id="sum-date"></strong></li>

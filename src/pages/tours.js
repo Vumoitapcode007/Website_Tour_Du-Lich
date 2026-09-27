@@ -1,5 +1,6 @@
 import { listTours, getDestinations } from "../tour-repository.js";
 import { tourCard } from "../components/tour-card.js";
+import { countFavorites } from "../favorites.js";
 import { searchKey } from "../validate.js";
 
 export function Tours() {
@@ -39,6 +40,13 @@ export function Tours() {
           <option value="rating">Đánh giá cao nhất</option>
         </select>
       </div>
+      <div class="toolbar-field toolbar-fav">
+        <label for="filter-fav">Lọc nhanh</label>
+        <label class="fav-switch">
+          <input type="checkbox" id="filter-fav" name="fav">
+          <span>Chỉ xem yêu thích (<b id="fav-count">${countFavorites()}</b>)</span>
+        </label>
+      </div>
       <button class="btn btn-primary toolbar-reset" type="reset">Xóa lọc</button>
     </form>
 
@@ -62,6 +70,8 @@ function normalize(value) {
   return searchKey(value);
 }
 
+let applyFilters = null;
+
 document.addEventListener("route:changed", ({ detail }) => {
   if (detail.path !== "tours") return;
   const form = document.getElementById("tour-filter");
@@ -76,12 +86,14 @@ document.addEventListener("route:changed", ({ detail }) => {
     const keyword = normalize(form.elements.q.value);
     const location = form.elements.location.value;
     const sort = form.elements.sort.value;
+    const favOnly = form.elements.fav.checked;
 
     const visible = cards.filter((card) => {
       const matchText = !keyword || normalize(card.dataset.search).includes(keyword);
       const matchPlace = !location || card.querySelector(".badge-place").textContent === location;
-      card.hidden = !(matchText && matchPlace);
-      return matchText && matchPlace;
+      const matchFav = !favOnly || card.dataset.favState === "true";
+      card.hidden = !(matchText && matchPlace && matchFav);
+      return matchText && matchPlace && matchFav;
     });
 
     visible.sort((a, b) => {
@@ -107,5 +119,13 @@ document.addEventListener("route:changed", ({ detail }) => {
   form.addEventListener("input", apply);
   form.addEventListener("change", apply);
   form.addEventListener("reset", () => setTimeout(apply, 0));
+  applyFilters = apply;
   apply();
+});
+
+/* bật/tắt yêu thích ngay trên trang danh sách thì bộ lọc cũng cập nhật theo */
+document.addEventListener("favorites:changed", () => {
+  const badge = document.getElementById("fav-count");
+  if (badge) badge.textContent = String(countFavorites());
+  applyFilters?.();
 });

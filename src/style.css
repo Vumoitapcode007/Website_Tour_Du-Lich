@@ -1152,6 +1152,349 @@ a {
   text-align: center;
 }
 
+/* ---------- Yêu thích & so sánh tour ---------- */
+
+.card-media {
+  position: relative;
+}
+
+.fav-btn {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: color 0.2s, transform 0.2s, background 0.2s;
+}
+
+.fav-btn:hover {
+  color: var(--danger);
+  transform: scale(1.08);
+}
+
+.fav-btn.is-on {
+  color: #fff;
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.cmp-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 7px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.cmp-check:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.cmp-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.cmp-check:has(input:checked) {
+  border-style: solid;
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.fav-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fav-switch input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.fav-switch b {
+  color: var(--primary);
+}
+
+/* Thanh so sánh cố định dưới màn hình */
+
+.compare-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
+  padding: 12px 0;
+}
+
+.compare-bar[hidden] {
+  display: none;
+}
+
+body.has-compare-bar {
+  padding-bottom: 96px;
+}
+
+.compare-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.compare-bar-list {
+  display: flex;
+  gap: 10px;
+  flex: 1 1 320px;
+  flex-wrap: wrap;
+}
+
+.compare-bar-side {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.compare-bar-hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.compare-bar-hint.is-warning {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.compare-bar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.compare-chip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 30px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  font-size: 13px;
+  max-width: 240px;
+}
+
+.compare-chip img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 30px;
+}
+
+.compare-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-chip-x {
+  position: absolute;
+  right: 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.compare-chip-x:hover {
+  color: var(--danger);
+}
+
+/* Bảng so sánh */
+
+.cmp-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+}
+
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+
+.cmp-table th,
+.cmp-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px;
+}
+
+.cmp-table thead th {
+  background: var(--bg-soft);
+  vertical-align: bottom;
+}
+
+.cmp-table tbody tr:last-child th,
+.cmp-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.cmp-row-head,
+.cmp-table tbody th {
+  width: 170px;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cmp-head {
+  display: grid;
+  gap: 8px;
+  color: inherit;
+  min-width: 180px;
+}
+
+.cmp-head img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.cmp-head strong {
+  font-size: 15px;
+}
+
+.cmp-head-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.cmp-head-actions .btn {
+  text-align: center;
+  font-size: 13px;
+  padding: 7px 10px;
+}
+
+.cmp-price {
+  color: var(--danger);
+  font-size: 16px;
+}
+
+.cmp-saving {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.cmp-muted {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.cmp-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+.cmp-table td.is-best {
+  background: #f0fdf4;
+}
+
+.cmp-flag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #15803d;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cmp-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.cmp-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 44px 16px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+
+.cmp-empty-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-link {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.btn-link:hover {
+  color: var(--danger);
+}
+
 /* ---------- Why us / destinations / testimonials ---------- */
 .why-us {
   background: var(--bg-soft);
@@ -1688,7 +2031,12 @@ a {
 }
 
 .checkbox input {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   margin-top: 4px;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 .checkbox a {
@@ -1775,14 +2123,14 @@ a {
   margin-bottom: 14px;
 }
 
-.summary-list {
+.order-summary {
   list-style: none;
   display: grid;
   gap: 10px;
   font-size: 14px;
 }
 
-.summary-list li {
+.order-summary li {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -1790,11 +2138,11 @@ a {
   padding-bottom: 8px;
 }
 
-.summary-list span {
+.order-summary span {
   color: var(--muted);
 }
 
-.summary-list strong {
+.order-summary strong {
   text-align: right;
 }
 
@@ -2905,9 +3253,10 @@ body.modal-open {
   font-size: 0.84rem;
 }
 
-.checkbox {
+.admin-shell .checkbox input {
   width: 16px;
   height: 16px;
+  flex: 0 0 16px;
   accent-color: var(--admin-primary);
   cursor: pointer;
 }

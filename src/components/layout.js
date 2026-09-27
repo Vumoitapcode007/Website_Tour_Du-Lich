@@ -1,5 +1,6 @@
 import { getSession, isStaffRole } from "../auth.js";
 import { getSettings } from "../store.js";
+import { compareBar } from "./compare-bar.js";
 
 export const navItems = [
   { path: "", label: "Trang chủ", aliases: [] },
@@ -115,5 +116,6 @@ export function renderFooter() {
     <div class="container footer-bottom">
       <p>&copy; 2026 ${settings.siteName}. Bản quyền thuộc về ${settings.siteName}.</p>
     </div>
-  </footer>`;
+  </footer>
+  ${compareBar()}`;
 }

@@ -4,6 +4,7 @@ import { renderHeader, renderFooter } from "./components/layout.js";
 import { getSession, isStaffRole, logout } from "./auth.js";
 import { Home } from "./pages/home.js";
 import { Tours } from "./pages/tours.js";
+import { Compare } from "./pages/compare.js";
 import { TourDetail } from "./pages/tour-detail.js";
 import { Booking } from "./pages/booking.js";
 import { About } from "./pages/about.js";
@@ -12,6 +13,7 @@ import { Login } from "./pages/login.js";
 import { Register } from "./pages/register.js";
 import { Account } from "./pages/account.js";
 import { closeAdminShell, renderAdminShell } from "./components/admin-shell.js";
+import "./components/tour-tools.js";
 import { Dashboard } from "./pages/admin/dashboard.js";
 import { Bookings } from "./pages/admin/bookings.js";
 import { Tours as AdminTours } from "./pages/admin/tours.js";
@@ -64,6 +66,13 @@ const routes = [
     path: "tours",
     title: "Danh sách tour",
     render: Tours,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "compare",
+    title: "So sánh tour",
+    render: Compare,
     layout: renderHeader,
     footer: renderFooter,
   },
