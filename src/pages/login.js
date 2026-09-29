@@ -43,8 +43,8 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
     (item) => `
     <button class="demo-account" type="button" data-demo-user="${escapeHtml(item.username)}" data-demo-pass="${escapeHtml(item.password)}">
       <strong>${escapeHtml(item.username)}</strong>
-      <span>${escapeHtml(item.password)}</span>
       <small>${escapeHtml(item.name)} · ${escapeHtml(item.title || ROLES[item.roleKey]?.label || "")}</small>
+      <span>${escapeHtml(item.password)}</span>
     </button>`
   ).join("");
 
@@ -57,7 +57,7 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
     </div>
   </section>
 
-  <section class="section container container-narrow">
+  <section class="section container container-narrow login-layout">
     <form class="form-card login-card" id="login-form" novalidate>
       <h2>Đăng nhập hệ thống</h2>
 

@@ -12,6 +12,36 @@ function forward(days) {
   return new Date(Date.now() + days * DAY).toISOString().slice(0, 10);
 }
 
+export const demoNotifications = [
+  {
+    id: "nt1",
+    type: "booking",
+    title: "Đơn TGDEMO01 đã được xác nhận",
+    body: "Tour Hạ Long 2 ngày 1 đêm. Vui lòng chuẩn bị giấy tờ tùy thân và hoàn tất thanh toán trước khi khởi hành.",
+    phone: "0912345001",
+    email: "khachhang@example.com",
+    read: false,
+    createdAt: ago(1, 10),
+  },
+  {
+    id: "nt2",
+    type: "booking",
+    title: "Đơn TGDEMO03 đã được xác nhận",
+    body: "Tour Đà Lạt 3 ngày 2 đêm. Lịch trình chi tiết đã cập nhật trong mục Lịch sử đặt tour.",
+    phone: "0901234003",
+    read: true,
+    createdAt: ago(4, 15),
+  },
+  {
+    id: "nt3",
+    type: "system",
+    title: "Tour mới: Phú Quốc 4 ngày 3 đêm",
+    body: "Chúng tôi vừa mở bán tour Phú Quốc mùa hè với mức giá ưu đãi cho khách hàng thân thiết.",
+    read: false,
+    createdAt: ago(2, 8),
+  },
+];
+
 export const demoBookings = [
   {
     code: "TGDEMO01",

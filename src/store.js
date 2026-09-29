@@ -1,4 +1,12 @@
-import { demoBookings, demoCoupons, demoLogs, demoMessages, demoNotes, demoReviews } from "./demo-data.js";
+import {
+  demoBookings,
+  demoCoupons,
+  demoLogs,
+  demoMessages,
+  demoNotes,
+  demoNotifications,
+  demoReviews,
+} from "./demo-data.js";
 import { contactInfo } from "./data.js";
 
 const BOOKING_KEY = "travelgo.bookings";
@@ -7,6 +15,7 @@ const REVIEW_KEY = "travelgo.reviews";
 const COUPON_KEY = "travelgo.coupons";
 const LOG_KEY = "travelgo.logs";
 const NOTE_KEY = "travelgo.notes";
+const NOTIFICATION_KEY = "travelgo.notifications";
 const SETTINGS_KEY = "travelgo.settings";
 
 export const BOOKING_STATUS = {
@@ -111,6 +120,7 @@ const reviews = createCollection(REVIEW_KEY, demoReviews);
 const coupons = createCollection(COUPON_KEY, demoCoupons);
 const logs = createCollection(LOG_KEY, demoLogs);
 const notes = createCollection(NOTE_KEY, demoNotes);
+const notifications = createCollection(NOTIFICATION_KEY, demoNotifications);
 
 function ensureIds(collection, prefix) {
   const list = collection.all();
@@ -386,6 +396,75 @@ export function removeNote(phone) {
   return notes.set(listNotes().filter((item) => item.phone !== phone));
 }
 
+/* ---------- Thông báo cho khách ---------- */
+
+export const NOTIFICATION_TYPE = {
+  booking: { label: "Đơn đặt tour", icon: "🎫" },
+  promotion: { label: "Khuyến mãi", icon: "🎁" },
+  system: { label: "Hệ thống", icon: "🔔" },
+};
+
+export function listNotifications() {
+  return ensureIds(notifications, "nt");
+}
+
+const belongsTo = (item, profile) => {
+  const phone = digits(profile.phone);
+  const email = String(profile.email || "").trim().toLowerCase();
+  const samePhone = phone && digits(item.phone) === phone;
+  const sameEmail = email && String(item.email || "").trim().toLowerCase() === email;
+  const forEveryone = !item.phone && !item.email;
+  return forEveryone || samePhone || sameEmail;
+};
+
+export function myNotifications(profile = {}, limit = 0) {
+  const list = listNotifications()
+    .filter((item) => belongsTo(item, profile))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  return limit > 0 ? list.slice(0, limit) : list;
+}
+
+export function countUnreadNotifications(profile = {}) {
+  return myNotifications(profile).filter((item) => !item.read).length;
+}
+
+export function saveNotification(payload = {}) {
+  const list = listNotifications();
+  const record = {
+    id: nextId(list, "nt"),
+    type: payload.type || "system",
+    title: payload.title || "Thông báo mới",
+    body: payload.body || "",
+    phone: digits(payload.phone),
+    email: String(payload.email || "").trim().toLowerCase(),
+    read: false,
+    createdAt: new Date().toISOString(),
+  };
+  notifications.set([record, ...list].slice(0, 100));
+  return record;
+}
+
+export function markNotificationRead(id) {
+  return notifications.set(
+    listNotifications().map((item) => (item.id === id ? { ...item, read: true } : item))
+  );
+}
+
+export function markAllNotificationsRead(profile = {}) {
+  const targets = new Set(myNotifications(profile).map((item) => item.id));
+  return notifications.set(
+    listNotifications().map((item) => (targets.has(item.id) ? { ...item, read: true } : item))
+  );
+}
+
+export function removeNotification(id) {
+  return notifications.set(listNotifications().filter((item) => item.id !== id));
+}
+
+export function clearNotifications() {
+  return notifications.clear();
+}
+
 /* ---------- Cấu hình hệ thống ---------- */
 
 export function getSettings() {
@@ -414,6 +493,7 @@ export function resetDemoData() {
   coupons.reset();
   logs.reset();
   notes.reset();
+  notifications.reset();
   resetSettings();
 }
 
@@ -424,4 +504,5 @@ export function clearAllData() {
   coupons.clear();
   logs.clear();
   notes.clear();
+  notifications.clear();
 }

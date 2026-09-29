@@ -1,7 +1,7 @@
 import { getSession, isStaffRole } from "../auth.js";
 import { getSettings } from "../store.js";
 import { compareBar } from "./compare-bar.js";
-
+import { notificationBell } from "./notification-bell.js";
 export const navItems = [
   { path: "", label: "Trang chủ", aliases: [] },
   { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
@@ -46,14 +46,17 @@ export function renderHeader(active = "") {
   return `
   <header class="site-header">
     <div class="container nav">
-      <a class="logo" href="#/">
-        <svg viewBox="0 0 48 45" class="logo-mark" aria-hidden="true">
-          <path fill="#1677ff" d="M24 44 2 22l9-9-2-9 9 2 9-8 9 8 9-2-2 9 9 9-22 22z" opacity=".15"/>
-          <path fill="#1677ff" d="M24 44 15 26 2 22h44L31 26z"/>
-          <path fill="#0d47a1" d="M24 44 9 12c8 0 15 8 15 14 0-6 7-14 15-14z"/>
-        </svg>
-        <span>Travel<span>Go</span></span>
-      </a>
+      <div class="nav-left">
+        <a class="logo" href="#/">
+          <svg viewBox="0 0 48 45" class="logo-mark" aria-hidden="true">
+            <path fill="#1677ff" d="M24 44 2 22l9-9-2-9 9 2 9-8 9 8 9-2-2 9 9 9-22 22z" opacity=".15"/>
+            <path fill="#1677ff" d="M24 44 15 26 2 22h44L31 26z"/>
+            <path fill="#0d47a1" d="M24 44 9 12c8 0 15 8 15 14 0-6 7-14 15-14z"/>
+          </svg>
+          <span>Travel<span>Go</span></span>
+        </a>
+        ${notificationBell()}
+      </div>
       <button class="nav-toggle" aria-label="Mở menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>

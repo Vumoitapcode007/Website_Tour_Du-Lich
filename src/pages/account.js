@@ -1,5 +1,14 @@
 import { changePassword, getSession, updateProfile } from "../auth.js";
-import { BOOKING_STATUS, myBookings, updateBooking } from "../store.js";
+import {
+  BOOKING_STATUS,
+  NOTIFICATION_TYPE,
+  markNotificationRead,
+  myBookings,
+  myNotifications,
+  removeNotification,
+  updateBooking,
+} from "../store.js";
+import { syncNotificationBadge } from "../components/notification-bell.js";
 import { formatDate, formatPrice } from "../data.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
 
@@ -17,8 +26,8 @@ function Guard() {
   </section>`;
 }
 
-function stat(value, label) {
-  return `<div class="admin-stat"><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
+function stat(value, label, key = "") {
+  return `<div class="admin-stat"${key ? ` data-stat="${escapeHtml(key)}"` : ""}><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
 }
 
 function bookingItem(booking) {
@@ -44,6 +53,31 @@ function bookingItem(booking) {
   </li>`;
 }
 
+function notificationItem(item) {
+  const type = NOTIFICATION_TYPE[item.type] || NOTIFICATION_TYPE.system;
+  const time = new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(item.createdAt));
+
+  return `
+  <li class="account-notif${item.read ? "" : " is-unread"}" data-notif-row="${escapeHtml(item.id)}">
+    <span class="account-notif-icon" aria-hidden="true">${type.icon}</span>
+    <div class="account-notif-body">
+      <div class="account-notif-head">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span class="account-notif-type">${escapeHtml(type.label)}</span>
+      </div>
+      <p>${escapeHtml(item.body)}</p>
+      <small>${escapeHtml(time)}</small>
+    </div>
+    <button class="btn btn-sm btn-ghost-soft" type="button" data-remove-notif="${escapeHtml(item.id)}">Xoá</button>
+  </li>`;
+}
+
 export function Account() {
   const session = getSession();
   if (!session) return Guard();
@@ -54,6 +88,8 @@ export function Account() {
   const spent = bookings
     .filter((item) => item.status !== "cancelled")
     .reduce((sum, item) => sum + item.total, 0);
+  const notifications = myNotifications(session);
+  const unread = notifications.filter((item) => !item.read).length;
 
   return `
   <section class="page-hero">
@@ -70,6 +106,19 @@ export function Account() {
       ${stat(pending, "Chờ xác nhận")}
       ${stat(confirmed, "Đã xác nhận")}
       ${stat(`${new Intl.NumberFormat("vi-VN").format(spent)} VNĐ`, "Tổng chi tiêu")}
+      ${stat(unread, "Thông báo mới", "notif-unread")}
+    </div>
+
+    <div class="account-notifications">
+      <div class="section-title">
+        <h2>Thông báo</h2>
+        <p>${unread ? `Bạn có ${unread} thông báo chưa đọc.` : "Bạn đã đọc hết thông báo."}</p>
+      </div>
+      ${
+        notifications.length
+          ? `<ul class="account-notif-list">${notifications.map(notificationItem).join("")}</ul>`
+          : `<p class="search-empty">Chưa có thông báo nào cho tài khoản này.</p>`
+      }
     </div>
 
     <div class="account-layout">
@@ -238,4 +287,21 @@ document.addEventListener("route:changed", ({ detail }) => {
       document.dispatchEvent(new CustomEvent("app:refresh"));
     });
   }
+
+  const notifList = document.querySelector(".account-notif-list");
+  notifList?.addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-notif]");
+    if (remove) {
+      event.stopPropagation();
+      removeNotification(remove.dataset.removeNotif);
+      document.dispatchEvent(new CustomEvent("app:refresh"));
+      return;
+    }
+
+    const row = event.target.closest(".account-notif.is-unread");
+    if (!row) return;
+    markNotificationRead(row.dataset.notifRow);
+    row.classList.remove("is-unread");
+    syncNotificationBadge();
+  });
 });

@@ -1,6 +1,7 @@
 import { formatPrice, formatDate } from "../data.js";
 import { listTours, getTourById } from "../tour-repository.js";
-import { saveBooking } from "../store.js";
+import { saveBooking, saveNotification } from "../store.js";
+import { syncNotificationBadge } from "../components/notification-bell.js";
 import { imgFallback } from "../components/tour-card.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
 
@@ -194,6 +195,15 @@ document.addEventListener("route:changed", ({ detail }) => {
       note: String(data.get("note") || "").trim(),
       total: tour.price * people,
     });
+
+    saveNotification({
+      type: "booking",
+      title: `Đã nhận đơn ${record.code}`,
+      body: `Yêu cầu đặt ${record.tourName} ngày ${formatDate(record.date)}. Chuyên viên sẽ gọi ${record.phone} để xác nhận.`,
+      phone: record.phone,
+      email: record.email,
+    });
+    syncNotificationBadge();
 
     form.innerHTML = `
       <div class="form-success">

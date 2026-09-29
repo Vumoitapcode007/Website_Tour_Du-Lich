@@ -5,6 +5,7 @@ import {
   listBookings,
   logActivity,
   removeBooking,
+  saveNotification,
   updateBooking,
 } from "../../store.js";
 import { bookingSummary, formatDateTime, formatRelative } from "../../reports.js";
@@ -26,6 +27,30 @@ import { getTourById, listTours } from "../../tour-repository.js";
 import { escapeHtml, searchKey } from "../../validate.js";
 
 const canManage = () => hasPermission("bookings.manage");
+
+/* báo khách khi trạng thái đơn thay đổi */
+function notifyBooking(booking, status) {
+  if (!booking) return;
+  const content = {
+    confirmed: [
+      `Đơn ${booking.code} đã được xác nhận`,
+      `Tour ${booking.tourName} ngày ${formatDate(booking.date)}. Vui lòng hoàn tất thanh toán trước khi khởi hành.`,
+    ],
+    cancelled: [
+      `Đơn ${booking.code} đã được huỷ`,
+      `Tour ${booking.tourName}. Bạn có thể đặt lại bất cứ lúc nào hoặc liên hệ hotline để được hỗ trợ.`,
+    ],
+  }[status];
+
+  if (!content) return;
+  saveNotification({
+    type: "booking",
+    title: content[0],
+    body: content[1],
+    phone: booking.phone,
+    email: booking.email,
+  });
+}
 
 const FILTERS = { q: "", status: "", tour: "", payment: "", from: "", to: "", sort: "new" };
 
@@ -410,6 +435,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     if (!canManage()) return;
     if (!window.confirm(`${action === "confirmed" ? "Xác nhận" : "Huỷ"} đơn ${code}?`)) return;
     updateBooking(code, { status: action });
+    notifyBooking(booking, action);
     logActivity(
       action === "confirmed" ? "Xác nhận đơn" : "Huỷ đơn",
       `${action === "confirmed" ? "Xác nhận" : "Huỷ"} đơn ${code} - ${booking.name}`
@@ -429,6 +455,9 @@ document.addEventListener("route:changed", ({ detail }) => {
 
     if (action === "delete") codes.forEach((code) => removeBooking(code));
     else codes.forEach((code) => updateBooking(code, { status: action }));
+    if (action !== "delete") {
+      codes.forEach((code) => notifyBooking(getBooking(code), action));
+    }
     logActivity(
       action === "delete" ? "Xoá đơn" : "Cập nhật đơn hàng loạt",
       `${label} ${codes.length} đơn: ${codes.slice(0, 5).join(", ")}${codes.length > 5 ? "..." : ""}`
@@ -457,10 +486,12 @@ function handleModalAction(target) {
 
   if (target.closest("[data-modal-confirm]")) {
     updateBooking(activeCode, { status: "confirmed" });
+    notifyBooking(booking, "confirmed");
     logActivity("Xác nhận đơn", `Xác nhận đơn ${activeCode} - ${booking.name}`);
     toast(`Đã xác nhận đơn ${activeCode}.`);
   } else if (target.closest("[data-modal-cancel]")) {
     updateBooking(activeCode, { status: "cancelled" });
+    notifyBooking(booking, "cancelled");
     logActivity("Huỷ đơn", `Huỷ đơn ${activeCode} - ${booking.name}`);
     toast(`Đã huỷ đơn ${activeCode}.`);
   } else if (target.closest("[data-modal-payment]")) {
