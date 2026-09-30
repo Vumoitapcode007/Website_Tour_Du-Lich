@@ -3848,7 +3848,7 @@ body.modal-open {
 .modal-overlay .status-paid,
 .admin-shell .status-vip,
 .modal-overlay .status-vip {
-  background: #ecfdf5;
+  background: var(--ok-soft);
   color: var(--ok-ink);
 }
 
@@ -3884,7 +3884,7 @@ body.modal-open {
 .tier-new { background: var(--purple-soft); color: var(--purple-ink); }
 
 .role-badge.role-admin { background: linear-gradient(135deg, #1677ff, #0d47a1); color: #fff; }
-.role-badge.role-manager { background: #ecfdf5; color: var(--ok-ink); }
+.role-badge.role-manager { background: var(--ok-soft); color: var(--ok-ink); }
 .role-badge.role-staff { background: var(--info-soft); color: var(--info-ink); }
 .role-badge.role-customer { background: var(--neutral-soft); color: #475569; }
 
@@ -4840,7 +4840,7 @@ body.modal-open {
 }
 
 .perm-grid li.on {
-  background: #ecfdf5;
+  background: var(--ok-soft);
   color: var(--ok-ink);
 }
 
@@ -5249,6 +5249,7 @@ body.modal-open {
 /* ---------- Chế độ tối ---------- */
 
 .theme-toggle {
+  position: relative;
   width: 38px;
   height: 38px;
   display: grid;
@@ -5267,11 +5268,17 @@ body.modal-open {
   transform: translateY(-1px);
 }
 
+.theme-icon {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
 .theme-toggle svg {
   width: 20px;
   height: 20px;
   fill: currentColor;
-  grid-area: 1 / 1;
   transition: transform 0.25s ease, opacity 0.2s ease;
 }
 
@@ -5336,6 +5343,11 @@ body.modal-open {
 [data-theme="dark"] select option {
   background: var(--surface);
   color: var(--ink);
+}
+
+[data-theme="dark"] .btn-light {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 [data-theme="dark"] .admin-sidebar {

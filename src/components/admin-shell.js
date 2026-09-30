@@ -10,6 +10,8 @@ import { listBookings, listMessages, listReviews } from "../store.js";
 import { formatDateTime } from "../reports.js";
 import { escapeHtml } from "../validate.js";
 import { initials } from "./admin-ui.js";
+import { themeToggle } from "./layout.js";
+import { currentTheme } from "../theme.js";
 
 export const ADMIN_SECTIONS = {
   dashboard: { title: "Bảng điều khiển", desc: "Tổng quan hoạt động của TravelGo" },
@@ -179,6 +181,7 @@ export function renderAdminShell(path = "dashboard", params = {}) {
             <span>${escapeHtml(perms.label)}</span>
             <strong>${escapeHtml(session?.username || "")}</strong>
           </a>
+          ${themeToggle(currentTheme())}
         </div>
       </header>
       <main class="admin-content" id="admin-content">
