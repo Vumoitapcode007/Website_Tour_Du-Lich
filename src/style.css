@@ -779,6 +779,12 @@ a {
   display: block;
 }
 
+.avatar-initials {
+  background: linear-gradient(135deg, var(--avatar-tint, var(--primary)), #ffffff55);
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
 .team-card h3 {
   font-size: 17px;
 }

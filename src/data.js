@@ -1,8 +1,8 @@
 const img = (id, w = 1200) =>
   `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=${w}&q=80`;
 
-/* Ảnh đại diện thành viên, cùng kho ảnh theo tên nên đổi ảnh không vỡ giao diện */
-const avatar = (slug) => `https://i.pravatar.cc/320?u=${slug}`;
+/* Thành viên dùng avatar chữ cái (initials) nên không cần ảnh ngoài,
+   muốn thay ảnh thật thì thêm photo: "images/ten-file.jpg" cho từng người */
 
 /* Ảnh Hạ Long (nguồn CC0) - link trực tiếp vì Unsplash không có ảnh này còn hoạt động */
 const halong = (n) =>
@@ -656,10 +656,10 @@ export const contactInfo = {
 };
 
 export const team = [
-  { name: "Trịnh Minh Vũ", initials: "TMV", role: "Giám đốc điều hành", photo: avatar("trinhminhvu") },
-  { name: "Hà Quốc Việt", initials: "HQV", role: "Trưởng phòng tư vấn", photo: avatar("haquocviet") },
-  { name: "Bùi Đức Hiệp", initials: "BDH", role: "Quản lý tour tuyến", photo: avatar("buiduchiep") },
-  { name: "Nguyễn Tuấn Dương", initials: "NTD", role: "Chăm sóc khách hàng", photo: avatar("ngotuanduong") },
+  { name: "Trịnh Minh Vũ", initials: "TMV", role: "Giám đốc điều hành", tint: "#1f6feb" },
+  { name: "Hà Quốc Việt", initials: "HQV", role: "Trưởng phòng tư vấn", tint: "#0f9d8f" },
+  { name: "Bùi Đức Hiệp", initials: "BDH", role: "Quản lý tour tuyến", tint: "#c2410c" },
+  { name: "Nguyễn Tuấn Dương", initials: "NTD", role: "Chăm sóc khách hàng", tint: "#7c3aed" },
 ];
 
 export function formatPrice(price) {

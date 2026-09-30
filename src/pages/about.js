@@ -92,14 +92,11 @@ export function About() {
         .map(
           (member) => `
         <div class="team-card">
-          <div class="avatar">
-            <img
-              src="${member.photo}"
-              alt="${member.name} - ${member.role}"
-              loading="lazy"
-              onerror="${imgFallback}"
-            >
-          </div>
+          ${
+            member.photo
+              ? `<div class="avatar"><img src="${member.photo}" alt="${member.name}" loading="lazy" onerror="${imgFallback}"></div>`
+              : `<div class="avatar avatar-initials" style="--avatar-tint: ${member.tint}" role="img" aria-label="${member.name}">${member.initials}</div>`
+          }
           <h3>${member.name}</h3>
           <p>${member.role}</p>
         </div>`
