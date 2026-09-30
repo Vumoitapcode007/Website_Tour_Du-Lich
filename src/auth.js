@@ -126,6 +126,17 @@ const demoAccounts = [
     status: "active",
     createdAt: "2024-05-06T01:20:00.000Z",
   },
+  {
+    username: "khachhang",
+    password: "123456",
+    name: "Nguyễn Minh Anh",
+    roleKey: "customer",
+    title: "Khách hàng mẫu",
+    email: "minhanh.nguyen@gmail.com",
+    phone: "0912345001",
+    status: "active",
+    createdAt: "2024-06-10T03:00:00.000Z",
+  },
 ];
 
 export const DEMO_CREDENTIALS = demoAccounts.map(({ username, password, name, title, roleKey }) => ({

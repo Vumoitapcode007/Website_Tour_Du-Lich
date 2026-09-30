@@ -60,7 +60,7 @@ export function formatRelative(value) {
 
 export function bookingSummary(bookings) {
   const total = bookings.length;
-  const byStatus = { pending: 0, confirmed: 0, cancelled: 0 };
+  const byStatus = { pending: 0, confirmed: 0, paid: 0, departing: 0, completed: 0, cancelled: 0 };
   let revenue = 0;
   let cancelledValue = 0;
   let people = 0;

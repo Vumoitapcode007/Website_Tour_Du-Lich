@@ -5258,3 +5258,202 @@ body.modal-open {
     background: #fff;
   }
 }
+
+/* =========================================================
+   TIẾN ĐỘ TOUR & TRẠNG THÁI MỞ RỘNG (TRAVELGO TOUR PROGRESS)
+   ========================================================= */
+
+.status-ongoing,
+.admin-shell .status-ongoing,
+.modal-overlay .status-ongoing {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  font-weight: 600;
+}
+
+.status-completed,
+.admin-shell .status-completed,
+.modal-overlay .status-completed {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  font-weight: 600;
+}
+
+.status-departing,
+.admin-shell .status-departing,
+.modal-overlay .status-departing {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+  font-weight: 600;
+}
+
+.status-paid,
+.admin-shell .status-paid,
+.modal-overlay .status-paid {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  font-weight: 600;
+}
+
+/* Progress Cell trong bảng Tour */
+.progress-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.progress-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  width: fit-content;
+}
+
+.progress-chip.stage-not_started {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.progress-chip.stage-gathering {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.progress-chip.stage-moving {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.progress-chip.stage-visiting {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.progress-chip.stage-resting {
+  background: #fefce8;
+  color: #a16207;
+  border: 1px solid #fef08a;
+}
+
+.progress-chip.stage-returning {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.progress-chip.stage-finished {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.progress-loc {
+  font-size: 0.75rem;
+  color: #0369a1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+/* Stepper timeline trong Modal tiến độ tour */
+.tour-progress-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  padding: 10px 0;
+}
+
+.stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 2;
+  transition: transform 0.2s;
+  flex: 1;
+}
+
+.stepper-step:hover {
+  transform: translateY(-2px);
+}
+
+.stepper-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: #64748b;
+  margin-bottom: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.stepper-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  max-width: 80px;
+  line-height: 1.2;
+}
+
+.stepper-step.completed .stepper-dot {
+  background: #10b981;
+  border-color: #059669;
+  color: #fff;
+}
+
+.stepper-step.completed .stepper-label {
+  color: #059669;
+}
+
+.stepper-step.active .stepper-dot {
+  background: #1677ff;
+  border-color: #0d47a1;
+  color: #fff;
+  box-shadow: 0 0 0 4px rgba(22, 119, 255, 0.25);
+  transform: scale(1.15);
+}
+
+.stepper-step.active .stepper-label {
+  color: #1677ff;
+  font-weight: 700;
+}
+
+.stepper-line {
+  flex: 1;
+  height: 3px;
+  background: #e2e8f0;
+  margin: 0 -4px 22px;
+  z-index: 1;
+}
+
+/* Quick sample images pill */
+.sample-img-pill:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  transform: translateY(-1px);
+}
+

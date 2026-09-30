@@ -76,16 +76,39 @@ function badgeCounts() {
 }
 
 function deniedView() {
+  const session = getSession();
+  if (!session) {
+    return `
+    <section class="page-hero">
+      <div class="container center">
+        <span class="hero-eyebrow">Khu vực quản trị TravelGo</span>
+        <h1>Yêu cầu đăng nhập quản trị</h1>
+        <p>Vui lòng đăng nhập bằng tài khoản mô phỏng (Admin, Quản lý hoặc Nhân viên) để truy cập chức năng này.</p>
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+          <a class="btn btn-primary btn-lg" href="#/login">Đến trang Đăng nhập mô phỏng (1-Click)</a>
+          <a class="btn btn-outline btn-lg" href="#/">Về trang chủ</a>
+        </div>
+      </div>
+    </section>
+    <section class="section container container-narrow center">
+      <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; font-size: 0.9rem; color: #475569;">
+        <p style="margin: 0 0 0.5rem;"><strong>💡 Mẹo kiểm thử:</strong> Bạn có thể sử dụng các tài khoản demo có sẵn:</p>
+        <p style="margin: 0;"><strong>admin</strong> / <strong>123456</strong> (Toàn quyền quản trị) · <strong>nhanvien</strong> / <strong>123456</strong> (Quản lý tour & đơn hàng)</p>
+      </div>
+    </section>`;
+  }
+
   return `
   <section class="page-hero">
     <div class="container">
       <span class="hero-eyebrow">Khu vực quản trị</span>
-      <h1>Không có quyền truy cập</h1>
-      <p>Tài khoản của bạn không được phép xem mục này. Vui lòng liên hệ quản trị viên nếu cần hỗ trợ.</p>
+      <h1>Không đủ quyền truy cập</h1>
+      <p>Tài khoản <strong>${escapeHtml(session.name)}</strong> (${escapeHtml(session.role)}) không có quyền truy cập mục này.</p>
     </div>
   </section>
   <section class="section container center">
-    <a class="btn btn-light btn-lg" href="#/admin/dashboard">Về bảng điều khiển</a>
+    <a class="btn btn-primary btn-lg" href="#/login">Đổi tài khoản mô phỏng khác</a>
+    <a class="btn btn-light btn-lg" href="#/">Về trang chủ</a>
   </section>`;
 }
 

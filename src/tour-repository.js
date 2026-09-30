@@ -10,7 +10,19 @@ const isDeadImage = (url) => DEAD_IMAGE_IDS.some((id) => String(url || "").inclu
 export const TOUR_STATUS = {
   open: "Đang nhận khách",
   limited: "Sắp hết chỗ",
+  ongoing: "Đang khởi hành",
+  completed: "Đã hoàn thành",
   closed: "Tạm ngưng",
+};
+
+export const TOUR_PROGRESS_STAGES = {
+  not_started: { key: "not_started", label: "Chưa khởi hành", icon: "📋", desc: "Chuẩn bị xe, đoàn và hướng dẫn viên" },
+  gathering: { key: "gathering", label: "Đón khách & tập trung", icon: "🚐", desc: "Tập trung tại điểm hẹn, kiểm tra danh sách" },
+  moving: { key: "moving", label: "Đang di chuyển", icon: "🚀", desc: "Trên đường đến điểm tham quan" },
+  visiting: { key: "visiting", label: "Đang tham quan", icon: "🏞️", desc: "Đoàn đang trải nghiệm tại điểm đến" },
+  resting: { key: "resting", label: "Nghỉ ngơi / Khách sạn", icon: "🏨", desc: "Đoàn về khách sạn dùng bữa và nghỉ ngơi" },
+  returning: { key: "returning", label: "Đang trên đường về", icon: "🚌", desc: "Kết thúc các chặng, xe đưa đoàn về điểm xuất phát" },
+  finished: { key: "finished", label: "Đã hoàn thành tour", icon: "🏁", desc: "Chuyến đi thành công tốt đẹp" },
 };
 
 const clone = (value) =>
@@ -32,8 +44,18 @@ export function normalizeTour(tour = {}) {
     ...tour,
   };
 
+  const rawProgress = tour.progress && typeof tour.progress === "object" ? tour.progress : {};
+  const progress = {
+    stage: rawProgress.stage || (merged.status === "ongoing" ? "visiting" : merged.status === "completed" ? "finished" : "not_started"),
+    currentDay: Math.max(1, Number(rawProgress.currentDay) || 1),
+    currentLocation: String(rawProgress.currentLocation || "").trim(),
+    note: String(rawProgress.note || "").trim(),
+    updatedAt: rawProgress.updatedAt || "",
+  };
+
   return {
     ...merged,
+    status: TOUR_STATUS[merged.status] ? merged.status : "open",
     price: Math.max(Number(merged.price) || 0, 0),
     oldPrice: Math.max(Number(merged.oldPrice) || 0, 0),
     seatsLeft: Math.max(Number(merged.seatsLeft) || 0, 0),
@@ -49,6 +71,7 @@ export function normalizeTour(tour = {}) {
     excludes: toArray(merged.excludes),
     departures: toArray(merged.departures),
     itinerary: Array.isArray(merged.itinerary) ? merged.itinerary : [],
+    progress,
   };
 }
 
@@ -85,7 +108,34 @@ function write(list, customized) {
 }
 
 function seed() {
-  return seedTours.map((tour) => normalizeTour(clone(tour)));
+  const seedProgressMap = {
+    1: { stage: "not_started", currentDay: 1, currentLocation: "Hà Nội - Chuẩn bị xuất phát", note: "Xe và hướng dẫn viên sẵn sàng đón khách vào 06:30 sáng.", updatedAt: new Date().toISOString() },
+    2: { stage: "gathering", currentDay: 1, currentLocation: "Cảng tàu khách quốc tế Tuần Châu", note: "Đoàn đang làm thủ tục check-in lên du thuyền ngắm vịnh.", updatedAt: new Date().toISOString() },
+    3: { stage: "moving", currentDay: 1, currentLocation: "Cao tốc Nội Bài - Lào Cai (Km 120)", note: "Xe đang di chuyển thuận lợi, dự kiến đến Sa Pa lúc 12:30 trưa.", updatedAt: new Date().toISOString() },
+    4: { stage: "visiting", currentDay: 2, currentLocation: "Đèo Mã Pí Lèng & Hẻm Tu Sản", note: "Đoàn đang trải nghiệm đi thuyền trên sông Nho Quế, thời tiết nắng đẹp.", updatedAt: new Date().toISOString() },
+    5: { stage: "resting", currentDay: 2, currentLocation: "Khách sạn Phố Cổ Hội An", note: "Đoàn vừa kết thúc tour ngắm lồng đèn, về phòng nghỉ ngơi.", updatedAt: new Date().toISOString() },
+    6: { stage: "finished", currentDay: 3, currentLocation: "Sân bay Quốc tế Phú Quốc", note: "Chuyến đi hoàn thành tốt đẹp, đoàn đã lên máy bay trở về.", updatedAt: new Date().toISOString() },
+  };
+
+  const seedStatusMap = {
+    1: "open",
+    2: "limited",
+    3: "ongoing",
+    4: "ongoing",
+    5: "ongoing",
+    6: "completed",
+  };
+
+  return seedTours.map((tour) => {
+    const customizedTour = clone(tour);
+    if (seedProgressMap[tour.id]) {
+      customizedTour.progress = seedProgressMap[tour.id];
+    }
+    if (seedStatusMap[tour.id]) {
+      customizedTour.status = seedStatusMap[tour.id];
+    }
+    return normalizeTour(customizedTour);
+  });
 }
 
 /* Tour đã lưu trước đây vẫn giữ link ảnh hỏng, kể cả khi người dùng đã tự chỉnh danh sách */
@@ -182,3 +232,34 @@ export function removeTour(id) {
 export function resetTours() {
   return write(seed(), false);
 }
+
+export function updateTourProgress(id, patch = {}) {
+  const list = listTours();
+  const index = list.findIndex((item) => String(item.id) === String(id));
+  if (index === -1) return null;
+
+  const current = list[index];
+  const updatedProgress = {
+    ...(current.progress || {}),
+    ...patch,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const updated = {
+    ...current,
+    progress: updatedProgress,
+  };
+
+  if (patch.stage && ["gathering", "moving", "visiting", "resting", "returning"].includes(patch.stage)) {
+    if (current.status === "open" || current.status === "limited") {
+      updated.status = "ongoing";
+    }
+  } else if (patch.stage === "finished") {
+    updated.status = "completed";
+  }
+
+  list[index] = updated;
+  write(list, true);
+  return updated;
+}
+

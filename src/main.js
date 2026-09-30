@@ -1,7 +1,7 @@
 import "./style.css";
 import { createRouter } from "./router.js";
 import { renderHeader, renderFooter } from "./components/layout.js";
-import { getSession, isStaffRole, logout } from "./auth.js";
+import { canAccessAdmin, getSession, isStaffRole, logout } from "./auth.js";
 import { Home } from "./pages/home.js";
 import { Tours } from "./pages/tours.js";
 import { Compare } from "./pages/compare.js";
@@ -128,7 +128,7 @@ const routes = [
   {
     path: "admin",
     title: "Bảng điều khiển",
-    render: (path, params, query) => Dashboard(path, params, query),
+    render: (path, params, query) => canAccessAdmin() ? Dashboard(path, params, query) : "",
     layout: renderAdminShell,
     footer: closeAdminShell,
   },
@@ -137,6 +137,7 @@ const routes = [
     title: (path, params) =>
       ADMIN_PAGES[params.section]?.title || "Không tìm thấy mục quản trị",
     render: (path, params, query) => {
+      if (!canAccessAdmin()) return "";
       const page = ADMIN_PAGES[params.section];
       return page ? page.render(path, params, query) : AdminNotFound(path, params, query);
     },
