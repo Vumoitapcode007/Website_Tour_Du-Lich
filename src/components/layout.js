@@ -91,7 +91,7 @@ export function renderFooter() {
         <ul class="footer-links">
           <li><a href="#/">Trang chủ</a></li>
           <li><a href="#/tours">Danh sách tour</a></li>
-          <li><a href="#/about">Giới thiện</a></li>
+          <li><a href="#/about">Giới thiệu</a></li>
           <li><a href="#/contact">Liên hệ</a></li>
           <li><a href="#/register">Đăng ký tài khoản</a></li>
           <li><a href="#/account">Tài khoản của tôi</a></li>
