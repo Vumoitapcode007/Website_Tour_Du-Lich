@@ -2,6 +2,7 @@ import { getSession, isStaffRole } from "../auth.js";
 import { getSettings } from "../store.js";
 import { compareBar } from "./compare-bar.js";
 import { notificationBell } from "./notification-bell.js";
+import { currentTheme } from "../theme.js";
 export const navItems = [
   { path: "", label: "Trang chủ", aliases: [] },
   { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
@@ -20,6 +21,21 @@ function isActive(active, item) {
   return [item.path, ...(item.aliases || [])].some(
     (key) => active === key || active.startsWith(`${key}/`)
   );
+}
+
+const sunIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.2 5.2l1.6 1.6M17.2 17.2l1.6 1.6M18.8 5.2l-1.6 1.6M6.8 17.2l-1.6 1.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+const moonIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2z"/></svg>`;
+
+export function themeToggle(theme = "light") {
+  const dark = theme === "dark";
+  return `
+  <button class="theme-toggle" id="theme-toggle" type="button"
+    data-theme-toggle aria-pressed="${dark}"
+    aria-label="${dark ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"}"
+    title="${dark ? "Chế độ sáng" : "Chế độ tối"}">
+    <span class="theme-icon theme-icon-sun">${sunIcon}</span>
+    <span class="theme-icon theme-icon-moon">${moonIcon}</span>
+  </button>`;
 }
 
 export function renderHeader(active = "") {
@@ -56,6 +72,7 @@ export function renderHeader(active = "") {
           <span>Travel<span>Go</span></span>
         </a>
         ${notificationBell()}
+        ${themeToggle(currentTheme())}
       </div>
       <button class="nav-toggle" aria-label="Mở menu" aria-expanded="false">
         <span></span><span></span><span></span>

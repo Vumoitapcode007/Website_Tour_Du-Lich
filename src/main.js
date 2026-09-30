@@ -1,4 +1,6 @@
 import "./style.css";
+import { initTheme } from "./theme.js";
+import { initThemeToggle } from "./theme-toggle.js";
 import { createRouter } from "./router.js";
 import { renderHeader, renderFooter } from "./components/layout.js";
 import { getSession, isStaffRole, logout } from "./auth.js";
@@ -152,6 +154,8 @@ const routes = [
   },
 ];
 
+initTheme();
+initThemeToggle();
 const router = createRouter(routes);
 
 document.addEventListener("app:refresh", () => router.navigate());
