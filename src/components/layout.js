@@ -1,20 +1,46 @@
-import { getCurrentUser } from "../auth.js";
+import { getSession, isStaffRole } from "../auth.js";
+import { getSettings } from "../store.js";
+import { compareBar } from "./compare-bar.js";
+import { notificationBell } from "./notification-bell.js";
+export const navItems = [
+  { path: "", label: "Trang chủ", aliases: [] },
+  { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
+  { path: "about", label: "Giới thiệu", aliases: [] },
+  { path: "contact", label: "Liên hệ", aliases: [] },
+];
+
+const adminItem = { path: "admin", label: "Quản trị", aliases: [] };
+const loginItem = { path: "login", label: "Đăng nhập", aliases: [] };
+const profileItem = { path: "admin/profile", label: "Hồ sơ", aliases: [] };
+const accountItem = { path: "account", label: "Tài khoản", aliases: [] };
+const logoutItem = { path: "login", label: "Đăng xuất", aliases: ["logout"] };
+
+function isActive(active, item) {
+  if (item.aliases?.includes("logout")) return false;
+  return [item.path, ...(item.aliases || [])].some(
+    (key) => active === key || active.startsWith(`${key}/`)
+  );
+}
 
 export function renderHeader(active = "") {
-  const user = getCurrentUser();
-
-  const items = [
-    { path: "", label: "Trang chủ" },
-    { path: "about", label: "Giới thiệu" },
-  ];
+  const session = getSession();
+  const staff = isStaffRole(session?.roleKey);
+  const items = staff
+    ? [...navItems, adminItem, profileItem, logoutItem]
+    : session
+      ? [...navItems, accountItem, logoutItem]
+      : [...navItems, loginItem];
 
   const nav = items
-    .map(
-      (item) => `
+    .map((item) => {
+      if (item.aliases?.includes("logout")) {
+        return `<li><a href="#/login" data-logout="1" class="${isActive(active, item) ? "active" : ""}">${item.label}</a></li>`;
+      }
+      return `
       <li>
-        <a href="#/${item.path}" class="${active === item.path ? "active" : ""}">${item.label}</a>
-      </li>`
-    )
+        <a href="#/${item.path}" class="${isActive(active, item) ? "active" : ""}">${item.label}</a>
+      </li>`;
+    })
     .join("");
 
   // Nút Auth hoặc Dropdown User
@@ -65,28 +91,33 @@ export function renderHeader(active = "") {
   return `
   <header class="site-header">
     <div class="container nav">
-      <a class="logo" href="#/">
-        <svg viewBox="0 0 48 45" class="logo-mark" aria-hidden="true">
-          <path fill="#1677ff" d="M24 44 2 22l9-9-2-9 9 2 9-8 9 8 9-2-2 9 9 9-22 22z" opacity=".15"/>
-          <path fill="#1677ff" d="M24 44 15 26 2 22h44L31 26z"/>
-          <path fill="#0d47a1" d="M24 44 9 12c8 0 15 8 15 14 0-6 7-14 15-14z"/>
-        </svg>
-        <span>Travel<span>Go</span></span>
-      </a>
-      <button class="nav-toggle" aria-label="Mở menu">
+      <div class="nav-left">
+        <a class="logo" href="#/">
+          <svg viewBox="0 0 48 45" class="logo-mark" aria-hidden="true">
+            <path fill="#1677ff" d="M24 44 2 22l9-9-2-9 9 2 9-8 9 8 9-2-2 9 9 9-22 22z" opacity=".15"/>
+            <path fill="#1677ff" d="M24 44 15 26 2 22h44L31 26z"/>
+            <path fill="#0d47a1" d="M24 44 9 12c8 0 15 8 15 14 0-6 7-14 15-14z"/>
+          </svg>
+          <span>Travel<span>Go</span></span>
+        </a>
+        ${notificationBell()}
+      </div>
+      <button class="nav-toggle" aria-label="Mở menu" aria-expanded="false">
         <span></span><span></span><span></span>
       </button>
       <nav class="menu-wrap">
         <ul class="menu">
           ${nav}
         </ul>
-        ${authNavHtml}
+        <a class="btn btn-primary" href="#/booking">Đặt tour</a>
       </nav>
     </div>
   </header>`;
 }
 
 export function renderFooter() {
+  const settings = getSettings();
+
   return `
   <footer class="site-footer">
     <div class="container footer-grid">
@@ -98,23 +129,27 @@ export function renderFooter() {
           </svg>
           <span>Travel<span>Go</span></span>
         </a>
-        <p class="muted">Website đặt tour du lịch - đồng hành cùng mọi chuyến đi của bạn.</p>
+        <p class="muted">${settings.footerNote}</p>
       </div>
       <div>
         <h4>Liên kết nhanh</h4>
         <ul class="footer-links">
           <li><a href="#/">Trang chủ</a></li>
+          <li><a href="#/tours">Danh sách tour</a></li>
           <li><a href="#/about">Giới thiệu</a></li>
-          <li><a href="#/login">Đăng nhập</a></li>
-          <li><a href="#/register">Đăng ký thành viên</a></li>
+          <li><a href="#/contact">Liên hệ</a></li>
+          <li><a href="#/register">Đăng ký tài khoản</a></li>
+          <li><a href="#/account">Tài khoản của tôi</a></li>
+          <li><a href="#/admin">Quản trị</a></li>
         </ul>
       </div>
       <div>
         <h4>Liên hệ</h4>
         <ul class="footer-links">
-          <li>Hotline: 1900 1234</li>
-          <li>Email: hello@travelgo.vn</li>
-          <li>123 Đường Biển, Quận 1, TP. Hồ Chí Minh</li>
+          <li>Hotline: <a href="tel:${String(settings.hotline).replace(/\D/g, "")}">${settings.hotline}</a></li>
+          <li>Email: <a href="mailto:${settings.email}">${settings.email}</a></li>
+          <li>${settings.address}</li>
+          <li>${settings.hours}</li>
         </ul>
       </div>
       <div>
@@ -127,7 +162,8 @@ export function renderFooter() {
       </div>
     </div>
     <div class="container footer-bottom">
-      <p>&copy; 2026 TravelGo. Bản quyền thuộc về TravelGo.</p>
+      <p>&copy; 2026 ${settings.siteName}. Bản quyền thuộc về ${settings.siteName}.</p>
     </div>
-  </footer>`;
+  </footer>
+  ${compareBar()}`;
 }
