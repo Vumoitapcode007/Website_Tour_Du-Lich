@@ -158,8 +158,10 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
-    const allowed = ["tours", "booking", "about", "contact"];
-    const next = new URLSearchParams(detail.queryString).get("next");
-    window.location.hash = `#/${allowed.includes(next) ? next : ""}`;
+    const allowed = ["tours", "booking", "about", "contact", "account", "my-bookings"];
+    const next = new URLSearchParams(detail.queryString).get("next") || "";
+    const [path, ...search] = next.replace(/^#?\/?/, "").split("?");
+    const target = !allowed.includes(path) ? "" : search.length ? `${path}?${search.join("?")}` : path;
+    window.location.hash = `#/${target}`;
   });
 });

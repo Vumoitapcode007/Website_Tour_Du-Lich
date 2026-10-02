@@ -1,5 +1,7 @@
 /* Dữ liệu mẫu cho khu vực quản trị - chỉ nạp một lần vào lần truy cập đầu tiên. */
 
+import { tours as seedTours } from "./data.js";
+
 const DAY = 86400000;
 
 function ago(days, hour = 9) {
@@ -10,6 +12,10 @@ function ago(days, hour = 9) {
 
 function forward(days) {
   return new Date(Date.now() + days * DAY).toISOString().slice(0, 10);
+}
+
+function back(days) {
+  return new Date(Date.now() - days * DAY).toISOString().slice(0, 10);
 }
 
 export const demoNotifications = [
@@ -42,7 +48,7 @@ export const demoNotifications = [
   },
 ];
 
-export const demoBookings = [
+const demoBookingRows = [
   {
     code: "TGDEMO01",
     status: "pending",
@@ -87,9 +93,11 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO04",
-    status: "confirmed",
+    status: "awaiting_payment",
     createdAt: ago(4, 9),
     updatedAt: ago(3, 11),
+    awaitingPaymentAt: ago(3, 11),
+    confirmedAt: ago(3, 10),
     name: "Phạm Ngọc Hân",
     phone: "0961234004",
     email: "ngoc.han@gmail.com",
@@ -102,9 +110,12 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO05",
-    status: "confirmed",
+    status: "paid",
+    payment: "paid",
     createdAt: ago(6, 16),
     updatedAt: ago(5, 9),
+    confirmedAt: ago(5, 17),
+    paidAt: ago(4, 10),
     name: "Đỗ Hoàng Long",
     phone: "0356789005",
     email: "hoanglong.do@gmail.com",
@@ -117,9 +128,13 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO06",
-    status: "confirmed",
+    status: "upcoming",
+    payment: "paid",
     createdAt: ago(9, 13),
     updatedAt: ago(8, 10),
+    confirmedAt: ago(8, 14),
+    paidAt: ago(7, 11),
+    upcomingAt: ago(6, 9),
     name: "Vũ Khánh Linh",
     phone: "0882345006",
     email: "khanh.linh@gmail.com",
@@ -129,12 +144,16 @@ export const demoBookings = [
     people: 3,
     note: "Người lớn bị dị ứng hải sản, mong chuẩn bị thực đơn riêng.",
     total: 6570000,
+    guideId: "huongdan",
+    guideName: "Ngô Thanh Sơn",
+    guidePhone: "0905123456",
   },
   {
     code: "TGDEMO07",
     status: "confirmed",
     createdAt: ago(13, 15),
     updatedAt: ago(12, 9),
+    confirmedAt: ago(12, 10),
     name: "Hoàng Thị Mai",
     phone: "0972345007",
     email: "thimai.hoang@gmail.com",
@@ -162,9 +181,12 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO09",
-    status: "confirmed",
+    status: "paid",
+    payment: "paid",
     createdAt: ago(19, 9),
     updatedAt: ago(18, 10),
+    confirmedAt: ago(18, 11),
+    paidAt: ago(17, 9),
     name: "Phan Kim Ngân",
     phone: "0932222009",
     email: "kimngan.phan@gmail.com",
@@ -177,9 +199,13 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO10",
-    status: "confirmed",
+    status: "upcoming",
+    payment: "paid",
     createdAt: ago(23, 17),
     updatedAt: ago(22, 8),
+    confirmedAt: ago(22, 18),
+    paidAt: ago(21, 10),
+    upcomingAt: ago(20, 9),
     name: "Đặng Thanh Tùng",
     phone: "0943333010",
     email: "thanh.tung@gmail.com",
@@ -189,21 +215,32 @@ export const demoBookings = [
     people: 5,
     note: "Nhóm 5 người lớn, có 1 em tập xe đạp.",
     total: 7950000,
+    guideId: "huongdan",
+    guideName: "Ngô Thanh Sơn",
+    guidePhone: "0905123456",
   },
   {
     code: "TGDEMO11",
-    status: "confirmed",
+    status: "ongoing",
+    payment: "paid",
     createdAt: ago(28, 10),
     updatedAt: ago(27, 9),
+    confirmedAt: ago(27, 11),
+    paidAt: ago(26, 9),
+    upcomingAt: ago(25, 8),
+    startedAt: ago(1, 6),
     name: "Vân Anh Thư",
     phone: "0964444011",
     email: "anhthu.van@gmail.com",
     tourId: 4,
     tourName: "Tour Đà Lạt",
-    date: forward(28),
+    date: forward(1),
     people: 2,
     note: "",
     total: 4380000,
+    guideId: "huongdan",
+    guideName: "Ngô Thanh Sơn",
+    guidePhone: "0905123456",
   },
   {
     code: "TGDEMO12",
@@ -222,9 +259,11 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO13",
-    status: "confirmed",
+    status: "awaiting_payment",
     createdAt: ago(41, 9),
     updatedAt: ago(40, 11),
+    awaitingPaymentAt: ago(40, 11),
+    confirmedAt: ago(40, 10),
     name: "Ngô Bích Ngọc",
     phone: "0976666013",
     email: "bichngoc.ngo@gmail.com",
@@ -240,6 +279,7 @@ export const demoBookings = [
     status: "confirmed",
     createdAt: ago(52, 15),
     updatedAt: ago(51, 10),
+    confirmedAt: ago(51, 11),
     name: "Lê Thanh Sơn",
     phone: "0987777014",
     email: "thanhson.le@gmail.com",
@@ -252,18 +292,25 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO15",
-    status: "confirmed",
+    status: "upcoming",
+    payment: "paid",
     createdAt: ago(64, 11),
     updatedAt: ago(63, 9),
+    confirmedAt: ago(63, 12),
+    paidAt: ago(62, 10),
+    upcomingAt: ago(61, 9),
     name: "Mai Thị Hồng Vân",
     phone: "0938888015",
     email: "hongvan.mai@gmail.com",
     tourId: 1,
     tourName: "Tour Ninh Bình 2N1Đ",
-    date: forward(60),
+    date: forward(3),
     people: 6,
     note: "Đoàn khách đoàn học sinh trường THCS.",
     total: 9540000,
+    guideId: "huongdan",
+    guideName: "Ngô Thanh Sơn",
+    guidePhone: "0905123456",
   },
   {
     code: "TGDEMO16",
@@ -282,35 +329,58 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO17",
-    status: "confirmed",
+    status: "completed",
+    payment: "paid",
     createdAt: ago(88, 9),
-    updatedAt: ago(87, 14),
+    updatedAt: ago(83, 18),
+    completedAt: ago(82, 17),
     name: "Trịnh Bảo Châu",
     phone: "0951111017",
     email: "baochau.trinh@gmail.com",
     tourId: 4,
     tourName: "Tour Đà Lạt",
-    date: forward(70),
+    date: back(85),
     people: 2,
     note: "",
     total: 4380000,
+    guideId: "huongdan",
+    guideName: "Ngô Thanh Sơn",
+    guidePhone: "0905123456",
   },
   {
     code: "TGDEMO18",
-    status: "confirmed",
+    status: "completed",
+    payment: "paid",
     createdAt: ago(102, 13),
-    updatedAt: ago(101, 9),
+    updatedAt: ago(96, 9),
+    completedAt: ago(83, 18),
     name: "Phan Quang Vinh",
     phone: "0962222018",
     email: "quangvinh.phan@gmail.com",
     tourId: 2,
     tourName: "Tour Đà Nẵng - Hội An",
-    date: forward(78),
+    date: back(85),
     people: 2,
     note: "Đã đặt vé máy bay khứ hồi riêng.",
     total: 4980000,
+    guideId: "huongdan2",
+    guideName: "Lý Thu Hà",
+    guidePhone: "0905987654",
   },
 ];
+
+/* Bổ sung ảnh chụp thông tin tour tại thời điểm đặt.
+   Nhờ vậy đơn mẫu vẫn hiển thị đúng tên/giá/địa điểm dù Admin có sửa tour sau này. */
+export const demoBookings = demoBookingRows.map((row) => {
+  const tour = seedTours.find((item) => String(item.id) === String(row.tourId));
+  return {
+    ...row,
+    tourName: row.tourName || tour?.name || "Tour",
+    tourPrice: Number(tour?.price) || Math.round((Number(row.total) || 0) / (Number(row.people) || 1)),
+    tourLocation: tour?.location || "",
+    tourTime: tour?.time || "",
+  };
+});
 
 export const demoMessages = [
   {

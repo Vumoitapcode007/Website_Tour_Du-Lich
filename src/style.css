@@ -5,14 +5,19 @@
   --ink: #1f2937;
   --muted: #6b7280;
   --bg: #ffffff;
-  --bg-soft: #f7f8fa;
-  --border: #e5e7eb;
+  --bg-soft: #eef4fb;
+  --bg-page: #e6f0fb;
+  --border: #e2e8f0;
   --danger: #e53935;
   --radius: 12px;
   --shadow:
-    0 2px 12px rgba(0, 0, 0, 0.08),
-    0 8px 30px rgba(0, 0, 0, 0.06);
+    0 2px 12px rgba(15, 42, 82, 0.08),
+    0 8px 30px rgba(15, 42, 82, 0.06);
   --font: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* Hoạ tiết du lịch: đường đồi + vòng bản đồ + đường hành trình nét đứt */
+  --bg-travel: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%231677ff' stroke-opacity='.09' stroke-width='1.2'%3E%3Cpath d='M-30 174c55-38 115-30 168 12s122 48 182 6'/%3E%3Cpath d='M-30 210c55-38 115-30 168 12s122 48 182 6'/%3E%3Cpath d='M-30 246c55-38 115-30 168 12s122 48 182 6'/%3E%3Cpath d='M-30 282c55-38 115-30 168 12s122 48 182 6'/%3E%3C/g%3E%3Cg fill='none' stroke='%230d47a1' stroke-opacity='.08' stroke-width='1'%3E%3Ccircle cx='86' cy='84' r='30'/%3E%3Ccircle cx='86' cy='84' r='52'/%3E%3Ccircle cx='86' cy='84' r='74'/%3E%3C/g%3E%3Cg fill='none' stroke='%230ea5a4' stroke-opacity='.16' stroke-width='1.4' stroke-dasharray='5 7' stroke-linecap='round'%3E%3Cpath d='M28 300C90 250 150 296 208 246s84-16 96 4'/%3E%3C/g%3E%3Cg fill='%231677ff' fill-opacity='.14'%3E%3Ccircle cx='28' cy='300' r='3'/%3E%3Ccircle cx='208' cy='246' r='3'/%3E%3C/g%3E%3C/svg%3E")
+    0 0 / 320px 320px repeat;
 }
 
 * {
@@ -23,14 +28,38 @@
 
 html {
   scroll-behavior: smooth;
+  background: var(--bg-page);
 }
 
 body {
   font-family: var(--font);
   color: var(--ink);
-  background: var(--bg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Nền chung cho mọi trang: ảnh du lịch phai nhạt, quầng sáng xanh biển
+   và hoạ tiết bản đồ, ghim theo khung nhìn nên không bị "chảy" khi cuộn */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    var(--bg-travel),
+    radial-gradient(1100px 620px at 12% -12%, rgba(255, 255, 255, 0.95), transparent 62%),
+    radial-gradient(900px 520px at 92% 4%, rgba(22, 119, 255, 0.14), transparent 66%),
+    radial-gradient(760px 520px at 50% 108%, rgba(13, 199, 148, 0.12), transparent 68%),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.82) 0%,
+      rgba(238, 246, 255, 0.86) 45%,
+      rgba(224, 239, 252, 0.92) 100%
+    ),
+    url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80")
+      center / cover no-repeat,
+    var(--bg-page);
 }
 
 img {
@@ -53,9 +82,10 @@ a {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(247, 251, 255, 0.86);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 6px 24px rgba(15, 42, 82, 0.06);
 }
 
 .nav {
@@ -393,11 +423,11 @@ a {
     linear-gradient(rgba(6, 32, 74, 0.72), rgba(6, 32, 74, 0.55)),
     url("https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=1600&q=80")
       center / cover no-repeat;
-  padding: 110px 0 0;
+  padding: 76px 0 0;
 }
 
 .hero-content {
-  padding-bottom: 96px;
+  padding-bottom: 56px;
 }
 
 .hero-eyebrow {
@@ -409,21 +439,22 @@ a {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .hero h1 {
-  font-size: 52px;
+  font-size: clamp(34px, 4.4vw, 46px);
   line-height: 1.15;
   max-width: 640px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   letter-spacing: -1px;
+  text-wrap: balance;
 }
 
 .hero p {
-  font-size: 20px;
+  font-size: clamp(16px, 1.7vw, 18px);
   color: rgba(255, 255, 255, 0.92);
-  margin-bottom: 28px;
+  margin-bottom: 0;
 }
 
 .home-search {
@@ -432,7 +463,7 @@ a {
   gap: 12px;
   width: min(700px, 100%);
   padding: 8px;
-  margin: 28px 0 24px;
+  margin: 26px 0 0;
   background: #fff;
   border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: 14px;
@@ -462,12 +493,6 @@ a {
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .search-empty { padding: 20px; color: var(--muted); text-align: center; }
 
-.hero-actions {
-  display: flex;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -482,17 +507,17 @@ a {
 .stat {
   background: rgba(13, 28, 58, 0.55);
   text-align: center;
-  padding: 24px 12px;
+  padding: 18px 12px;
 }
 
 .stat strong {
   display: block;
-  font-size: 32px;
+  font-size: 28px;
   color: #fff;
 }
 
 .stat span {
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(255, 255, 255, 0.85);
 }
 
@@ -658,7 +683,7 @@ a {
 /* ---------- Page hero (about) ---------- */
 .page-hero {
   background:
-    linear-gradient(rgba(6, 32, 74, 0.68), rgba(6, 32, 74, 0.55)),
+    linear-gradient(rgba(8, 38, 84, 0.66), rgba(8, 38, 84, 0.48)),
     url("https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80")
       center / cover no-repeat;
   color: #fff;
@@ -1173,6 +1198,32 @@ a {
   color: #4b5563;
 }
 
+.status-finished {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+/* ---------- Booking status mới (vòng đời đơn) ---------- */
+.status-awaiting_payment {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.status-upcoming {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.status-ongoing {
+  background: #cffafe;
+  color: #0e7490;
+}
+
+.status-completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 /* ---------- Admin tabs & tour manager ---------- */
 .admin-tabs {
   display: flex;
@@ -1381,6 +1432,198 @@ a {
   font-size: 13px;
   color: var(--muted);
   margin: 0;
+}
+
+/* ---------- Theo dõi đơn đặt tour ---------- */
+.account-booking-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-unpaid {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.status-deposit {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.status-paid {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.status-refunded {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.account-countdown {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.track-cancelled {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.track-steps {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  margin: 4px 0 14px;
+  padding: 0;
+  counter-reset: track;
+}
+
+.track-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  padding-bottom: 14px;
+}
+
+.track-step:last-child {
+  padding-bottom: 0;
+}
+
+.track-step::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 22px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border);
+}
+
+.track-step:last-child::before {
+  display: none;
+}
+
+.track-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: #fff;
+  z-index: 1;
+}
+
+.track-step.is-done .track-dot {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.track-step.is-done::before {
+  background: #16a34a;
+}
+
+.track-step.is-current .track-dot {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-light);
+}
+
+.track-body {
+  display: grid;
+  gap: 2px;
+}
+
+.track-body strong {
+  font-size: 14px;
+}
+
+.track-step.is-todo .track-body strong {
+  color: var(--muted);
+}
+
+.track-body small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.account-booking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.track-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding-top: 22px;
+}
+
+.track-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.track-tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.track-tab:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.track-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.track-all-link {
+  margin-top: 18px;
+}
+
+.track-benefits {
+  list-style: none;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.track-benefits li {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 8px;
+}
+
+.track-benefits li::before {
+  content: "✔";
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.success-icon.lock-icon {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 28px;
 }
 
 .account-danger {
@@ -2009,19 +2252,28 @@ body.has-compare-bar {
 }
 
 .toolbar-row:last-of-type {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.6fr) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.8fr) auto;
+}
+
+/* giữ các ô trong lưới không đẩy nội dung tràn khỏi khung khi chữ dài */
+.toolbar-filters > *,
+.toolbar-row > * {
+  min-width: 0;
 }
 
 .toolbar-grow {
   grid-column: span 1;
 }
 
+/* các tiêu chí có white-space: nowrap nên phải cho phép cao lại theo số dòng,
+   dùng min-height để vẫn canh thẳng hàng với ô chọn bên cạnh */
 .toolbar-checks {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  align-content: center;
   gap: 8px 16px;
-  height: 44px;
+  min-height: 44px;
 }
 
 .toolbar-checks > label:first-child {
@@ -2065,6 +2317,8 @@ body.has-compare-bar {
   padding: 4px 12px;
   font-weight: 600;
   color: var(--ink);
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .filter-clear {
@@ -2112,6 +2366,9 @@ body.has-compare-bar {
 
 .toolbar-reset {
   height: 44px;
+  white-space: nowrap;
+  justify-self: end;
+  min-width: 0;
 }
 
 .result-count {
@@ -2480,6 +2737,40 @@ body.has-compare-bar {
   gap: 16px;
 }
 
+.passenger-box {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  padding: 16px 18px 4px;
+  margin-bottom: 16px;
+}
+
+.passenger-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.passenger-box .field-row {
+  margin-bottom: 8px;
+}
+
+.passenger-hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.passenger-hint strong {
+  color: var(--ink);
+}
+
+.booking-hint {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+
 .error {
   min-height: 0;
   color: var(--danger);
@@ -2788,10 +3079,6 @@ body.has-compare-bar {
     grid-template-columns: 1fr 1fr;
   }
 
-  .toolbar-checks {
-    height: auto;
-  }
-
   .admin-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -2851,11 +3138,11 @@ body.has-compare-bar {
   }
 
   .hero {
-    padding-top: 72px;
+    padding-top: 56px;
   }
 
-  .hero h1 {
-    font-size: 36px;
+  .hero-content {
+    padding-bottom: 40px;
   }
 
   .hero-stats,
@@ -2935,7 +3222,7 @@ body.has-compare-bar {
   }
 
   .stat strong {
-    font-size: 26px;
+    font-size: 22px;
   }
 
   .form-card,
@@ -3851,6 +4138,32 @@ body.modal-open {
 .modal-overlay .status-locked {
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.admin-shell .status-awaiting_payment,
+.modal-overlay .status-awaiting_payment {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.admin-shell .status-upcoming,
+.modal-overlay .status-upcoming {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.admin-shell .status-ongoing,
+.modal-overlay .status-ongoing {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.admin-shell .status-completed,
+.modal-overlay .status-completed,
+.admin-shell .status-finished,
+.modal-overlay .status-finished {
+  background: #ecfdf5;
+  color: #047857;
 }
 
 .tier-gold { background: #fffbeb; color: #b45309; }
@@ -5254,7 +5567,12 @@ body.modal-open {
     break-inside: avoid;
   }
 
+  html,
   body {
     background: #fff;
+  }
+
+  body::before {
+    display: none;
   }
 }

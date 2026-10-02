@@ -1,5 +1,6 @@
-import { BOOKING_STATUS, getSettings, listBookings, listReviews } from "../../store.js";
+import { getSettings, listBookings, listReviews } from "../../store.js";
 import {
+  bookingStatusBreakdown,
   bookingSummary,
   customerGrowth,
   formatRelative,
@@ -192,14 +193,25 @@ export function Reports() {
         <li><span>Chờ duyệt</span><strong>${listReviews().filter((item) => item.status === "pending").length}</strong></li>
         <li><span>Đơn chờ xác nhận</span><strong>${all.filter((item) => item.status === "pending").length}</strong></li>
         <li><span>Hotline công ty</span><strong>${escapeHtml(settings.hotline)}</strong></li>
-        <li><span>${escapeHtml(BOOKING_STATUS.confirmed)}</span><strong>${all.filter((item) => item.status === "confirmed").length} đơn</strong></li>
+        <li><span>Đã thanh toán</span><strong>${all.filter((item) => item.status === "paid").length} đơn</strong></li>
+        <li><span>Đang diễn ra</span><strong>${all.filter((item) => item.status === "ongoing").length} đơn</strong></li>
+        <li><span>Hoàn thành</span><strong>${all.filter((item) => item.status === "completed").length} đơn</strong></li>
+      </ul>
+      <h4>Cơ cấu trạng thái đơn</h4>
+      <ul class="summary-list">
+        ${bookingStatusBreakdown(all)
+          .map(
+            (item) =>
+              `<li><span>${escapeHtml(item.label)}</span><strong>${item.value} đơn</strong></li>`
+          )
+          .join("")}
       </ul>
       <p class="form-hint" style="text-align:left">Số liệu báo cáo được tính từ dữ liệu lưu trong trình duyệt của quản trị viên.</p>
     </article>
   </section>`;
 }
 
-const TOUR_STATUS_TEXT = { open: "Đang nhận khách", limited: "Sắp hết chỗ", closed: "Tạm ngưng" };
+const TOUR_STATUS_TEXT = { open: "Đang bán", limited: "Sắp hết chỗ", closed: "Ngừng bán", finished: "Đã kết thúc" };
 
 document.addEventListener("route:changed", ({ detail }) => {
   if (detail.params?.section !== "reports") return;
@@ -227,7 +239,13 @@ document.addEventListener("route:changed", ({ detail }) => {
       [
         ["Khoảng thời gian", RANGES[RANGE].label],
         ["Tổng đơn", summary.total],
+        ["Đơn đã xác nhận trở đi", summary.settled],
         ["Đơn xác nhận", summary.confirmed],
+        ["Đơn chờ thanh toán", summary.awaitingPayment],
+        ["Đơn đã thanh toán", summary.paid],
+        ["Đơn sắp khởi hành", summary.upcoming],
+        ["Đơn đang diễn ra", summary.ongoing],
+        ["Đơn hoàn thành", summary.completed],
         ["Đơn chờ xử lý", summary.pending],
         ["Đơn huỷ", summary.cancelled],
         ["Doanh thu", summary.revenue],

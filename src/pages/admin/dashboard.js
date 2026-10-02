@@ -4,10 +4,9 @@ import {
   listBookings,
   listMessages,
   listReviews,
-  logActivity,
-  updateBooking,
 } from "../../store.js";
 import {
+  bookingStatusBreakdown,
   bookingSummary,
   formatRelative,
   pendingAttention,
@@ -15,7 +14,7 @@ import {
   topTours,
   tourLoad,
 } from "../../reports.js";
-import { adminGuard, refreshAdmin } from "../../components/admin-shell.js";
+import { adminGuard } from "../../components/admin-shell.js";
 import {
   barChart,
   donutChart,
@@ -23,7 +22,6 @@ import {
   formatMoney,
   initials,
   statusBadge,
-  toast,
 } from "../../components/admin-ui.js";
 import { escapeHtml, searchKey } from "../../validate.js";
 import { hasPermission } from "../../auth.js";
@@ -79,6 +77,7 @@ export function Dashboard() {
     ${kpiCard({ label: "Doanh thu", value: formatMoney(summary.revenue), hint: deltaHint, tone: "green" })}
     ${kpiCard({ label: "Khách hàng", value: summary.customers, hint: `${summary.avgOrder ? formatCompact(summary.avgOrder) + "đ / đơn" : "Chưa có đơn"}`, tone: "violet" })}
     ${kpiCard({ label: "Tỉ lệ chốt đơn", value: `${summary.conversion}%`, hint: `${summary.cancelled} đơn đã huỷ`, tone: "slate" })}
+    ${kpiCard({ label: "Tour đang chạy", value: summary.upcoming + summary.ongoing, hint: `${summary.completed} đã hoàn thành`, tone: "blue" })}
   </section>
 
   <section class="admin-grid admin-grid-2">
@@ -100,11 +99,7 @@ export function Dashboard() {
           <p>Phân bổ theo trạng thái</p>
         </div>
       </header>
-      ${donutChart([
-        { label: BOOKING_STATUS.confirmed, value: summary.confirmed },
-        { label: BOOKING_STATUS.pending, value: summary.pending },
-        { label: BOOKING_STATUS.cancelled, value: summary.cancelled },
-      ])}
+      ${donutChart(bookingStatusBreakdown(bookings))}
     </article>
   </section>
 
@@ -260,7 +255,7 @@ function recentRow(booking) {
     <td class="row-actions">
       ${
         booking.status === "pending" && hasPermission("bookings.manage")
-          ? `<button class="btn btn-sm btn-primary" type="button" data-dash-action="confirmed">Xác nhận</button>`
+          ? `<a class="btn btn-sm btn-primary" href="#/admin/bookings?q=${encodeURIComponent(booking.code)}">Xác nhận</a>`
           : ""
       }
       <a class="btn btn-sm btn-outline" href="#/admin/bookings?q=${encodeURIComponent(booking.code)}">Chi tiết</a>
@@ -276,13 +271,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     const button = event.target.closest("[data-dash-action]");
     if (!button) return;
     const code = button.closest("tr").dataset.code;
-    const status = button.dataset.dashAction;
-    updateBooking(code, { status });
-    logActivity(
-      status === "confirmed" ? "Xác nhận đơn" : "Cập nhật đơn",
-      `${status === "confirmed" ? "Xác nhận" : "Cập nhật"} đơn ${code}`
-    );
-    toast(`Đã cập nhật đơn ${code}.`);
-    refreshAdmin();
+    /* Đưa người dùng tới popup xác nhận đầy đủ thông tin ở trang Đơn đặt tour */
+    window.location.hash = `#/admin/bookings?q=${encodeURIComponent(code)}`;
   });
 });
