@@ -292,6 +292,27 @@ document.addEventListener("click", (event) => {
     }, 700);
     return;
   }
+
+  const logoutButton = event.target.closest("[data-logout]");
+  if (logoutButton) {
+    event.preventDefault();
+    logout();
+    window.location.hash = "#/";
+    return;
+  }
+
+  const adminLink = event.target.closest('a[href^="#/admin"]');
+  if (adminLink && !isStaffRole(getSession()?.roleKey)) {
+    event.preventDefault();
+    window.location.hash = `#/login?next=${encodeURIComponent(adminLink.getAttribute("href").slice(1))}`;
+    return;
+  }
+
+  const accountLink = event.target.closest('a[href="#/account"]');
+  if (accountLink && !getSession()) {
+    event.preventDefault();
+    window.location.hash = "#/login?next=account";
+  }
 });
 
 // Xử lý Submit Form Đăng nhập & Đăng ký
@@ -387,33 +408,4 @@ document.addEventListener("submit", (event) => {
 // Khi auth trạng thái thay đổi -> cập nhật lại view
 document.addEventListener("auth:changed", () => {
   router.navigate();
-});
-  const logoutButton = event.target.closest("[data-logout]");
-  if (logoutButton) {
-    event.preventDefault();
-    logout();
-    window.location.hash = "#/";
-    return;
-  }
-
-  const adminLink = event.target.closest('a[href^="#/admin"]');
-  if (adminLink && !isStaffRole(getSession()?.roleKey)) {
-    event.preventDefault();
-    window.location.hash = `#/login?next=${encodeURIComponent(adminLink.getAttribute("href").slice(1))}`;
-    return;
-  }
-
-  const accountLink = event.target.closest('a[href="#/account"]');
-  if (accountLink && !getSession()) {
-    event.preventDefault();
-    window.location.hash = "#/login?next=account";
-    return;
-  }
-
-  const toggle = event.target.closest(".nav-toggle");
-  if (!toggle) return;
-
-  const wrap = document.querySelector(".menu-wrap");
-  const isOpen = wrap.classList.toggle("open");
-  toggle.setAttribute("aria-expanded", String(isOpen));
 });
