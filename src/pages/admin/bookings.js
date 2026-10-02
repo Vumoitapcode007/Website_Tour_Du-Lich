@@ -1,9 +1,16 @@
 import {
   BOOKING_STATUS,
   PAYMENT_STATUS,
+  advanceBooking,
+  assignBookingGuide,
+  cancelBooking,
   getBooking,
+  guideBookings,
+  isCancelledBooking,
+  isProtectedBooking,
   listBookings,
   logActivity,
+  nextBookingStatus,
   removeBooking,
   saveNotification,
   updateBooking,
@@ -21,12 +28,19 @@ import {
   statusBadge,
   toast,
 } from "../../components/admin-ui.js";
-import { hasPermission } from "../../auth.js";
+import { getSession, hasPermission, listGuides } from "../../auth.js";
 import { formatDate } from "../../data.js";
 import { getTourById, listTours } from "../../tour-repository.js";
 import { escapeHtml, searchKey } from "../../validate.js";
+import {
+  MAX_PASSENGERS,
+  childPrice,
+  passengerBreakdown,
+  passengerLabel,
+} from "../../booking-rules.js";
 
 const canManage = () => hasPermission("bookings.manage");
+const canAssign = () => hasPermission("bookings.assign");
 
 /* báo khách khi trạng thái đơn thay đổi */
 function notifyBooking(booking, status) {
@@ -35,6 +49,16 @@ function notifyBooking(booking, status) {
     confirmed: [
       `Đơn ${booking.code} đã được xác nhận`,
       `Tour ${booking.tourName} ngày ${formatDate(booking.date)}. Vui lòng hoàn tất thanh toán trước khi khởi hành.`,
+    ],
+    awaiting_payment: [
+      `Đơn ${booking.code} đang chờ thanh toán`,
+      `Tour ${booking.tourName} ngày ${formatDate(booking.date)}. Vui lòng thanh toán ${formatMoney(
+        booking.total
+      )} để giữ chỗ.`,
+    ],
+    paid: [
+      `Đơn ${booking.code} đã thanh toán thành công`,
+      `Tour ${booking.tourName} ngày ${formatDate(booking.date)}. Hướng dẫn viên sẽ liên hệ bạn trước chuyến đi.`,
     ],
     cancelled: [
       `Đơn ${booking.code} đã được huỷ`,
@@ -49,6 +73,7 @@ function notifyBooking(booking, status) {
     body: content[1],
     phone: booking.phone,
     email: booking.email,
+    accountUsername: booking.accountUsername || "",
   });
 }
 
@@ -80,6 +105,7 @@ function filterBookings(list) {
 
 function row(booking) {
   const tour = getTourById(booking.tourId);
+  const { people } = passengerBreakdown(booking);
   return `
   <tr data-code="${escapeHtml(booking.code)}" data-search="${escapeHtml(
     searchKey(`${booking.code} ${booking.name} ${booking.phone} ${booking.tourName}`)
@@ -104,12 +130,16 @@ function row(booking) {
       ${escapeHtml(booking.tourName)}<br>
       <small>${formatDate(booking.date)}${tour ? ` · còn ${tour.seatsLeft} chỗ` : ""}</small>
     </td>
-    <td>${booking.people}</td>
-    <td><strong>${formatMoney(booking.total)}</strong></td>
+    <td>${people}<br><small>${escapeHtml(passengerLabel(booking))}</small></td>
+    <td><strong>${formatMoney(booking.total)}</strong><br><small>${formatMoney(
+      booking.tourPrice || tour?.price || 0
+    )}/khách</small></td>
     <td><span class="status-pill status-${escapeHtml(booking.payment || "unpaid")}">${
       PAYMENT_STATUS[booking.payment || "unpaid"]
     }</span></td>
-    <td>${statusBadge(booking.status, BOOKING_STATUS)}</td>
+    <td>${statusBadge(booking.status, BOOKING_STATUS)}${
+      booking.guideName ? `<br><small>${escapeHtml(booking.guideName)}</small>` : ""
+    }</td>
     <td class="row-actions">
       <button class="btn btn-sm btn-ghost-soft" type="button" data-booking-action="view">Chi tiết</button>
       ${
@@ -118,7 +148,7 @@ function row(booking) {
           : ""
       }
       ${
-        canManage() && booking.status === "confirmed"
+        canManage() && !isCancelledBooking(booking) && booking.status !== "completed"
           ? `<button class="btn btn-sm btn-outline" type="button" data-booking-action="cancelled">Huỷ</button>`
           : ""
       }
@@ -126,11 +156,99 @@ function row(booking) {
   </tr>`;
 }
 
+/* Popup xác nhận đơn - hiển thị đầy đủ để nhân viên không bỏ sót thông tin
+   trước khi bấm xác nhận (mã đơn, khách, tour, ngày, số khách, tổng tiền) */
+function confirmModal(booking) {
+  const { adults, children, people } = passengerBreakdown(booking);
+  const tour = getTourById(booking.tourId);
+  const unitPrice = booking.tourPrice || tour?.price || 0;
+  activeCode = booking.code;
+
+  openModal({
+    title: "Xác nhận đơn đặt tour",
+    subtitle: `Mã đơn ${booking.code}`,
+    size: "md",
+    body: `
+      <div class="confirm-box">
+        <h4 class="confirm-box-title">Kiểm tra lại thông tin đơn</h4>
+        <ul class="summary-list">
+          <li><span>Mã đơn</span><strong>${escapeHtml(booking.code)}</strong></li>
+          <li><span>Khách hàng</span><strong>${escapeHtml(booking.name)}</strong></li>
+          <li><span>Số điện thoại</span><strong>${escapeHtml(booking.phone)}</strong></li>
+          <li><span>Tour</span><strong>${escapeHtml(booking.tourName)}</strong></li>
+          <li><span>Điểm đến</span><strong>${escapeHtml(booking.tourLocation || tour?.location || "-")}</strong></li>
+          <li><span>Thời lượng</span><strong>${escapeHtml(booking.tourTime || tour?.time || "-")}</strong></li>
+          <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
+          <li><span>Người lớn</span><strong>${adults} khách</strong></li>
+          <li><span>Trẻ em</span><strong>${children} khách</strong></li>
+          <li><span>Tổng khách</span><strong>${people}/${MAX_PASSENGERS}</strong></li>
+          <li><span>Giá/người lớn</span><strong>${formatMoney(unitPrice)}</strong></li>
+          <li><span>Giá/trẻ em</span><strong>${formatMoney(childPrice(unitPrice))}</strong></li>
+          <li><span>Tổng tiền</span><strong class="confirm-box-total">${formatMoney(booking.total)}</strong></li>
+        </ul>
+      </div>
+      ${
+        booking.note
+          ? `<h4>Ghi chú của khách</h4><p class="note-box">${escapeHtml(booking.note)}</p>`
+          : ""
+      }
+      <p class="form-hint">
+        Xác nhận đơn sẽ chuyển sang bước <strong>${BOOKING_STATUS.awaiting_payment}</strong> và khách
+        nhận được thông báo yêu cầu thanh toán.
+      </p>
+      ${assignGuideHtml(booking)}`,
+    footer: `
+      <button class="btn btn-light" type="button" data-modal-close>Để xem lại</button>
+      <button class="btn btn-primary" type="button" data-modal-confirm>${confirmActionLabel(
+        booking
+      )}</button>`,
+  });
+}
+
+function confirmActionLabel(booking) {
+  const next = nextBookingStatus(booking.status);
+  if (!next) return "Xác nhận đơn";
+  return `Chuyển sang ${BOOKING_STATUS[next]}`;
+}
+
+/* Ô phân công Tour Guide - chỉ hiện khi Admin có quyền bookings.assign */
+function assignGuideHtml(booking) {
+  if (!canAssign()) return "";
+  const guides = listGuides();
+  if (!guides.length) {
+    return `<p class="form-hint">Chưa có hướng dẫn viên nào trong hệ thống.</p>`;
+  }
+
+  return `
+    <div class="field">
+      <label for="bk-guide">Hướng dẫn viên phụ trách</label>
+      <select id="bk-guide" data-assign-guide="${escapeHtml(booking.code)}">
+        <option value="">Chưa phân công</option>
+        ${guides
+          .map(
+            (guide) =>
+              `<option value="${escapeHtml(guide.username)}"${
+                booking.guideId === guide.username ? " selected" : ""
+              }>${escapeHtml(guide.name)} · ${escapeHtml(guide.phone || "")}</option>`
+          )
+          .join("")}
+      </select>
+      <p class="form-hint">
+        ${
+          booking.guideName
+            ? `Đang phụ trách: <strong>${escapeHtml(booking.guideName)}</strong>`
+            : "Hướng dẫn viên sẽ thấy tour và danh sách khách này trong khu vực của họ."
+        }
+      </p>
+    </div>`;
+}
+
 function detailModal(booking) {
   const tour = getTourById(booking.tourId);
   const history = listBookings()
     .filter((item) => item.phone === booking.phone && item.code !== booking.code)
     .slice(0, 5);
+  const { adults, children, people } = passengerBreakdown(booking);
   activeCode = booking.code;
 
   openModal({
@@ -154,12 +272,45 @@ function detailModal(booking) {
         <ul class="summary-list">
           <li><span>Tour</span><strong>${escapeHtml(booking.tourName)}</strong></li>
           <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
-          <li><span>Số lượng</span><strong>${booking.people} khách</strong></li>
-          <li><span>Đơn giá</span><strong>${formatMoney(tour?.price || Math.round(booking.total / (booking.people || 1)))}</strong></li>
+          <li><span>Người lớn</span><strong>${adults} khách</strong></li>
+          <li><span>Trẻ em</span><strong>${children} khách</strong></li>
+          <li><span>Tổng khách</span><strong>${people}/${MAX_PASSENGERS}</strong></li>
+          <li><span>Giá/người lớn</span><strong>${formatMoney(
+            booking.tourPrice || tour?.price || 0
+          )}</strong></li>
+          <li><span>Giá/trẻ em</span><strong>${formatMoney(
+            childPrice(booking.tourPrice || tour?.price || 0)
+          )}</strong></li>
           <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
         </ul>
       </section>
     </div>
+
+    <h4>Phụ trách và lịch sử</h4>
+    <ul class="summary-list">
+      <li><span>Hướng dẫn viên</span><strong>${
+        booking.guideName
+          ? `${escapeHtml(booking.guideName)}${booking.guidePhone ? ` · ${escapeHtml(booking.guidePhone)}` : ""}`
+          : "Chưa phân công"
+      }</strong></li>
+      <li><span>Phụ trách</span><strong>${guideBookings(booking.guideId).length} đơn cùng hướng dẫn viên</strong></li>
+    </ul>
+
+    ${
+      (booking.statusHistory || []).length
+        ? `<h4>Lịch sử trạng thái</h4>
+           <ul class="history-list">${booking.statusHistory
+             .map(
+               (entry) =>
+                 `<li><strong>${escapeHtml(
+                   BOOKING_STATUS[entry.status] || entry.status
+                 )}</strong><br><small>${formatDateTime(entry.at)} · ${escapeHtml(
+                   entry.by || ""
+                 )}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}</small></li>`
+             )
+             .join("")}</ul>`
+        : ""
+    }
 
     <h4>Ghi chú của khách</h4>
     <p class="note-box">${booking.note ? escapeHtml(booking.note) : "Khách không để lại ghi chú."}</p>
@@ -174,14 +325,28 @@ function detailModal(booking) {
              )
              .join("")}</ul>`
         : ""
-    }`,
+    }${assignGuideHtml(booking)}`,
     footer: `
       ${
         canManage()
           ? `<button class="btn btn-outline" type="button" data-modal-payment>Đổi trạng thái thanh toán</button>
-             <button class="btn btn-ghost-soft" type="button" data-modal-cancel>Huỷ đơn</button>
-             <button class="btn btn-primary" type="button" data-modal-confirm>Xác nhận đơn</button>
-             <button class="btn btn-outline-danger" type="button" data-modal-delete>Xoá đơn</button>`
+             ${
+               isCancelledBooking(booking) || booking.status === "completed"
+                 ? ""
+                 : `<button class="btn btn-ghost-soft" type="button" data-modal-cancel>Huỷ đơn</button>`
+             }
+             ${
+               nextBookingStatus(booking.status)
+                 ? `<button class="btn btn-primary" type="button" data-modal-confirm>${confirmActionLabel(
+                     booking
+                   )}</button>`
+                 : ""
+             }
+             ${
+               isProtectedBooking(booking)
+                 ? `<button class="btn btn-outline-danger" type="button" disabled title="Đơn đã có giao dịch thanh toán, không thể xoá">Không thể xoá</button>`
+                 : `<button class="btn btn-outline-danger" type="button" data-modal-delete>Xoá đơn</button>`
+             }`
           : `<button class="btn btn-light" type="button" data-modal-close>Đóng</button>`
       }`,
   });
@@ -207,8 +372,10 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
   return `
   <section class="kpi-grid kpi-grid-5">
     <article class="kpi kpi-blue"><p class="kpi-label">Tổng đơn</p><strong class="kpi-value">${summary.total}</strong><span class="kpi-hint">${summary.people} lượt khách</span></article>
-    <article class="kpi kpi-amber"><p class="kpi-label">Chờ xác nhận</p><strong class="kpi-value">${summary.pending}</strong><span class="kpi-hint">Cần chuyên viên xử lý</span></article>
-    <article class="kpi kpi-green"><p class="kpi-label">Đã xác nhận</p><strong class="kpi-value">${summary.confirmed}</strong><span class="kpi-hint">${summary.conversion}% tỉ lệ chốt</span></article>
+    <article class="kpi kpi-amber"><p class="kpi-label">Chờ xác nhận</p><strong class="kpi-value">${summary.pending}</strong><span class="kpi-hint">${summary.awaiting_payment} đang chờ thanh toán</span></article>
+    <article class="kpi kpi-green"><p class="kpi-label">Đang chạy tour</p><strong class="kpi-value">${
+      summary.upcoming + summary.ongoing
+    }</strong><span class="kpi-hint">${summary.completed} đã hoàn thành</span></article>
     <article class="kpi kpi-red"><p class="kpi-label">Đã huỷ</p><strong class="kpi-value">${summary.cancelled}</strong><span class="kpi-hint">${formatMoney(summary.cancelledValue)}</span></article>
     <article class="kpi kpi-violet"><p class="kpi-label">Doanh thu</p><strong class="kpi-value">${formatMoney(summary.revenue)}</strong><span class="kpi-hint">TB ${formatMoney(summary.avgOrder)}</span></article>
   </section>
@@ -270,6 +437,7 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
           ? `<div class="bulk-actions" id="bk-bulk" hidden>
               <span>Đã chọn <strong data-selected>0</strong> đơn</span>
               <button class="btn btn-sm btn-primary" type="button" data-bulk="confirmed">Xác nhận</button>
+              <button class="btn btn-sm btn-outline" type="button" data-bulk="paid">Đã thanh toán</button>
               <button class="btn btn-sm btn-outline" type="button" data-bulk="cancelled">Huỷ</button>
               <button class="btn btn-sm btn-outline-danger" type="button" data-bulk="delete">Xoá</button>
             </div>`
@@ -325,7 +493,7 @@ function syncInputs() {
 function exportBookings(rows) {
   downloadCsv(
     `don-dat-tour-${stamp()}`,
-    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Số khách", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
+    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Người lớn", "Trẻ em", "Tổng khách", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
     rows.map((item) => [
       item.code,
       item.name,
@@ -333,6 +501,8 @@ function exportBookings(rows) {
       item.email || "",
       item.tourName,
       item.date,
+      passengerBreakdown(item).adults,
+      passengerBreakdown(item).children,
       item.people,
       item.total,
       PAYMENT_STATUS[item.payment || "unpaid"],
@@ -433,15 +603,26 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
     if (!canManage()) return;
-    if (!window.confirm(`${action === "confirmed" ? "Xác nhận" : "Huỷ"} đơn ${code}?`)) return;
-    updateBooking(code, { status: action });
-    notifyBooking(booking, action);
-    logActivity(
-      action === "confirmed" ? "Xác nhận đơn" : "Huỷ đơn",
-      `${action === "confirmed" ? "Xác nhận" : "Huỷ"} đơn ${code} - ${booking.name}`
-    );
-    toast(`Đã cập nhật đơn ${code}.`);
-    reload();
+
+    if (action === "confirmed") {
+      confirmModal(booking);
+      return;
+    }
+
+    if (action === "cancelled") {
+      const reason = window.prompt(
+        `Huỷ đơn ${code}?\nNhập lý do (để gửi khách):`,
+        "Khách yêu cầu huỷ"
+      );
+      if (reason === null) return;
+      const result = cancelBooking(code, { by: getSession()?.name || "Admin", reason });
+      if (result.error) return toast(result.error, "error");
+      notifyBooking(booking, "cancelled");
+      logActivity("Huỷ đơn", `Huỷ đơn ${code} - ${booking.name}: ${reason}`);
+      toast(`Đã huỷ đơn ${code}.`);
+      reload();
+      return;
+    }
   });
 
   document.getElementById("bk-bulk")?.addEventListener("click", (event) => {
@@ -450,19 +631,58 @@ document.addEventListener("route:changed", ({ detail }) => {
     const codes = selection.selected();
     if (!codes.length) return;
     const action = button.dataset.bulk;
-    const label = { confirmed: "xác nhận", cancelled: "huỷ", delete: "xoá" }[action];
+    const label = { confirmed: "xác nhận", paid: "đánh dấu đã thanh toán", cancelled: "huỷ", delete: "xoá" }[
+      action
+    ];
     if (!window.confirm(`${label[0].toUpperCase()}${label.slice(1)} ${codes.length} đơn đã chọn?`)) return;
 
-    if (action === "delete") codes.forEach((code) => removeBooking(code));
-    else codes.forEach((code) => updateBooking(code, { status: action }));
-    if (action !== "delete") {
-      codes.forEach((code) => notifyBooking(getBooking(code), action));
+    if (action === "delete") {
+      let removed = 0;
+      const blocked = [];
+      codes.forEach((code) => {
+        const result = removeBooking(code);
+        if (result?.error) blocked.push(code);
+        else removed += 1;
+      });
+      if (blocked.length) {
+        toast(
+          `${blocked.length} đơn đã có giao dịch nên không xoá được (${blocked
+            .slice(0, 3)
+            .join(", ")}${blocked.length > 3 ? "..." : ""}).`,
+          "error"
+        );
+      } else {
+        toast(`Đã xoá ${removed} đơn.`);
+      }
+      logActivity("Xoá đơn", `Xoá ${removed}/${codes.length} đơn`);
+      refreshAdmin();
+      return;
     }
+
+    let failed = 0;
+    codes.forEach((code) => {
+      const current = getBooking(code);
+      const result =
+        action === "cancelled"
+          ? cancelBooking(code, { by: getSession()?.name || "Admin", reason: "Xử lý hàng loạt" })
+          : advanceBooking(code, action, { by: getSession()?.name || "Admin" });
+      if (result?.error) {
+        failed += 1;
+        return;
+      }
+      notifyBooking(current, action);
+    });
+
     logActivity(
-      action === "delete" ? "Xoá đơn" : "Cập nhật đơn hàng loạt",
-      `${label} ${codes.length} đơn: ${codes.slice(0, 5).join(", ")}${codes.length > 5 ? "..." : ""}`
+      action === "cancelled" ? "Huỷ đơn hàng loạt" : "Cập nhật đơn hàng loạt",
+      `${label} ${codes.length - failed}/${codes.length} đơn: ${codes.slice(0, 5).join(", ")}${
+        codes.length > 5 ? "..." : ""
+      }`
     );
-    toast(`Đã ${label} ${codes.length} đơn.`);
+    toast(
+      failed ? `Đã cập nhật ${codes.length - failed} đơn, ${failed} đơn không đúng luồng.` : `Đã ${label} ${codes.length} đơn.`,
+      failed ? "error" : "success"
+    );
     refreshAdmin();
   });
 });
@@ -474,25 +694,39 @@ document.addEventListener("click", (event) => {
 function detailHasModalAction(target) {
   return Boolean(
     target.closest?.(
-      "[data-modal-confirm],[data-modal-cancel],[data-modal-payment],[data-modal-delete]"
+      "[data-modal-confirm],[data-modal-cancel],[data-modal-payment],[data-modal-delete],[data-assign-guide]"
     )
   );
 }
 
 function handleModalAction(target) {
-  if (!canManage() || !activeCode) return;
+  if (!activeCode) return;
+
+  const assign = target.closest("[data-assign-guide]");
+  if (assign) {
+    handleAssignGuide(assign.dataset.assignGuide, assign.value);
+    return;
+  }
+
+  if (!canManage()) return;
   const booking = getBooking(activeCode);
   if (!booking) return;
 
   if (target.closest("[data-modal-confirm]")) {
-    updateBooking(activeCode, { status: "confirmed" });
-    notifyBooking(booking, "confirmed");
-    logActivity("Xác nhận đơn", `Xác nhận đơn ${activeCode} - ${booking.name}`);
-    toast(`Đã xác nhận đơn ${activeCode}.`);
+    const next = nextBookingStatus(booking.status);
+    if (!next) return toast("Đơn này đã ở trạng thái cuối.", "error");
+    const result = advanceBooking(activeCode, next, { by: getSession()?.name || "Admin" });
+    if (result.error) return toast(result.error, "error");
+    notifyBooking(booking, next);
+    logActivity("Xác nhận đơn", `Đơn ${activeCode} chuyển sang ${BOOKING_STATUS[next]} - ${booking.name}`);
+    toast(`Đã chuyển đơn ${activeCode} sang "${BOOKING_STATUS[next]}".`);
   } else if (target.closest("[data-modal-cancel]")) {
-    updateBooking(activeCode, { status: "cancelled" });
+    const reason = window.prompt(`Huỷ đơn ${activeCode}?\nNhập lý do:`, "Khách yêu cầu huỷ");
+    if (reason === null) return undefined;
+    const result = cancelBooking(activeCode, { by: getSession()?.name || "Admin", reason });
+    if (result.error) return toast(result.error, "error");
     notifyBooking(booking, "cancelled");
-    logActivity("Huỷ đơn", `Huỷ đơn ${activeCode} - ${booking.name}`);
+    logActivity("Huỷ đơn", `Huỷ đơn ${activeCode} - ${booking.name}: ${reason}`);
     toast(`Đã huỷ đơn ${activeCode}.`);
   } else if (target.closest("[data-modal-payment]")) {
     const next = window.prompt(
@@ -500,20 +734,40 @@ function handleModalAction(target) {
       PAYMENT_STATUS[booking.payment || "unpaid"]
     );
     const found = Object.entries(PAYMENT_STATUS).find(([, label]) => label === next);
-    if (!found) return;
+    if (!found) return undefined;
     updateBooking(activeCode, { payment: found[0] });
     logActivity("Cập nhật thanh toán", `Đơn ${activeCode} chuyển sang ${found[1]}`);
     toast(`Đã cập nhật thanh toán đơn ${activeCode}.`);
   } else if (target.closest("[data-modal-delete]")) {
-    if (!window.confirm(`Xoá đơn ${activeCode}?`)) return;
-    removeBooking(activeCode);
+    if (!window.confirm(`Xoá đơn ${activeCode}?`)) return undefined;
+    const result = removeBooking(activeCode);
+    if (result?.error) return toast(result.error, "error");
     logActivity("Xoá đơn", `Xoá đơn ${activeCode} - ${booking.name}`);
     toast(`Đã xoá đơn ${activeCode}.`);
   } else {
-    return;
+    return undefined;
   }
 
   activeCode = "";
   closeModal();
   refreshAdmin();
+  return undefined;
+}
+
+/* Gán / bỏ gán Tour Guide từ popup xác nhận hoặc modal chi tiết */
+function handleAssignGuide(code, guideId) {
+  if (!canAssign()) return;
+  const guide = listGuides().find((item) => item.username === guideId);
+  const result = assignBookingGuide(code, guide || null);
+  if (result.error) return toast(result.error, "error");
+
+  logActivity(
+    "Phân công hướng dẫn viên",
+    guide
+      ? `Phân công ${guide.name} cho đơn ${code}`
+      : `Bỏ phân công hướng dẫn viên cho đơn ${code}`
+  );
+  toast(guide ? `Đã phân công ${guide.name} cho đơn ${code}.` : `Đã bỏ phân công đơn ${code}.`);
+  refreshAdmin();
+  return undefined;
 }

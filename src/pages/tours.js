@@ -1,4 +1,4 @@
-import { listTours, getDestinations } from "../tour-repository.js";
+import { listTours, getDestinations, sellableTours } from "../tour-repository.js";
 import { tourCard } from "../components/tour-card.js";
 import { countFavorites, isFavorite } from "../favorites.js";
 import { searchKey } from "../validate.js";
@@ -100,7 +100,9 @@ const SORTERS = {
 };
 
 export function Tours() {
-  const allTours = listTours();
+  /* Chỉ tour còn nhận khách mới hiển thị; tour đã ngừng bán vẫn tồn tại
+     trong hệ thống để phục vụ đơn cũ, thống kê và đánh giá */
+  const allTours = sellableTours();
   const locationOptions = getDestinations()
     .map((place) => `<option value="${place}">${place}</option>`)
     .join("");
@@ -208,7 +210,8 @@ export function Tours() {
       <h2>Chưa biết chọn tour nào?</h2>
       <p>Để lại thông tin, đội ngũ tư vấn sẽ gọi cho bạn trong 30 phút.</p>
       <a class="btn btn-light btn-lg" href="#/contact">Tư vấn miễn phí</a>
-    </section>`;
+    </div>
+  </section>`;
 }
 
 let applyFilters = null;

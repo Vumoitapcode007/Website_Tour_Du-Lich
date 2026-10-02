@@ -15,6 +15,7 @@ import {
 import { hasPermission, listAccounts } from "../../auth.js";
 import { formatDate } from "../../data.js";
 import { escapeHtml, searchKey } from "../../validate.js";
+import { MAX_PASSENGERS, passengerBreakdown, passengerLabel } from "../../booking-rules.js";
 
 const canManage = () => hasPermission("customers.manage");
 
@@ -71,7 +72,7 @@ function row(customer) {
     </td>
     <td><a href="tel:${escapeHtml(customer.phone)}">${escapeHtml(customer.phone)}</a><br><small>${escapeHtml(customer.email || "Chưa có email")}</small></td>
     <td><span class="tier-badge tier-${customer.tier.key}">${escapeHtml(customer.tier.label)}</span></td>
-    <td>${customer.orders}<br><small>${customer.confirmed} xác nhận · ${customer.cancelled} huỷ</small></td>
+    <td>${customer.orders}<br><small>${customer.pending} chờ xử lý · ${customer.settled} đã xác nhận · ${customer.cancelled} huỷ</small></td>
     <td>${customer.people}</td>
     <td><strong>${formatMoney(customer.total)}</strong></td>
     <td>${formatRelative(customer.lastOrder)}<br><small>${escapeHtml(customer.tours.slice(0, 2).join(", "))}</small></td>
@@ -145,7 +146,7 @@ function openProfile(customer) {
               <td><a href="#/admin/bookings?q=${encodeURIComponent(item.code)}">${escapeHtml(item.code)}</a><br><small>${formatRelative(item.createdAt)}</small></td>
               <td>${escapeHtml(item.tourName)}</td>
               <td>${formatDate(item.date)}</td>
-              <td>${item.people}</td>
+              <td>${passengerBreakdown(item).people}<br><small>${escapeHtml(passengerLabel(item))}</small></td>
               <td><strong>${formatMoney(item.total)}</strong></td>
               <td>${statusBadge(item.status, BOOKING_STATUS)}</td>
             </tr>`
@@ -161,7 +162,7 @@ function openProfile(customer) {
           ? `<a class="btn btn-ghost-soft" href="mailto:${escapeHtml(customer.email)}">Gửi email</a>`
           : ""
       }
-      <a class="btn btn-primary" href="#/booking?tour=1&people=${Math.max(1, Math.min(customer.people, 6))}">Đặt tour cho khách</a>
+      <a class="btn btn-primary" href="#/booking?tour=1&adults=${Math.max(1, Math.min(customer.people, MAX_PASSENGERS))}">Đặt tour cho khách</a>
       <button class="btn btn-light" type="button" data-modal-close>Đóng</button>`,
   });
 }
@@ -279,14 +280,15 @@ document.addEventListener("route:changed", ({ detail }) => {
   document.getElementById("cu-export")?.addEventListener("click", () => {
     downloadCsv(
       `khach-hang-${stamp()}`,
-      ["Họ tên", "Điện thoại", "Email", "Hạng", "Số đơn", "Đơn xác nhận", "Đơn huỷ", "Lượt khách", "Tổng chi tiêu", "Tour đã đi", "Đặt lần đầu", "Đặt gần nhất", "Ghi chú"],
+      ["Họ tên", "Điện thoại", "Email", "Hạng", "Số đơn", "Đơn chờ xử lý", "Đơn đã xác nhận trở đi", "Đơn huỷ", "Lượt khách", "Tổng chi tiêu", "Tour đã đi", "Đặt lần đầu", "Đặt gần nhất", "Ghi chú"],
       filterCustomers(buildCustomers()).map((item) => [
         item.name,
         item.phone,
         item.email,
         item.tier.label,
         item.orders,
-        item.confirmed,
+        item.pending,
+        item.settled,
         item.cancelled,
         item.people,
         item.total,

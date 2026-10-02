@@ -1,16 +1,123 @@
 import { formatPrice, formatDate } from "../data.js";
-import { listTours, getTourById } from "../tour-repository.js";
+import { listTours, getTourById, isSellableTour } from "../tour-repository.js";
 import { saveBooking, saveNotification } from "../store.js";
 import { syncNotificationBadge } from "../components/notification-bell.js";
 import { imgFallback } from "../components/tour-card.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
+import { getSession } from "../auth.js";
+import {
+  CHILD_PRICE_RATE,
+  MAX_PASSENGERS,
+  bookingTotal,
+  childPrice,
+  normalizePassengers,
+  seatLimit,
+} from "../booking-rules.js";
+
+/* Chỉ nhận lại các tham số cần giữ khi khách quay lại sau khi đăng nhập */
+const RETURN_KEYS = ["tour", "date", "adults", "children", "people"];
+
+function returnNext(query) {
+  const kept = new URLSearchParams();
+  RETURN_KEYS.forEach((key) => {
+    const value = query.get(key);
+    if (value) kept.set(key, value);
+  });
+  const search = kept.toString();
+  return search ? `booking?${search}` : "booking";
+}
+
+function LoginRequired(query) {
+  const tour = getTourById(query.get("tour"));
+  const nextQuery = encodeURIComponent(returnNext(query));
+
+  return `
+  <section class="page-hero">
+    <div class="container">
+      <span class="hero-eyebrow">Đặt chỗ</span>
+      <h1>Đặt tour</h1>
+      <p>Chỉ cần đăng nhập một lần, bạn có thể theo dõi trạng thái đơn đặt tour mọi lúc.</p>
+    </div>
+  </section>
+
+  <section class="section container container-narrow">
+    <div class="form-card login-card center">
+      <div class="success-icon lock-icon">🔒</div>
+      <h2>Vui lòng đăng nhập để đặt tour</h2>
+      <p class="form-hint account-hint">
+        ${
+          tour
+            ? `Bạn đang chọn <strong>${escapeHtml(tour.name)}</strong>. `
+            : ""
+        }
+        Đăng nhập để lưu đơn vào tài khoản, theo dõi trạng thái xác nhận và thanh toán.
+      </p>
+      <ul class="track-benefits">
+        <li>Theo dõi trạng thái đơn: chờ xác nhận, đã xác nhận, đã thanh toán.</li>
+        <li>Lưu lịch sử đặt tour và thông tin hành khách trong một tài khoản.</li>
+        <li>Nhận thông báo khi chuyên viên cập nhật đơn của bạn.</li>
+      </ul>
+      <div class="success-actions">
+        <a class="btn btn-primary btn-lg" href="#/login?next=${nextQuery}">Đăng nhập</a>
+        <a class="btn btn-outline btn-lg" href="#/register?next=${nextQuery}">Tạo tài khoản</a>
+      </div>
+      <p class="form-hint">Đăng nhập xong bạn sẽ được đưa lại đúng tour vừa chọn.</p>
+    </div>
+  </section>`;
+}
+
+function TourUnavailable(query) {
+  const tour = getTourById(query.get("tour"));
+  return `
+  <section class="page-hero">
+    <div class="container">
+      <span class="hero-eyebrow">Đặt chỗ</span>
+      <h1>Tour không còn nhận khách</h1>
+      <p>Chuyến đi này đã ngừng bán nên không thể đặt thêm.</p>
+    </div>
+  </section>
+
+  <section class="section container container-narrow">
+    <div class="form-card center">
+      <div class="success-icon">🚫</div>
+      <h2>${escapeHtml(tour?.name || "Tour này")} đã ngừng bán</h2>
+      <p class="form-hint">
+        ${
+          tour
+            ? `Lịch trình vẫn còn ${tour.time} tại ${tour.location}. `
+            : ""
+        }
+        Bạn có thể xem các tour đang mở bán khác hoặc liên hệ hotline để được tư vấn.
+      </p>
+      <div class="success-actions">
+        <a class="btn btn-primary" href="#/tours">Xem tour đang bán</a>
+        <a class="btn btn-outline" href="#/contact">Liên hệ tư vấn</a>
+      </div>
+    </div>
+  </section>`;
+}
 
 export function Booking(path, params = {}, query = new URLSearchParams()) {
-  const allTours = listTours();
+  const session = getSession();
+  if (!session) return LoginRequired(query);
+
+  const requested = query.get("tour");
+  if (requested) {
+    const wanted = getTourById(requested);
+    if (!wanted) return TourUnavailable(query);
+    if (!isSellableTour(wanted)) return TourUnavailable(query);
+  }
+
+  /* Chỉ mở form cho các tour còn nhận khách */
+  const allTours = listTours().filter(isSellableTour);
   const tourOptions = allTours
     .map((tour) => `<option value="${tour.id}">${tour.name} - ${formatPrice(tour.price)}</option>`)
     .join("");
-  const preselectPeople = Number(query.get("people")) || 1;
+  const preselect = normalizePassengers(
+    query.get("adults") ?? query.get("people"),
+    query.get("children"),
+    MAX_PASSENGERS
+  );
 
   return `
   <section class="page-hero">
@@ -27,27 +134,21 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
 
       <div class="field">
         <label for="bk-name">Họ và tên <span class="req">*</span></label>
-        <input id="bk-name" name="name" type="text" placeholder="Nguyễn Văn A" required>
+        <input id="bk-name" name="name" type="text" placeholder="Nguyễn Văn A" value="${escapeHtml(session.name || "")}" required>
         <p class="error" data-error="name"></p>
       </div>
 
       <div class="field-row">
         <div class="field">
           <label for="bk-phone">Số điện thoại <span class="req">*</span></label>
-          <input id="bk-phone" name="phone" type="tel" placeholder="0909 888 777" required>
+          <input id="bk-phone" name="phone" type="tel" placeholder="0909 888 777" value="${escapeHtml(session.phone || "")}" required>
           <p class="error" data-error="phone"></p>
         </div>
         <div class="field">
           <label for="bk-email">Email</label>
-          <input id="bk-email" name="email" type="email" placeholder="email@example.com">
+          <input id="bk-email" name="email" type="email" placeholder="email@example.com" value="${escapeHtml(session.email || "")}">
           <p class="error" data-error="email"></p>
         </div>
-      </div>
-
-      <div class="field">
-        <label for="bk-tour">Chọn tour <span class="req">*</span></label>
-        <select id="bk-tour" name="tour" required>${tourOptions}</select>
-        <p class="error" data-error="tour"></p>
       </div>
 
       <div class="field-row">
@@ -56,10 +157,31 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
           <select id="bk-date" name="date" required></select>
         </div>
         <div class="field">
-          <label for="bk-people">Số lượng khách <span class="req">*</span></label>
-          <input id="bk-people" name="people" type="number" min="1" max="20" value="${preselectPeople}" required>
-          <p class="error" data-error="people"></p>
+          <label for="bk-tour">Chọn tour <span class="req">*</span></label>
+          <select id="bk-tour" name="tour" required>${tourOptions}</select>
+          <p class="error" data-error="tour"></p>
         </div>
+      </div>
+
+      <div class="passenger-box">
+        <span class="passenger-title">Số lượng khách <span class="req">*</span></span>
+        <div class="field-row">
+          <div class="field">
+            <label for="bk-adults">Người lớn (từ 12 tuổi)</label>
+            <input id="bk-adults" name="adults" type="number" min="1" max="${MAX_PASSENGERS}" value="${preselect.adults}" required>
+            <p class="error" data-error="adults"></p>
+          </div>
+          <div class="field">
+            <label for="bk-children">Trẻ em (dưới 12 tuổi)</label>
+            <input id="bk-children" name="children" type="number" min="0" max="${MAX_PASSENGERS}" value="${preselect.children}">
+            <p class="error" data-error="children"></p>
+          </div>
+        </div>
+        <p class="passenger-hint">
+          Mỗi chuyến tối đa <strong>${MAX_PASSENGERS} khách</strong>.
+          Giá trẻ em bằng <strong>${Math.round(CHILD_PRICE_RATE * 100)}%</strong> giá người lớn.
+        </p>
+        <p class="error" data-error="people"></p>
       </div>
 
       <div class="field">
@@ -74,6 +196,10 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
       <p class="error" data-error="agree"></p>
 
       <button class="btn btn-primary btn-lg btn-block" type="submit">Xác nhận đặt tour</button>
+      <p class="form-hint">
+        Đơn sẽ được lưu vào tài khoản <strong>${escapeHtml(session.username)}</strong>.
+        Bạn theo dõi được trạng thái tại <a href="#/my-bookings">Đơn của tôi</a>.
+      </p>
       <p class="form-hint">Bạn không cần thanh toán ngay. Chúng tôi sẽ liên hệ để xác nhận.</p>
     </form>
 
@@ -85,8 +211,11 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
         <li><span>Điểm đến</span><strong id="sum-location"></strong></li>
         <li><span>Thời lượng</span><strong id="sum-time"></strong></li>
         <li><span>Khởi hành</span><strong id="sum-date"></strong></li>
-        <li><span>Số khách</span><strong id="sum-people"></strong></li>
-        <li><span>Giá/người</span><strong id="sum-price"></strong></li>
+        <li><span>Người lớn</span><strong id="sum-adults"></strong></li>
+        <li><span>Trẻ em</span><strong id="sum-children"></strong></li>
+        <li><span>Tổng khách</span><strong id="sum-people"></strong></li>
+        <li><span>Giá/người lớn</span><strong id="sum-price"></strong></li>
+        <li><span>Giá/trẻ em</span><strong id="sum-child-price"></strong></li>
       </ul>
       <div class="summary-total">
         <span>Tổng cộng</span>
@@ -97,19 +226,25 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
   </section>`;
 }
 
-function validate(form) {
+function validate(form, tour) {
   const errors = {};
   const data = new FormData(form);
   const name = String(data.get("name") || "").trim();
   const phone = String(data.get("phone") || "").trim();
   const email = String(data.get("email") || "").trim();
-  const people = Number(data.get("people"));
+  const adults = Number(data.get("adults"));
+  const children = Number(data.get("children") || 0);
+  const limit = seatLimit(tour?.seatsLeft);
 
   if (!isName(name)) errors.name = "Vui lòng nhập họ và tên.";
   if (!isPhone(phone)) errors.phone = "Số điện thoại chưa hợp lệ.";
   if (email && !isEmail(email)) errors.email = "Email chưa hợp lệ.";
   if (!data.get("tour")) errors.tour = "Vui lòng chọn tour.";
-  if (!people || people < 1) errors.people = "Số khách phải từ 1 trở lên.";
+  else if (!isSellableTour(tour)) errors.tour = "Tour này đã ngừng bán.";
+  if (!Number.isInteger(adults) || adults < 1) errors.adults = "Cần ít nhất 1 người lớn.";
+  if (!Number.isInteger(children) || children < 0) errors.children = "Số trẻ em không hợp lệ.";
+  if (Number.isInteger(adults) && Number.isInteger(children) && adults + children > limit)
+    errors.people = `Mỗi chuyến chỉ nhận tối đa ${limit} khách.`;
   if (!data.get("agree")) errors.agree = "Bạn cần đồng ý điều khoản để tiếp tục.";
 
   return { errors, data };
@@ -119,14 +254,24 @@ document.addEventListener("route:changed", ({ detail }) => {
   if (detail.path !== "booking") return;
   const form = document.getElementById("booking-form");
   if (!form) return;
+  const session = getSession();
+  if (!session) return;
 
   const tourSelect = form.elements.tour;
   const dateSelect = form.elements.date;
-  const peopleInput = form.elements.people;
+  const adultsInput = form.elements.adults;
+  const childrenInput = form.elements.children;
   const query = new URLSearchParams(detail.queryString || "");
 
   if (getTourById(query.get("tour"))) tourSelect.value = query.get("tour");
-  peopleInput.value = Number(query.get("people")) || peopleInput.value;
+
+  const wanted = normalizePassengers(
+    query.get("adults") ?? query.get("people"),
+    query.get("children"),
+    MAX_PASSENGERS
+  );
+  adultsInput.value = String(wanted.adults);
+  childrenInput.value = String(wanted.children);
 
   function fillDates() {
     const tour = getTourById(tourSelect.value);
@@ -134,33 +279,50 @@ document.addEventListener("route:changed", ({ detail }) => {
     dateSelect.innerHTML = tour.departures
       .map((date) => `<option value="${date}">${formatDate(date)}</option>`)
       .join("");
-    const wanted = query.get("date");
-    if (tour.departures.includes(wanted)) dateSelect.value = wanted;
-    form.elements.people.max = String(Math.max(tour.seatsLeft, 1));
+    const preferred = query.get("date");
+    if (tour.departures.includes(preferred)) dateSelect.value = preferred;
+    const limit = seatLimit(tour.seatsLeft);
+    adultsInput.max = String(limit);
+    childrenInput.max = String(limit);
   }
 
   function refreshSummary() {
     const tour = getTourById(tourSelect.value);
     if (!tour) return;
-    const people = Math.min(Math.max(Number(peopleInput.value) || 1, 1), tour.seatsLeft);
+    const limit = seatLimit(tour.seatsLeft);
+    const counts = normalizePassengers(adultsInput.value, childrenInput.value, limit);
     document.getElementById("sum-img").src = tour.image;
     document.getElementById("sum-img").alt = tour.name;
     document.getElementById("sum-name").textContent = tour.name;
     document.getElementById("sum-location").textContent = tour.location;
     document.getElementById("sum-time").textContent = tour.time;
     document.getElementById("sum-date").textContent = formatDate(dateSelect.value);
-    document.getElementById("sum-people").textContent = `${people} khách`;
+    document.getElementById("sum-adults").textContent = `${counts.adults} khách`;
+    document.getElementById("sum-children").textContent = `${counts.children} khách`;
+    document.getElementById("sum-people").textContent = `${counts.people}/${limit} khách`;
     document.getElementById("sum-price").textContent = formatPrice(tour.price);
-    document.getElementById("sum-total").textContent = formatPrice(tour.price * people);
+    document.getElementById("sum-child-price").textContent = formatPrice(childPrice(tour.price));
+    document.getElementById("sum-total").textContent = formatPrice(bookingTotal(tour.price, counts));
+    syncPassengerErrors(tour);
+  }
+
+  function setError(key, message) {
+    const node = form.querySelector(`[data-error="${key}"]`);
+    if (node) node.textContent = message || "";
+    const fields =
+      key === "people" ? [adultsInput, childrenInput] : [form.querySelector(`[name="${key}"]`)];
+    fields.forEach((field) => field?.classList.toggle("invalid", Boolean(message)));
   }
 
   function showErrors(errors) {
-    form.querySelectorAll("[data-error]").forEach((node) => {
-      const key = node.dataset.error;
-      node.textContent = errors[key] || "";
-      const field = form.querySelector(`[name="${key}"]`);
-      if (field) field.classList.toggle("invalid", Boolean(errors[key]));
-    });
+    form
+      .querySelectorAll("[data-error]")
+      .forEach((node) => setError(node.dataset.error, errors[node.dataset.error]));
+  }
+
+  function syncPassengerErrors(tour) {
+    const { errors } = validate(form, tour);
+    ["adults", "children", "people"].forEach((key) => setError(key, errors[key]));
   }
 
   fillDates();
@@ -171,37 +333,50 @@ document.addEventListener("route:changed", ({ detail }) => {
     refreshSummary();
   });
   dateSelect.addEventListener("change", refreshSummary);
-  peopleInput.addEventListener("input", refreshSummary);
+  adultsInput.addEventListener("input", refreshSummary);
+  childrenInput.addEventListener("input", refreshSummary);
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    const { errors, data } = validate(form);
+    const tour = getTourById(form.elements.tour.value);
+    const { errors, data } = validate(form, tour);
     showErrors(errors);
     if (Object.keys(errors).length) {
       form.querySelector(".invalid")?.focus();
       return;
     }
 
-    const tour = getTourById(data.get("tour"));
-    const people = Math.min(Math.max(Number(data.get("people")), 1), tour.seatsLeft);
+    const counts = normalizePassengers(data.get("adults"), data.get("children"), tour.seatsLeft);
     const record = saveBooking({
       name: String(data.get("name")).trim(),
       phone: String(data.get("phone")).trim(),
       email: String(data.get("email") || "").trim(),
       tourId: tour.id,
+      /* Snapshot: các trường dưới đây được khoá theo giá trị tại thời điểm đặt.
+         Admin có sửa giá hay tour bị ngừng bán thì đơn này vẫn hiển thị đúng. */
       tourName: tour.name,
+      tourPrice: tour.price,
+      tourLocation: tour.location,
+      tourTime: tour.time,
+      tourImage: tour.image,
       date: data.get("date"),
-      people,
+      accountUsername: session.username,
+      adults: counts.adults,
+      children: counts.children,
+      people: counts.people,
       note: String(data.get("note") || "").trim(),
-      total: tour.price * people,
+      total: bookingTotal(tour.price, counts),
     });
 
     saveNotification({
       type: "booking",
       title: `Đã nhận đơn ${record.code}`,
-      body: `Yêu cầu đặt ${record.tourName} ngày ${formatDate(record.date)}. Chuyên viên sẽ gọi ${record.phone} để xác nhận.`,
+      body: `Yêu cầu đặt ${record.tourName} ngày ${formatDate(record.date)} cho ${record.adults} người lớn${
+        record.children ? ` và ${record.children} trẻ em` : ""
+      }. Chuyên viên sẽ gọi ${record.phone} để xác nhận.`,
       phone: record.phone,
       email: record.email,
+      accountUsername: session.username,
     });
     syncNotificationBadge();
 
@@ -216,13 +391,16 @@ document.addEventListener("route:changed", ({ detail }) => {
         </p>
         <ul class="success-list">
           <li>Ngày khởi hành: ${formatDate(record.date)}</li>
-          <li>Số khách: ${record.people}</li>
+          <li>Người lớn: ${record.adults}</li>
+          <li>Trẻ em: ${record.children}</li>
+          <li>Tổng khách: ${record.people}/${MAX_PASSENGERS}</li>
           <li>Tổng tiền tạm tính: ${formatPrice(record.total)}</li>
         </ul>
         <p class="form-hint">Chuyên viên sẽ gọi ${escapeHtml(record.phone)} trong 30 phút để xác nhận.</p>
         <div class="success-actions">
-          <a class="btn btn-primary" href="#/tours">Xem thêm tour</a>
-          <a class="btn btn-outline" href="#/">Về trang chủ</a>
+          <a class="btn btn-primary" href="#/my-bookings">Theo dõi đơn ${escapeHtml(record.code)}</a>
+          <a class="btn btn-outline" href="#/tours">Xem thêm tour</a>
+          <a class="btn btn-ghost-soft" href="#/">Về trang chủ</a>
         </div>
       </div>`;
   });

@@ -1,8 +1,11 @@
 import {
   ROLES,
   canAccessAdmin,
+  canAccessAdminArea,
   getSession,
   hasPermission,
+  isAdminRole,
+  isGuideRole,
   isStaffRole,
   logout,
 } from "../auth.js";
@@ -23,6 +26,14 @@ export const ADMIN_SECTIONS = {
   users: { title: "Tài khoản", desc: "Quản lý nhân viên và tài khoản khách hàng" },
   settings: { title: "Cài đặt", desc: "Thông tin website và cấu hình hệ thống" },
   logs: { title: "Nhật ký", desc: "Lịch sử thao tác trong khu vực quản trị" },
+  profile: { title: "Hồ sơ cá nhân", desc: "Thông tin tài khoản và bảo mật" },
+};
+
+/* Khu vực riêng của Tour Guide - dùng chung layout/CSS với khu vực quản trị */
+export const GUIDE_SECTIONS = {
+  dashboard: { title: "Bảng điều khiển", desc: "Tour được phân công và tình trạng khách của bạn" },
+  tours: { title: "Tour của tôi", desc: "Lịch trình và danh sách khách của từng chuyến" },
+  bookings: { title: "Danh sách khách", desc: "Khách được phân công cùng trạng thái đơn" },
   profile: { title: "Hồ sơ cá nhân", desc: "Thông tin tài khoản và bảo mật" },
 };
 
@@ -62,12 +73,42 @@ export const ADMIN_NAV = [
   },
 ];
 
-export function adminSection(path = "dashboard") {
-  const key = String(path || "").split("/")[0] || "dashboard";
-  return ADMIN_SECTIONS[key] ? key : "dashboard";
+export const GUIDE_NAV = [
+  {
+    group: "Công việc của tôi",
+    items: [
+      { path: "dashboard", label: "Bảng điều khiển", icon: "◈", perm: "guide.dashboard.view" },
+      { path: "tours", label: "Tour của tôi", icon: "◉", perm: "guide.tours.view", badge: "guideTours" },
+      { path: "bookings", label: "Danh sách khách", icon: "◍", perm: "guide.customers.view", badge: "guideGuests" },
+    ],
+  },
+  {
+    group: "Cá nhân",
+    items: [{ path: "profile", label: "Hồ sơ", icon: "◐", perm: "guide.dashboard.view" }],
+  },
+];
+
+/* "admin" hoặc "guide" - quyết định bảng section, menu và tiều đề vỏ */
+export function shellArea(path = "") {
+  return String(path).split("/")[0] === "guide" ? "guide" : "admin";
 }
 
-function badgeCounts() {
+export function adminSection(path = "dashboard", area = "admin") {
+  const sections = area === "guide" ? GUIDE_SECTIONS : ADMIN_SECTIONS;
+  const key = String(path || "").split("/")[0] || "dashboard";
+  return sections[key] ? key : "dashboard";
+}
+
+function badgeCounts(area = "admin", guideId = "") {
+  if (area === "guide") {
+    const mine = listBookings().filter((item) => item.guideId === guideId);
+    return {
+      guideTours: new Set(mine.map((item) => String(item.tourId))).size,
+      guideGuests: mine
+        .filter((item) => ["upcoming", "ongoing"].includes(item.status))
+        .reduce((sum, item) => sum + (Number(item.people) || 0), 0),
+    };
+  }
   return {
     bookings: listBookings().filter((item) => item.status === "pending").length,
     messages: listMessages().filter((item) => !item.read).length,
@@ -75,17 +116,18 @@ function badgeCounts() {
   };
 }
 
-function deniedView() {
+function deniedView(area = "admin") {
+  const isGuide = area === "guide";
   return `
   <section class="page-hero">
     <div class="container">
-      <span class="hero-eyebrow">Khu vực quản trị</span>
+      <span class="hero-eyebrow">${isGuide ? "Khu vực hướng dẫn viên" : "Khu vực quản trị"}</span>
       <h1>Không có quyền truy cập</h1>
       <p>Tài khoản của bạn không được phép xem mục này. Vui lòng liên hệ quản trị viên nếu cần hỗ trợ.</p>
     </div>
   </section>
   <section class="section container center">
-    <a class="btn btn-light btn-lg" href="#/admin/dashboard">Về bảng điều khiển</a>
+    <a class="btn btn-light btn-lg" href="#/${area}/dashboard">Về bảng điều khiển</a>
   </section>`;
 }
 
@@ -93,59 +135,96 @@ export function adminDenied() {
   return deniedView();
 }
 
+/* Chỉ admin/manager/staff mới vào được #/admin */
 export function adminGuard(permission) {
-  if (!canAccessAdmin()) return deniedView();
+  if (!canAccessAdminArea()) return deniedView();
   if (permission && !hasPermission(permission)) return deniedView();
+  return "";
+}
+
+/* Chỉ tour_guide mới vào được #/guide */
+export function guideGuard(permission) {
+  const session = getSession();
+  if (!session || !isGuideRole(session.roleKey)) return deniedView("guide");
+  if (permission && !hasPermission(permission)) return deniedView("guide");
   return "";
 }
 
 /* ---------- Layout vỏ quản trị ---------- */
 
 export function renderAdminShell(path = "dashboard", params = {}) {
-  if (!canAccessAdmin()) return deniedView();
+  const area = shellArea(path);
 
-  const section = adminSection(params.section || path);
-  const meta = ADMIN_SECTIONS[section];
+  if (area === "guide") {
+    if (!canAccessAdmin()) return deniedView("guide");
+  } else if (!canAccessAdminArea()) {
+    return deniedView();
+  }
+
+  const section = adminSection(params.section || path, area);
+  const meta = (area === "guide" ? GUIDE_SECTIONS : ADMIN_SECTIONS)[section];
+  const nav = area === "guide" ? GUIDE_NAV : ADMIN_NAV;
   const session = getSession();
-  const counts = badgeCounts();
-  const perms = session ? ROLES[session.roleKey] : ROLES.customer;
+  const counts = badgeCounts(area, session?.username || "");
+  const perms = ROLES[session?.roleKey] || ROLES.customer;
+  const isGuide = area === "guide";
 
-  const groups = ADMIN_NAV.map((group) => {
-    const items = group.items
-      .filter((item) => hasPermission(item.perm))
-      .map((item) => {
-        const active = item.path === section;
-        const count = item.badge ? counts[item.badge] : 0;
-        return `
+  const groups = nav
+    .map((group) => {
+      const items = group.items
+        .filter((item) => hasPermission(item.perm))
+        .map((item) => {
+          const active = item.path === section;
+          const count = item.badge ? counts[item.badge] : 0;
+          return `
         <li>
-          <a href="#/admin/${item.path}" class="admin-nav-link${active ? " active" : ""}">
+          <a href="#/${area}/${item.path}" class="admin-nav-link${active ? " active" : ""}">
             <span class="admin-nav-icon" aria-hidden="true">${item.icon}</span>
             <span>${escapeHtml(item.label)}</span>
             ${count ? `<span class="admin-nav-badge">${count}</span>` : ""}
           </a>
         </li>`;
-      })
-      .join("");
-    return items ? `<p class="admin-nav-group">${escapeHtml(group.group)}</p><ul class="admin-nav">${items}</ul>` : "";
-  }).join("");
+        })
+        .join("");
+      return items ? `<p class="admin-nav-group">${escapeHtml(group.group)}</p><ul class="admin-nav">${items}</ul>` : "";
+    })
+    .join("");
+
+  const quick = isGuide
+    ? `<a class="admin-quick" href="#/guide/tours">
+         <span>Chuyến đang chuẩn bị</span>
+         <strong>${counts.guideTours}</strong>
+       </a>
+       <a class="admin-quick" href="#/guide/bookings">
+         <span>Khách cần đón</span>
+         <strong>${counts.guideGuests}</strong>
+       </a>`
+    : `<a class="admin-quick" href="#/admin/bookings">
+         <span>Đơn chờ xử lý</span>
+         <strong>${counts.bookings}</strong>
+       </a>
+       <a class="admin-quick" href="#/admin/messages">
+         <span>Tin nhắn mới</span>
+         <strong>${counts.messages}</strong>
+       </a>`;
 
   return `
-  <div class="admin-shell" data-section="${section}">
+  <div class="admin-shell${isGuide ? " admin-shell-guide" : ""}" data-section="${section}" data-area="${area}">
     <div class="admin-backdrop" data-sidebar-close></div>
     <aside class="admin-sidebar" id="admin-sidebar">
-      <a class="admin-brand" href="#/admin/dashboard">
+      <a class="admin-brand" href="#/${area}/dashboard">
         <svg viewBox="0 0 48 45" class="logo-mark" aria-hidden="true">
           <path fill="#1677ff" d="M24 44 15 26 2 22h44L31 26z"/>
           <path fill="#93c5fd" d="M24 44 9 12c8 0 15 8 15 14 0-6 7-14 15-14z"/>
         </svg>
         <span>Travel<b>Go</b></span>
-        <em>Quản trị</em>
+        <em>${isGuide ? "Hướng dẫn" : "Quản trị"}</em>
       </a>
 
       <nav class="admin-nav-wrap">${groups}</nav>
 
       <div class="admin-sidebar-foot">
-        <a class="admin-user" href="#/admin/profile">
+        <a class="admin-user" href="#/${area}/profile">
           <span class="avatar-sm">${initials(session?.name)}</span>
           <span class="admin-user-info">
             <strong>${escapeHtml(session?.name || "")}</strong>
@@ -167,15 +246,8 @@ export function renderAdminShell(path = "dashboard", params = {}) {
           <p>${escapeHtml(meta.desc)}</p>
         </div>
         <div class="admin-topbar-actions">
-          <a class="admin-quick" href="#/admin/bookings">
-            <span>Đơn chờ xử lý</span>
-            <strong>${counts.bookings}</strong>
-          </a>
-          <a class="admin-quick" href="#/admin/messages">
-            <span>Tin nhắn mới</span>
-            <strong>${counts.messages}</strong>
-          </a>
-          <a class="admin-quick admin-quick-role" href="#/admin/profile">
+          ${quick}
+          <a class="admin-quick admin-quick-role" href="#/${area}/profile">
             <span>${escapeHtml(perms.label)}</span>
             <strong>${escapeHtml(session?.username || "")}</strong>
           </a>
@@ -185,8 +257,12 @@ export function renderAdminShell(path = "dashboard", params = {}) {
         <p class="admin-stamp">Phiên đăng nhập: ${formatDateTime(session?.loginAt)}</p>`;
 }
 
-export function closeAdminShell() {
-  if (!canAccessAdmin()) return "";
+export function closeAdminShell(path = "", params = {}) {
+  if (shellArea(path) === "guide") {
+    if (!canAccessAdmin()) return "";
+  } else if (!canAccessAdminArea()) {
+    return "";
+  }
   return `
       </main>
     </div>
@@ -218,12 +294,17 @@ export function staffOnly(roleKey) {
   return isStaffRole(roleKey);
 }
 
+export function adminOnly(roleKey) {
+  return isAdminRole(roleKey);
+}
+
 export function refreshAdmin() {
   document.dispatchEvent(new CustomEvent("app:refresh"));
 }
 
 document.addEventListener("route:changed", ({ detail }) => {
-  if (!String(detail.path).startsWith("admin")) return;
+  const path = String(detail.path || "");
+  if (shellArea(path) !== "guide" && !path.startsWith("admin")) return;
   if (!isStaffRole(getSession()?.roleKey)) return;
   setupAdminShell();
 });

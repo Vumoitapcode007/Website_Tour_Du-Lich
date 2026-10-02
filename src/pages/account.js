@@ -1,15 +1,15 @@
 import { changePassword, getSession, updateProfile } from "../auth.js";
 import {
-  BOOKING_STATUS,
   NOTIFICATION_TYPE,
+  cancelBooking,
+  isCancelledBooking,
   markNotificationRead,
   myBookings,
   myNotifications,
   removeNotification,
-  updateBooking,
 } from "../store.js";
 import { syncNotificationBadge } from "../components/notification-bell.js";
-import { formatDate, formatPrice } from "../data.js";
+import { bookingTracker } from "../components/booking-tracker.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
 
 function Guard() {
@@ -28,29 +28,6 @@ function Guard() {
 
 function stat(value, label, key = "") {
   return `<div class="admin-stat"${key ? ` data-stat="${escapeHtml(key)}"` : ""}><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
-}
-
-function bookingItem(booking) {
-  return `
-  <li class="account-booking" data-code="${escapeHtml(booking.code)}">
-    <div class="account-booking-head">
-      <strong>${escapeHtml(booking.code)}</strong>
-      <span class="status-pill status-${escapeHtml(booking.status)}">${BOOKING_STATUS[booking.status]}</span>
-    </div>
-    <a class="account-booking-tour" href="#/tour/${booking.tourId}">${escapeHtml(booking.tourName)}</a>
-    <ul class="account-booking-meta">
-      <li>Ngày khởi hành: <strong>${formatDate(booking.date)}</strong></li>
-      <li>Số khách: <strong>${booking.people}</strong></li>
-      <li>Tổng tiền: <strong>${formatPrice(booking.total)}</strong></li>
-    </ul>
-    ${
-      booking.status === "pending"
-        ? `<button class="btn btn-sm btn-outline" data-cancel-booking="${escapeHtml(booking.code)}">Huỷ đơn</button>`
-        : booking.status === "confirmed"
-          ? `<p class="account-note">Đơn đã xác nhận. Cần huỷ vui lòng gọi hotline.</p>`
-          : ""
-    }
-  </li>`;
 }
 
 function notificationItem(item) {
@@ -83,10 +60,12 @@ export function Account() {
   if (!session) return Guard();
 
   const bookings = myBookings(session);
-  const pending = bookings.filter((item) => item.status === "pending").length;
-  const confirmed = bookings.filter((item) => item.status === "confirmed").length;
+  const pending = bookings.filter((item) =>
+    ["pending", "confirmed", "awaiting_payment"].includes(item.status)
+  ).length;
+  const travelling = bookings.filter((item) => ["upcoming", "ongoing"].includes(item.status)).length;
   const spent = bookings
-    .filter((item) => item.status !== "cancelled")
+    .filter((item) => !isCancelledBooking(item))
     .reduce((sum, item) => sum + item.total, 0);
   const notifications = myNotifications(session);
   const unread = notifications.filter((item) => !item.read).length;
@@ -103,8 +82,8 @@ export function Account() {
   <section class="section container">
     <div class="admin-stats">
       ${stat(bookings.length, "Tổng đơn")}
-      ${stat(pending, "Chờ xác nhận")}
-      ${stat(confirmed, "Đã xác nhận")}
+      ${stat(pending, "Đang xử lý")}
+      ${stat(travelling, "Sắp đi / đang đi")}
       ${stat(`${new Intl.NumberFormat("vi-VN").format(spent)} VNĐ`, "Tổng chi tiêu")}
       ${stat(unread, "Thông báo mới", "notif-unread")}
     </div>
@@ -178,12 +157,15 @@ export function Account() {
     <div class="account-bookings">
       <div class="section-title">
         <h2>Lịch sử đặt tour</h2>
-        <p>Các đơn được nhận diện theo số điện thoại hoặc email trong hồ sơ của bạn.</p>
+        <p>Các đơn được nhận diện theo tài khoản, số điện thoại hoặc email trong hồ sơ của bạn.</p>
       </div>
 
       ${
         bookings.length
-          ? `<ul class="account-booking-list">${bookings.map(bookingItem).join("")}</ul>`
+          ? `<ul class="account-booking-list">${bookings
+              .map((item) => bookingTracker(item, { showActions: false }))
+              .join("")}</ul>
+             <a class="btn btn-primary track-all-link" href="#/my-bookings">Theo dõi đầy đủ trạng thái đơn</a>`
           : `<p class="search-empty">Bạn chưa có đơn đặt tour nào. <a href="#/tours">Xem danh sách tour</a></p>`
       }
     </div>
@@ -283,7 +265,11 @@ document.addEventListener("route:changed", ({ detail }) => {
       if (!button) return;
       const code = button.dataset.cancelBooking;
       if (!window.confirm(`Huỷ đơn ${code}?`)) return;
-      updateBooking(code, { status: "cancelled" });
+      const result = cancelBooking(code, { by: getSession()?.name || "Khách hàng", reason: "Khách tự huỷ" });
+      if (result.error) {
+        window.alert(result.error);
+        return;
+      }
       document.dispatchEvent(new CustomEvent("app:refresh"));
     });
   }

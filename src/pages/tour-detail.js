@@ -1,6 +1,13 @@
 import { formatPrice, formatDate, contactInfo } from "../data.js";
-import { getTourById, relatedTours } from "../tour-repository.js";
+import { getTourById, isSellableTour, relatedTours } from "../tour-repository.js";
 import { tourCard, imgFallback } from "../components/tour-card.js";
+import {
+  CHILD_PRICE_RATE,
+  MAX_PASSENGERS,
+  bookingTotal,
+  normalizePassengers,
+  seatLimit,
+} from "../booking-rules.js";
 
 function stars(rating) {
   const full = Math.round(rating);
@@ -21,11 +28,25 @@ function NotFoundTour() {
   </section>`;
 }
 
+/* Tour ngừng bán vẫn xem được (khách cũ cần tra cứu) nhưng không đặt thêm được */
+function ClosedTourNotice() {
+  return `
+  <div class="note-box" style="margin:16px 0">
+    <strong>Tour đã ngừng bán.</strong>
+    Hệ thống không nhận thêm khách cho chuyến này. Nếu bạn đã có đơn, thông tin đơn và
+    lịch trình vẫn được giữ nguyên - vui lòng liên hệ hotline
+    <a href="tel:${contactInfo.hotlineDigits}">${escapeHtml(contactInfo.hotline)}</a>
+    để được hỗ trợ.
+  </div>`;
+}
+
 export function TourDetail(path, params = {}) {
   const tour = getTourById(params.id);
   if (!tour) return NotFoundTour();
 
+  const sellable = isSellableTour(tour);
   const gallery = tour.gallery.length ? tour.gallery : [tour.image];
+  const limit = seatLimit(tour.seatsLeft);
   const departures = tour.departures.length
     ? tour.departures
         .map(
@@ -50,6 +71,7 @@ export function TourDetail(path, params = {}) {
         <span class="chip">👥 Còn ${tour.seatsLeft} chỗ</span>
         <span class="chip rating-chip">${stars(tour.rating)} ${tour.rating} (${tour.reviews} đánh giá)</span>
       </div>
+      ${sellable ? "" : ClosedTourNotice()}
     </div>
   </section>
 
@@ -130,15 +152,25 @@ export function TourDetail(path, params = {}) {
         <label for="quick-departure">Ngày khởi hành</label>
         <select id="quick-departure" name="departure">${departures}</select>
 
-        <label for="quick-people">Số khách</label>
-        <input id="quick-people" name="people" type="number" min="1" max="${tour.seatsLeft}" value="1">
+        <label for="quick-adults">Người lớn (từ 12 tuổi)</label>
+        <input id="quick-adults" name="adults" type="number" min="1" max="${limit}" value="1">
+
+        <label for="quick-children">Trẻ em (dưới 12 tuổi)</label>
+        <input id="quick-children" name="children" type="number" min="0" max="${limit}" value="0">
+        <p class="booking-hint">
+          Tối đa ${MAX_PASSENGERS} khách · Giá trẻ em bằng ${Math.round(CHILD_PRICE_RATE * 100)}% giá người lớn
+        </p>
 
         <div class="booking-total">
           <span>Tạm tính</span>
           <strong id="quick-total">${formatPrice(tour.price)}</strong>
         </div>
 
-        <a class="btn btn-primary btn-block" id="quick-submit" href="#/booking?tour=${tour.id}">Đặt tour ngay</a>
+        ${
+          sellable
+            ? `<a class="btn btn-primary btn-block" id="quick-submit" href="#/booking?tour=${tour.id}">Đặt tour ngay</a>`
+            : `<button type="button" class="btn btn-disabled btn-block" disabled>Đã ngừng bán</button>`
+        }
         <a class="btn btn-outline btn-block" href="#/contact?tour=${tour.id}">Liên hệ tư vấn</a>
         <p class="booking-hotline">Hotline: <a href="tel:${contactInfo.hotlineDigits}">${contactInfo.hotline}</a></p>
       </form>
@@ -163,18 +195,21 @@ document.addEventListener("route:changed", ({ detail }) => {
 
   const tour = getTourById(detail.params?.id);
   const totalEl = document.getElementById("quick-total");
-  const peopleInput = form.elements.people;
+  const adultsInput = form.elements.adults;
+  const childrenInput = form.elements.children;
   const submit = document.getElementById("quick-submit");
   const departure = form.elements.departure;
 
   function refresh() {
     if (!tour) return;
-    const people = Math.min(Math.max(Number(peopleInput.value) || 1, 1), tour.seatsLeft);
-    totalEl.textContent = formatPrice(tour.price * people);
-    submit.href = `#/booking?tour=${tour.id}&date=${departure.value}&people=${people}`;
+    const counts = normalizePassengers(adultsInput.value, childrenInput.value, tour.seatsLeft);
+    totalEl.textContent = formatPrice(bookingTotal(tour.price, counts));
+    if (!submit) return;
+    submit.href = `#/booking?tour=${tour.id}&date=${departure.value}&adults=${counts.adults}&children=${counts.children}`;
   }
 
-  peopleInput.addEventListener("input", refresh);
+  adultsInput.addEventListener("input", refresh);
+  childrenInput.addEventListener("input", refresh);
   departure.addEventListener("change", refresh);
   refresh();
 

@@ -1,20 +1,38 @@
-import { DEMO_CREDENTIALS, ROLES, getSession, isStaffRole, login } from "../auth.js";
+import { DEMO_CREDENTIALS, ROLES, getSession, homePathForRole, login } from "../auth.js";
 import { escapeHtml } from "../validate.js";
 
-const PUBLIC_ROUTES = ["", "tours", "booking", "about", "contact", "account", "login", "register", "404"];
+const PUBLIC_ROUTES = [
+  "",
+  "tours",
+  "booking",
+  "about",
+  "contact",
+  "account",
+  "my-bookings",
+  "login",
+  "register",
+  "404",
+];
 
+/* next có thể kèm query, ví dụ "booking?tour=3&adults=2" */
 function sanitizeNext(value) {
   const next = String(value || "").replace(/^#?\/?/, "");
   if (!next) return "";
-  if (next.startsWith("admin")) return next;
-  return PUBLIC_ROUTES.includes(next) ? next : "";
+  const [path, ...search] = next.split("?");
+  if (path.startsWith("admin") || path.startsWith("guide")) return next;
+  if (!PUBLIC_ROUTES.includes(path)) return "";
+  const clean = search.join("?").replace(/[^a-z0-9=&%+\-._~:,/]/gi, "");
+  return clean ? [path, clean].join("?") : path;
 }
 
 export function Login(path, params = {}, query = new URLSearchParams()) {
   const session = getSession();
-  const staff = isStaffRole(session?.roleKey);
+  const home = homePathForRole(session?.roleKey);
+  const staff = home !== "my-bookings";
 
   if (session) {
+    const label =
+      home === "guide" ? "Vào khu vực hướng dẫn viên" : home === "admin" ? "Vào trang quản trị" : "Tài khoản của tôi";
     return `
     <section class="section container center">
       <div class="form-card login-card">
@@ -27,9 +45,7 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
             : `<p class="form-hint">Tài khoản khách hàng không được phép truy cập khu vực quản trị.</p>`
         }
         <div class="success-actions">
-          <a class="btn btn-primary" href="#/${staff ? "admin/dashboard" : "account"}">${
-            staff ? "Vào trang quản trị" : "Tài khoản của tôi"
-          }</a>
+          <a class="btn btn-primary" href="#/${home === "my-bookings" ? "account" : `${home}/dashboard`}">${label}</a>
           <a class="btn btn-outline" href="#/">Về trang chủ</a>
         </div>
         <div class="success-actions">
@@ -62,8 +78,8 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
       <h2>Đăng nhập hệ thống</h2>
 
       <div class="field">
-        <label for="lg-username">Tài khoản <span class="req">*</span></label>
-        <input id="lg-username" name="username" type="text" placeholder="Nhập tài khoản" autocomplete="username" required>
+        <label for="lg-username">Tài khoản hoặc email <span class="req">*</span></label>
+        <input id="lg-username" name="username" type="text" placeholder="Ví dụ: admin hoặc email của bạn" autocomplete="username" required>
         <p class="error" data-error="username"></p>
       </div>
 
@@ -121,7 +137,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     form.querySelectorAll("[data-error]").forEach((node) => (node.textContent = ""));
 
     if (!username) {
-      form.querySelector('[data-error="username"]').textContent = "Vui lòng nhập tài khoản.";
+      form.querySelector('[data-error="username"]').textContent = "Vui lòng nhập tài khoản hoặc email.";
       return;
     }
     if (!password) {
@@ -139,13 +155,17 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
-    const staff = isStaffRole(result.roleKey);
+    const home = homePathForRole(result.roleKey);
     const next = sanitizeNext(new URLSearchParams(detail.queryString).get("next"));
-    if (next?.startsWith("admin") && !staff) {
+    if (next?.startsWith("admin") && home !== "admin") {
       errorBox.textContent = "Tài khoản của bạn không có quyền vào khu vực quản trị.";
       return;
     }
+    if (next?.startsWith("guide") && home !== "guide") {
+      errorBox.textContent = "Tài khoản của bạn không phải hướng dẫn viên.";
+      return;
+    }
 
-    window.location.hash = `#/${next || (staff ? "admin/dashboard" : "account")}`;
+    window.location.hash = `#/${next || (home === "my-bookings" ? "account" : `${home}/dashboard`)}`;
   });
 });
