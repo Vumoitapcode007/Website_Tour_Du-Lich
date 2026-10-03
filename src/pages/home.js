@@ -28,9 +28,20 @@ export function Home() {
       <p>Đặt tour nhanh chóng - Lịch trình rõ ràng - Chi phí hợp lý</p>
       <form class="home-search" id="tour-search" role="search">
         <label class="sr-only" for="tour-query">Tìm điểm đến hoặc tên tour</label>
-        <span class="search-icon" aria-hidden="true">⌕</span>
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
         <input id="tour-query" name="q" type="search" placeholder="Bạn muốn đi đâu? (Đà Nẵng, Đà Lạt...)" autocomplete="off">
-        <button class="btn btn-primary" type="submit">Tìm tour</button>
+        <button class="btn btn-primary search-submit" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+          <span>Tìm tour</span>
+        </button>
       </form>
       <div class="hero-actions">
         <a class="btn btn-primary btn-lg" href="#/tours">Xem tour ngay</a>
