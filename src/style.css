@@ -574,7 +574,7 @@ a {
 }
 
 .tour-card {
-  background: var(--bg);
+  background: var(--surface);
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow);
@@ -1682,7 +1682,7 @@ a {
   right: 0;
   bottom: 0;
   z-index: 60;
-  background: var(--bg);
+  background: var(--surface);
   border-top: 1px solid var(--border);
   box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
   padding: 12px 0;
@@ -2098,6 +2098,10 @@ body.has-compare-bar {
   flex: 0 0 16px;
   accent-color: var(--primary);
   cursor: pointer;
+}
+
+.filter-active[hidden] {
+  display: none;
 }
 
 .filter-active {
@@ -3793,6 +3797,12 @@ body.modal-open {
 .row-actions .btn {
   padding: 4px 9px;
   font-size: 0.76rem;
+}
+
+.bulk-actions[hidden],
+.tour-cards[hidden],
+.coupon-cards[hidden] {
+  display: none;
 }
 
 .bulk-actions {
