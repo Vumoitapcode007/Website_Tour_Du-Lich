@@ -10,6 +10,7 @@
   --danger: #e53935;
   --radius: 12px;
   --surface: #ffffff;
+  --header-bg: rgba(255, 255, 255, 0.92);
   --hover: #f8fafc;
   --hover-strong: #dbeafe;
   --neutral-soft: #eef2f7;
@@ -72,7 +73,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--header-bg);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
 }
@@ -1194,8 +1195,8 @@ a {
 }
 
 .status-closed {
-  background: #e5e7eb;
-  color: #4b5563;
+  background: var(--neutral-soft);
+  color: var(--neutral-ink);
 }
 
 /* ---------- Admin tabs & tour manager ---------- */
@@ -1571,7 +1572,7 @@ a {
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--header-bg);
   color: var(--muted);
   font-size: 16px;
   line-height: 1;
@@ -1844,7 +1845,7 @@ body.has-compare-bar {
 }
 
 .cmp-table td.is-best {
-  background: #f0fdf4;
+  background: var(--ok-soft);
 }
 
 .cmp-flag {
@@ -3187,7 +3188,7 @@ body.modal-open {
   align-items: center;
   gap: 16px;
   padding: 14px 24px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--header-bg);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--admin-border);
 }
@@ -3860,7 +3861,7 @@ body.modal-open {
 .modal-overlay .status-closed,
 .admin-shell .status-refunded,
 .modal-overlay .status-refunded {
-  background: #fef2f2;
+  background: var(--danger-soft);
   color: var(--danger-ink);
 }
 
@@ -3874,7 +3875,7 @@ body.modal-open {
 
 .admin-shell .status-locked,
 .modal-overlay .status-locked {
-  background: #fef2f2;
+  background: var(--danger-soft);
   color: var(--danger-ink);
 }
 
@@ -4779,8 +4780,8 @@ body.modal-open {
 }
 
 .data-actions.danger {
-  border-color: #fecaca;
-  background: #fef2f2;
+  border-color: var(--danger-soft);
+  background: var(--danger-soft);
 }
 
 /* ---------- Hồ sơ ---------- */
@@ -4864,14 +4865,14 @@ body.modal-open {
 }
 
 .btn-outline-danger {
-  border: 1px solid #fecaca;
+  border: 1px solid var(--danger-soft);
   background: var(--surface);
-  color: #dc2626;
+  color: var(--danger-ink);
 }
 
 .btn-outline-danger:hover {
-  border-color: #dc2626;
-  background: #fef2f2;
+  border-color: var(--danger);
+  background: var(--danger-soft);
 }
 
 .admin-shell .btn-ghost-soft,
@@ -5306,6 +5307,7 @@ body.modal-open {
   --bg-soft: #101a2b;
   --border: #26334d;
   --surface: #131c2f;
+  --header-bg: rgba(11, 18, 32, 0.88);
   --hover: #1a2537;
   --hover-strong: #1c3a63;
   --neutral-soft: #1e293b;
