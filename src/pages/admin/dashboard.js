@@ -101,10 +101,11 @@ export function Dashboard() {
         </div>
       </header>
       ${donutChart([
-        { label: BOOKING_STATUS.confirmed, value: summary.confirmed },
-        { label: BOOKING_STATUS.pending, value: summary.pending },
-        { label: BOOKING_STATUS.cancelled, value: summary.cancelled },
-      ])}
+        { label: "Đã chốt & Thanh toán", value: (summary.confirmed || 0) + (summary.paid || 0) },
+        { label: "Đang đi / Hoàn thành", value: (summary.departing || 0) + (summary.completed || 0) },
+        { label: BOOKING_STATUS.pending, value: summary.pending || 0 },
+        { label: BOOKING_STATUS.cancelled, value: summary.cancelled || 0 },
+      ].filter(item => item.value > 0))}
     </article>
   </section>
 

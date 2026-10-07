@@ -35,7 +35,7 @@ function bookingItem(booking) {
   <li class="account-booking" data-code="${escapeHtml(booking.code)}">
     <div class="account-booking-head">
       <strong>${escapeHtml(booking.code)}</strong>
-      <span class="status-pill status-${escapeHtml(booking.status)}">${BOOKING_STATUS[booking.status]}</span>
+      <span class="status-pill status-${escapeHtml(booking.status)}">${BOOKING_STATUS[booking.status] || booking.status}</span>
     </div>
     <a class="account-booking-tour" href="#/tour/${booking.tourId}">${escapeHtml(booking.tourName)}</a>
     <ul class="account-booking-meta">

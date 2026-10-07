@@ -1,6 +1,7 @@
 import { formatPrice, formatDate, contactInfo } from "../data.js";
-import { getTourById, relatedTours } from "../tour-repository.js";
+import { getTourById, relatedTours, TOUR_PROGRESS_STAGES, TOUR_STATUS } from "../tour-repository.js";
 import { tourCard, imgFallback } from "../components/tour-card.js";
+import { escapeHtml } from "../validate.js";
 
 function stars(rating) {
   const full = Math.round(rating);
@@ -70,6 +71,24 @@ export function TourDetail(path, params = {}) {
             .join("")}
         </div>
       </div>
+
+      ${
+        tour.progress && tour.progress.stage !== "not_started"
+          ? `
+          <div class="detail-progress-card" style="margin: 1.5rem 0; padding: 14px 18px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+              <strong style="color: #166534; font-size: 0.95rem;">📍 Tiến độ hành trình đoàn:</strong>
+              <span class="status-pill status-${tour.status}">${TOUR_STATUS[tour.status] || tour.status}</span>
+            </div>
+            <p style="margin: 0; font-size: 0.95rem; color: #15803d;">
+              <strong>${TOUR_PROGRESS_STAGES[tour.progress.stage]?.icon || "🚩"} ${TOUR_PROGRESS_STAGES[tour.progress.stage]?.label || tour.progress.stage}</strong>
+              ${tour.progress.currentDay ? ` · Ngày ${tour.progress.currentDay}/${tour.days}` : ""}
+              ${tour.progress.currentLocation ? ` — Vị trí: <strong>${escapeHtml(tour.progress.currentLocation)}</strong>` : ""}
+            </p>
+            ${tour.progress.note ? `<p style="margin: 6px 0 0; font-size: 0.85rem; color: #475569;">Ghi chú: ${escapeHtml(tour.progress.note)}</p>` : ""}
+          </div>`
+          : ""
+      }
 
       <div class="detail-block">
         <h2>Giới thiệu tour</h2>
