@@ -1,4 +1,5 @@
 import { formatPrice, formatDate, contactInfo } from "../data.js";
+import { escapeHtml } from "../validate.js";
 import { getTourById, relatedTours } from "../tour-repository.js";
 import { tourCard, imgFallback } from "../components/tour-card.js";
 
@@ -48,6 +49,7 @@ export function TourDetail(path, params = {}) {
         <span class="chip">📍 ${tour.location}</span>
         <span class="chip">🗓️ ${tour.time}</span>
         <span class="chip">👥 Còn ${tour.seatsLeft} chỗ</span>
+        ${tour.guide ? `<span class="chip">🧑‍💼 HDV: ${escapeHtml(tour.guide)}</span>` : ""}
         <span class="chip rating-chip">${stars(tour.rating)} ${tour.rating} (${tour.reviews} đánh giá)</span>
       </div>
     </div>

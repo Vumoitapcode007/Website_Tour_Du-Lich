@@ -192,6 +192,11 @@ function detailModal(booking) {
           <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
           <li><span>Số lượng</span><strong>${booking.people} khách</strong></li>
           ${groupsText(booking) ? `<li><span>Thành phần</span><strong>${escapeHtml(groupsText(booking))}</strong></li>` : ""}
+          ${
+            booking.guide || tour?.guide
+              ? `<li><span>Nhân viên dẫn đoàn</span><strong>${escapeHtml(booking.guide || tour.guide)}</strong></li>`
+              : ""
+          }
           <li><span>Đơn giá</span><strong>${formatMoney(tour?.price || Math.round(booking.total / (booking.people || 1)))}</strong></li>
           <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
         </ul>
@@ -374,7 +379,7 @@ function syncInputs() {
 function exportBookings(rows) {
   downloadCsv(
     `don-dat-tour-${stamp()}`,
-    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Số khách", "Thành phần", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
+    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Số khách", "Thành phần", "Nhân viên dẫn đoàn", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
     rows.map((item) => [
       item.code,
       item.name,
@@ -384,6 +389,7 @@ function exportBookings(rows) {
       item.date,
       item.people,
       groupsText(item),
+      item.guide || "",
       item.total,
       PAYMENT_STATUS[item.payment || "unpaid"],
       BOOKING_STATUS[item.status],

@@ -27,6 +27,7 @@ export const FALLBACK_IMAGE =
 export const tours = [
   {
     id: 1,
+    guide: "Nguyễn Văn Nam",
     name: "Tour Ninh Bình 2N1Đ",
     location: "Ninh Bình",
     price: 1590000,
@@ -59,6 +60,7 @@ export const tours = [
   },
   {
     id: 2,
+    guide: "Trần Thị Lan",
     name: "Tour Đà Nẵng - Hội An",
     location: "Đà Nẵng",
     price: 2490000,
@@ -95,6 +97,7 @@ export const tours = [
   },
   {
     id: 3,
+    guide: "Lê Minh Tuấn",
     name: "Tour Hạ Long",
     location: "Quảng Ninh",
     price: 1990000,
@@ -126,6 +129,7 @@ export const tours = [
   },
   {
     id: 4,
+    guide: "Phạm Thu Hà",
     name: "Tour Đà Lạt",
     location: "Đà Lạt",
     price: 2190000,
@@ -162,6 +166,7 @@ export const tours = [
   },
   {
     id: 5,
+    guide: "Hoàng Văn Đức",
     name: "Tour Sa Pa",
     location: "Sa Pa",
     price: 2890000,
@@ -198,6 +203,7 @@ export const tours = [
   },
   {
     id: 6,
+    guide: "Đỗ Thanh Bình",
     name: "Tour Phú Quốc",
     location: "Phú Quốc",
     price: 3290000,
@@ -234,6 +240,7 @@ export const tours = [
   },
   {
     id: 7,
+    guide: "Vũ Quốc Huy",
     name: "Tour Mù Cang Chải 3N2Đ",
     location: "Yên Bái",
     price: 2190000,
@@ -270,6 +277,7 @@ export const tours = [
   },
   {
     id: 8,
+    guide: "Nguyễn Thị Mai",
     name: "Tour Hà Giang – Đồng Văn 3N2Đ",
     location: "Hà Giang",
     price: 2790000,
@@ -306,6 +314,7 @@ export const tours = [
   },
   {
     id: 9,
+    guide: "Bùi Anh Khoa",
     name: "Tour Huế – Hội An cổ điển 3N2Đ",
     location: "Huế",
     price: 2690000,
@@ -342,6 +351,7 @@ export const tours = [
   },
   {
     id: 10,
+    guide: "Ngô Thị Trang",
     name: "Tour Quảng Bình – Phong Nha 2N1Đ",
     location: "Quảng Bình",
     price: 1990000,
@@ -373,6 +383,7 @@ export const tours = [
   },
   {
     id: 11,
+    guide: "Đặng Minh Châu",
     name: "Tour Côn Đảo 3N2Đ",
     location: "Côn Đảo",
     price: 3590000,
@@ -409,6 +420,7 @@ export const tours = [
   },
   {
     id: 12,
+    guide: "Lý Văn Sơn",
     name: "Tour Nha Trang 4N3Đ",
     location: "Nha Trang",
     price: 3890000,
@@ -450,6 +462,7 @@ export const tours = [
   },
   {
     id: 13,
+    guide: "Tạ Ngọc Ánh",
     name: "Du thuyền Hạ Long 2N1Đ cao cấp",
     location: "Quảng Ninh",
     price: 4590000,
@@ -481,6 +494,7 @@ export const tours = [
   },
   {
     id: 14,
+    guide: "Nguyễn Hữu Phước",
     name: "Tour Bãi Cháy – Đồng Nai 2N1Đ",
     location: "Đồng Nai",
     price: 1790000,
@@ -512,6 +526,7 @@ export const tours = [
   },
   {
     id: 15,
+    guide: "Trịnh Thị Bích",
     name: "Tour Vũng Tàu – Bình Điền 3N2Đ",
     location: "Vũng Tàu",
     price: 2390000,
@@ -548,6 +563,7 @@ export const tours = [
   },
   {
     id: 16,
+    guide: "Y Bhăn",
     name: "Tour Tây Nguyên Kon Tum 3N2Đ",
     location: "Kon Tum",
     price: 2890000,
@@ -584,6 +600,7 @@ export const tours = [
   },
   {
     id: 17,
+    guide: "Lò Văn Biên",
     name: "Tour Mai Châu – Mộc Châu 2N1Đ",
     location: "Sơn La",
     price: 1590000,
@@ -615,6 +632,7 @@ export const tours = [
   },
   {
     id: 18,
+    guide: "Phan Minh Châu",
     name: "Tour Hạ Long – Tuần Châu 2N1Đ",
     location: "Hạ Long",
     price: 2290000,

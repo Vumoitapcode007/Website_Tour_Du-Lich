@@ -112,6 +112,7 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
         <li><span>Khởi hành</span><strong id="sum-date"></strong></li>
         <li><span>Số khách</span><strong id="sum-people"></strong></li>
         <li id="sum-breakdown-row" hidden><span>Thành phần</span><strong id="sum-breakdown"></strong></li>
+        <li id="sum-guide-row" hidden><span>Nhân viên dẫn đoàn</span><strong id="sum-guide"></strong></li>
         <li><span>Giá/người</span><strong id="sum-price"></strong></li>
       </ul>
       <div class="summary-total">
@@ -210,6 +211,11 @@ document.addEventListener("route:changed", ({ detail }) => {
       row.hidden = !breakdown;
       document.getElementById("sum-breakdown").textContent = breakdown;
     }
+    const guideRow = document.getElementById("sum-guide-row");
+    if (guideRow) {
+      guideRow.hidden = !tour.guide;
+      document.getElementById("sum-guide").textContent = tour.guide || "";
+    }
   }
 
   function showErrors(errors) {
@@ -250,6 +256,7 @@ document.addEventListener("route:changed", ({ detail }) => {
       email: String(data.get("email") || "").trim(),
       tourId: tour.id,
       tourName: tour.name,
+      guide: tour.guide || "",
       date: data.get("date"),
       people,
       groups,
@@ -278,6 +285,7 @@ document.addEventListener("route:changed", ({ detail }) => {
         <ul class="success-list">
           <li>Ngày khởi hành: ${formatDate(record.date)}</li>
           <li>Số khách: ${record.people} (${breakdownText(record.groups)})</li>
+          ${record.guide ? `<li>Nhân viên dẫn đoàn: ${escapeHtml(record.guide)}</li>` : ""}
           <li>Tổng tiền tạm tính: ${formatPrice(record.total)}</li>
         </ul>
         <p class="form-hint">Chuyên viên sẽ gọi ${escapeHtml(record.phone)} trong 30 phút để xác nhận.</p>

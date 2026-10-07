@@ -175,6 +175,10 @@ function formHtml(tour = null) {
         <input id="tf-seats" name="seatsLeft" type="number" min="0" value="${tour?.seatsLeft ?? 10}">
       </div>
       <div class="field">
+        <label for="tf-guide">Nhân viên dẫn đoàn</label>
+        <input id="tf-guide" name="guide" type="text" value="${escapeHtml(tour?.guide || "")}" placeholder="Nguyễn Văn Nam">
+      </div>
+      <div class="field">
         <label for="tf-status">Trạng thái</label>
         <select id="tf-status" name="status">
           ${Object.entries(TOUR_STATUS)
@@ -315,6 +319,7 @@ function openTourForm(tour = null) {
       price,
       oldPrice: Number(data.get("oldPrice")) || 0,
       seatsLeft: Math.max(Number(data.get("seatsLeft")) || 0, 0),
+      guide: String(data.get("guide") || "").trim(),
       status: String(data.get("status") || "open"),
       rating: Math.min(Math.max(Number(data.get("rating")) || 5, 1), 5),
       reviews: Math.max(Number(data.get("reviews")) || 0, 0),
@@ -358,6 +363,7 @@ function openTourView(tour) {
             <li><span>Giá</span><strong>${formatPrice(tour.price)}</strong></li>
             <li><span>Giá cũ</span><strong>${tour.oldPrice ? formatPrice(tour.oldPrice) : "-"}</strong></li>
             <li><span>Chỗ còn</span><strong>${tour.seatsLeft}</strong></li>
+            <li><span>Nhân viên dẫn đoàn</span><strong>${tour.guide ? escapeHtml(tour.guide) : "Chưa phân công"}</strong></li>
             <li><span>Đánh giá</span><strong>${stars(tour.rating)} ${tour.rating} (${tour.reviews})</strong></li>
             <li><span>Trạng thái</span><strong>${statusBadge(tour.status, TOUR_STATUS)}</strong></li>
           </ul>

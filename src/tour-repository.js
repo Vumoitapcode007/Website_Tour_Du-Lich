@@ -40,6 +40,7 @@ export function normalizeTour(tour = {}) {
     days: Math.max(Number(merged.days) || 1, 1),
     name: String(merged.name || "Tour mới").trim(),
     location: String(merged.location || "").trim(),
+    guide: String(merged.guide || "").trim(),
     time: String(merged.time || `${merged.days} ngày`).trim(),
     description: String(merged.description || "").trim(),
     image: String(merged.image || seedTours[0].image),
