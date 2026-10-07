@@ -103,6 +103,8 @@ export function Dashboard() {
       ${donutChart([
         { label: BOOKING_STATUS.confirmed, value: summary.confirmed },
         { label: BOOKING_STATUS.pending, value: summary.pending },
+        { label: BOOKING_STATUS.ongoing, value: summary.ongoing },
+        { label: BOOKING_STATUS.completed, value: summary.completed },
         { label: BOOKING_STATUS.cancelled, value: summary.cancelled },
       ])}
     </article>

@@ -193,6 +193,8 @@ export function Reports() {
         <li><span>Đơn chờ xác nhận</span><strong>${all.filter((item) => item.status === "pending").length}</strong></li>
         <li><span>Hotline công ty</span><strong>${escapeHtml(settings.hotline)}</strong></li>
         <li><span>${escapeHtml(BOOKING_STATUS.confirmed)}</span><strong>${all.filter((item) => item.status === "confirmed").length} đơn</strong></li>
+        <li><span>${escapeHtml(BOOKING_STATUS.ongoing)}</span><strong>${all.filter((item) => item.status === "ongoing").length} đơn</strong></li>
+        <li><span>${escapeHtml(BOOKING_STATUS.completed)}</span><strong>${all.filter((item) => item.status === "completed").length} đơn</strong></li>
       </ul>
       <p class="form-hint" style="text-align:left">Số liệu báo cáo được tính từ dữ liệu lưu trong trình duyệt của quản trị viên.</p>
     </article>
@@ -228,6 +230,8 @@ document.addEventListener("route:changed", ({ detail }) => {
         ["Khoảng thời gian", RANGES[RANGE].label],
         ["Tổng đơn", summary.total],
         ["Đơn xác nhận", summary.confirmed],
+        ["Đơn đang diễn ra", summary.ongoing],
+        ["Đơn hoàn thành", summary.completed],
         ["Đơn chờ xử lý", summary.pending],
         ["Đơn huỷ", summary.cancelled],
         ["Doanh thu", summary.revenue],

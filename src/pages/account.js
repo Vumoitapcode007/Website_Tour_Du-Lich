@@ -59,7 +59,11 @@ function bookingItem(booking) {
         ? `<button class="btn btn-sm btn-outline" data-cancel-booking="${escapeHtml(booking.code)}">Huỷ đơn</button>`
         : booking.status === "confirmed"
           ? `<p class="account-note">Đơn đã xác nhận. Cần huỷ vui lòng gọi hotline.</p>`
-          : ""
+          : booking.status === "ongoing"
+            ? `<p class="account-note">Tour đang diễn ra. Chúc bạn một chuyến đi vui vẻ!</p>`
+            : booking.status === "completed"
+              ? `<p class="account-note">Tour đã hoàn thành. Cảm ơn bạn đã đồng hành cùng TravelGo!</p>`
+              : ""
     }
   </li>`;
 }

@@ -117,7 +117,7 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO06",
-    status: "confirmed",
+    status: "ongoing",
     createdAt: ago(9, 13),
     updatedAt: ago(8, 10),
     name: "Vũ Khánh Linh",
@@ -132,7 +132,7 @@ export const demoBookings = [
   },
   {
     code: "TGDEMO07",
-    status: "confirmed",
+    status: "completed",
     createdAt: ago(13, 15),
     updatedAt: ago(12, 9),
     name: "Hoàng Thị Mai",

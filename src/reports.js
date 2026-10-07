@@ -60,7 +60,7 @@ export function formatRelative(value) {
 
 export function bookingSummary(bookings) {
   const total = bookings.length;
-  const byStatus = { pending: 0, confirmed: 0, cancelled: 0 };
+  const byStatus = { pending: 0, confirmed: 0, ongoing: 0, completed: 0, cancelled: 0 };
   let revenue = 0;
   let cancelledValue = 0;
   let people = 0;
@@ -220,7 +220,7 @@ export function listCustomers(bookings) {
     if (item.email) current.email = item.email;
     current.orders += 1;
     current.people += Number(item.people) || 0;
-    if (item.status === "confirmed") current.confirmed += 1;
+    if (["confirmed", "ongoing", "completed"].includes(item.status)) current.confirmed += 1;
     if (item.status === "cancelled") current.cancelled += 1;
     if (isRevenue(item)) current.total += Number(item.total) || 0;
     current.tours.add(item.tourName);

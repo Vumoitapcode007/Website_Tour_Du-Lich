@@ -1211,6 +1211,17 @@ a {
   color: var(--danger-ink);
 }
 
+.status-ongoing {
+  background: var(--purple-soft);
+  color: var(--purple-ink);
+}
+
+.status-completed {
+  background: var(--ok-soft);
+  color: var(--ok-ink);
+  box-shadow: inset 0 0 0 1px var(--ok-bright);
+}
+
 .status-open {
   background: var(--ok-soft);
   color: var(--ok-ink);
@@ -3411,6 +3422,10 @@ body.modal-open {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.kpi-grid-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .kpi {
   position: relative;
   overflow: hidden;
@@ -5198,7 +5213,8 @@ body.modal-open {
 /* ---------- Responsive quản trị ---------- */
 
 @media (max-width: 1280px) {
-  .kpi-grid-5 {
+  .kpi-grid-5,
+  .kpi-grid-6 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .admin-grid-3 {
@@ -5274,7 +5290,8 @@ body.modal-open {
 
 @media (max-width: 900px) {
   .kpi-grid-4,
-  .kpi-grid-5 {
+  .kpi-grid-5,
+  .kpi-grid-6 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -5318,6 +5335,7 @@ body.modal-open {
 
   .kpi-grid-4,
   .kpi-grid-5,
+  .kpi-grid-6,
   .quick-grid {
     grid-template-columns: minmax(0, 1fr);
   }

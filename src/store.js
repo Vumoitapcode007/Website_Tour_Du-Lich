@@ -21,8 +21,20 @@ const SETTINGS_KEY = "travelgo.settings";
 export const BOOKING_STATUS = {
   pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
+  ongoing: "Đang diễn ra",
+  completed: "Hoàn thành",
   cancelled: "Đã huỷ",
 };
+
+/* Thứ tự các bước xử lý của một đơn đặt tour */
+export const BOOKING_STATUS_FLOW = ["pending", "confirmed", "ongoing", "completed"];
+
+export function nextBookingStatus(status) {
+  const index = BOOKING_STATUS_FLOW.indexOf(status);
+  return index >= 0 && index < BOOKING_STATUS_FLOW.length - 1
+    ? BOOKING_STATUS_FLOW[index + 1]
+    : null;
+}
 
 export const MESSAGE_TOPICS = [
   "Tư vấn tour",

@@ -4,6 +4,7 @@ import {
   getBooking,
   listBookings,
   logActivity,
+  nextBookingStatus,
   removeBooking,
   saveNotification,
   updateBooking,
@@ -28,6 +29,20 @@ import { escapeHtml, searchKey } from "../../validate.js";
 
 const canManage = () => hasPermission("bookings.manage");
 
+const STATUS_ACTION_LABEL = {
+  confirmed: "Xác nhận",
+  ongoing: "Bắt đầu tour",
+  completed: "Hoàn thành",
+};
+
+const MODAL_ACTION_LABEL = {
+  confirmed: "Xác nhận đơn",
+  ongoing: "Bắt đầu tour",
+  completed: "Hoàn thành tour",
+};
+
+const CANCELABLE = ["pending", "confirmed", "ongoing"];
+
 const AGE_LABELS = { adults: "người lớn", seniors: "người cao tuổi", children: "trẻ em" };
 
 function groupsText(booking) {
@@ -46,6 +61,14 @@ function notifyBooking(booking, status) {
     confirmed: [
       `Đơn ${booking.code} đã được xác nhận`,
       `Tour ${booking.tourName} ngày ${formatDate(booking.date)}. Vui lòng hoàn tất thanh toán trước khi khởi hành.`,
+    ],
+    ongoing: [
+      `Tour ${booking.tourName} đã bắt đầu`,
+      `Đơn ${booking.code} đang trong giai đoạn diễn ra. Chúc bạn một chuyến đi vui vẻ!`,
+    ],
+    completed: [
+      `Đơn ${booking.code} đã hoàn thành`,
+      `Cảm ơn bạn đã đồng hành cùng TravelGo. Hãy để lại đánh giá để giúp chúng tôi phục vụ tốt hơn.`,
     ],
     cancelled: [
       `Đơn ${booking.code} đã được huỷ`,
@@ -124,12 +147,14 @@ function row(booking) {
     <td class="row-actions">
       <button class="btn btn-sm btn-ghost-soft" type="button" data-booking-action="view">Chi tiết</button>
       ${
-        canManage() && booking.status === "pending"
-          ? `<button class="btn btn-sm btn-primary" type="button" data-booking-action="confirmed">Xác nhận</button>`
+        canManage() && nextBookingStatus(booking.status)
+          ? `<button class="btn btn-sm btn-primary" type="button" data-booking-action="${nextBookingStatus(
+              booking.status
+            )}">${STATUS_ACTION_LABEL[nextBookingStatus(booking.status)]}</button>`
           : ""
       }
       ${
-        canManage() && booking.status === "confirmed"
+        canManage() && CANCELABLE.includes(booking.status)
           ? `<button class="btn btn-sm btn-outline" type="button" data-booking-action="cancelled">Huỷ</button>`
           : ""
       }
@@ -190,9 +215,18 @@ function detailModal(booking) {
     footer: `
       ${
         canManage()
-          ? `<button class="btn btn-outline" type="button" data-modal-payment>Đổi trạng thái thanh toán</button>
-             <button class="btn btn-ghost-soft" type="button" data-modal-cancel>Huỷ đơn</button>
-             <button class="btn btn-primary" type="button" data-modal-confirm>Xác nhận đơn</button>
+          ? `${(() => {
+              const next = nextBookingStatus(booking.status);
+              return next
+                ? `<button class="btn btn-primary" type="button" data-modal-next>${MODAL_ACTION_LABEL[next]}</button>`
+                : "";
+            })()}
+             ${
+               CANCELABLE.includes(booking.status)
+                 ? `<button class="btn btn-ghost-soft" type="button" data-modal-cancel>Huỷ đơn</button>`
+                 : ""
+             }
+             <button class="btn btn-outline" type="button" data-modal-payment>Đổi trạng thái thanh toán</button>
              <button class="btn btn-outline-danger" type="button" data-modal-delete>Xoá đơn</button>`
           : `<button class="btn btn-light" type="button" data-modal-close>Đóng</button>`
       }`,
@@ -217,12 +251,13 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
   const canExport = hasPermission("reports.view") || canManage();
 
   return `
-  <section class="kpi-grid kpi-grid-5">
+  <section class="kpi-grid kpi-grid-6">
     <article class="kpi kpi-blue"><p class="kpi-label">Tổng đơn</p><strong class="kpi-value">${summary.total}</strong><span class="kpi-hint">${summary.people} lượt khách</span></article>
     <article class="kpi kpi-amber"><p class="kpi-label">Chờ xác nhận</p><strong class="kpi-value">${summary.pending}</strong><span class="kpi-hint">Cần chuyên viên xử lý</span></article>
     <article class="kpi kpi-green"><p class="kpi-label">Đã xác nhận</p><strong class="kpi-value">${summary.confirmed}</strong><span class="kpi-hint">${summary.conversion}% tỉ lệ chốt</span></article>
+    <article class="kpi kpi-violet"><p class="kpi-label">Đang diễn ra</p><strong class="kpi-value">${summary.ongoing}</strong><span class="kpi-hint">Tour đang đi</span></article>
     <article class="kpi kpi-red"><p class="kpi-label">Đã huỷ</p><strong class="kpi-value">${summary.cancelled}</strong><span class="kpi-hint">${formatMoney(summary.cancelledValue)}</span></article>
-    <article class="kpi kpi-violet"><p class="kpi-label">Doanh thu</p><strong class="kpi-value">${formatMoney(summary.revenue)}</strong><span class="kpi-hint">TB ${formatMoney(summary.avgOrder)}</span></article>
+    <article class="kpi kpi-slate"><p class="kpi-label">Doanh thu</p><strong class="kpi-value">${formatMoney(summary.revenue)}</strong><span class="kpi-hint">TB ${formatMoney(summary.avgOrder)}</span></article>
   </section>
 
   <section class="panel">
@@ -282,6 +317,8 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
           ? `<div class="bulk-actions" id="bk-bulk" hidden>
               <span>Đã chọn <strong data-selected>0</strong> đơn</span>
               <button class="btn btn-sm btn-primary" type="button" data-bulk="confirmed">Xác nhận</button>
+              <button class="btn btn-sm btn-outline" type="button" data-bulk="ongoing">Bắt đầu tour</button>
+              <button class="btn btn-sm btn-outline" type="button" data-bulk="completed">Hoàn thành</button>
               <button class="btn btn-sm btn-outline" type="button" data-bulk="cancelled">Huỷ</button>
               <button class="btn btn-sm btn-outline-danger" type="button" data-bulk="delete">Xoá</button>
             </div>`
@@ -446,13 +483,11 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
     if (!canManage()) return;
-    if (!window.confirm(`${action === "confirmed" ? "Xác nhận" : "Huỷ"} đơn ${code}?`)) return;
+    const label = STATUS_ACTION_LABEL[action] || "Huỷ";
+    if (!window.confirm(`${label} đơn ${code}?`)) return;
     updateBooking(code, { status: action });
     notifyBooking(booking, action);
-    logActivity(
-      action === "confirmed" ? "Xác nhận đơn" : "Huỷ đơn",
-      `${action === "confirmed" ? "Xác nhận" : "Huỷ"} đơn ${code} - ${booking.name}`
-    );
+    logActivity(MODAL_ACTION_LABEL[action] || "Huỷ đơn", `${label} đơn ${code} - ${booking.name}`);
     toast(`Đã cập nhật đơn ${code}.`);
     reload();
   });
@@ -463,7 +498,10 @@ document.addEventListener("route:changed", ({ detail }) => {
     const codes = selection.selected();
     if (!codes.length) return;
     const action = button.dataset.bulk;
-    const label = { confirmed: "xác nhận", cancelled: "huỷ", delete: "xoá" }[action];
+    const label =
+      { confirmed: "xác nhận", ongoing: "chuyển sang đang diễn ra", completed: "hoàn thành", cancelled: "huỷ", delete: "xoá" }[
+        action
+      ];
     if (!window.confirm(`${label[0].toUpperCase()}${label.slice(1)} ${codes.length} đơn đã chọn?`)) return;
 
     if (action === "delete") codes.forEach((code) => removeBooking(code));
@@ -487,7 +525,7 @@ document.addEventListener("click", (event) => {
 function detailHasModalAction(target) {
   return Boolean(
     target.closest?.(
-      "[data-modal-confirm],[data-modal-cancel],[data-modal-payment],[data-modal-delete]"
+      "[data-modal-next],[data-modal-cancel],[data-modal-payment],[data-modal-delete]"
     )
   );
 }
@@ -497,11 +535,13 @@ function handleModalAction(target) {
   const booking = getBooking(activeCode);
   if (!booking) return;
 
-  if (target.closest("[data-modal-confirm]")) {
-    updateBooking(activeCode, { status: "confirmed" });
-    notifyBooking(booking, "confirmed");
-    logActivity("Xác nhận đơn", `Xác nhận đơn ${activeCode} - ${booking.name}`);
-    toast(`Đã xác nhận đơn ${activeCode}.`);
+  if (target.closest("[data-modal-next]")) {
+    const next = nextBookingStatus(booking.status);
+    if (!next) return;
+    updateBooking(activeCode, { status: next });
+    notifyBooking(booking, next);
+    logActivity(MODAL_ACTION_LABEL[next], `${MODAL_ACTION_LABEL[next]} ${activeCode} - ${booking.name}`);
+    toast(`Đã cập nhật đơn ${activeCode} sang "${BOOKING_STATUS[next]}".`);
   } else if (target.closest("[data-modal-cancel]")) {
     updateBooking(activeCode, { status: "cancelled" });
     notifyBooking(booking, "cancelled");
