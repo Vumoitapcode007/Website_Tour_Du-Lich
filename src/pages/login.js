@@ -1,23 +1,40 @@
-import { DEMO_CREDENTIALS, ROLES, getSession, isStaffRole, login, logout } from "../auth.js";
+import { DEMO_CREDENTIALS, ROLES, getSession, homePathForRole, login } from "../auth.js";
 import { escapeHtml } from "../validate.js";
 import { getLocalStorageStats, resetDemoData } from "../store.js";
 import { resetTours } from "../tour-repository.js";
 
-const PUBLIC_ROUTES = ["", "tours", "booking", "about", "contact", "account", "login", "register", "404"];
+const PUBLIC_ROUTES = [
+  "",
+  "tours",
+  "booking",
+  "about",
+  "contact",
+  "account",
+  "my-bookings",
+  "login",
+  "register",
+  "404",
+];
 
+/* next có thể kèm query, ví dụ "booking?tour=3&adults=2" */
 function sanitizeNext(value) {
   const next = String(value || "").replace(/^#?\/?/, "");
   if (!next) return "";
-  if (next.startsWith("admin")) return next;
-  return PUBLIC_ROUTES.includes(next) ? next : "";
+  const [path, ...search] = next.split("?");
+  if (path.startsWith("admin") || path.startsWith("guide")) return next;
+  if (!PUBLIC_ROUTES.includes(path)) return "";
+  const clean = search.join("?").replace(/[^a-z0-9=&%+\-._~:,/]/gi, "");
+  return clean ? [path, clean].join("?") : path;
 }
 
 export function Login(path, params = {}, query = new URLSearchParams()) {
   const session = getSession();
-  const staff = isStaffRole(session?.roleKey);
-  const stats = getLocalStorageStats();
+  const home = homePathForRole(session?.roleKey);
+  const staff = home !== "my-bookings";
 
   if (session) {
+    const label =
+      home === "guide" ? "Vào khu vực hướng dẫn viên" : home === "admin" ? "Vào trang quản trị" : "Tài khoản của tôi";
     return `
     <section class="page-hero">
       <div class="container">
@@ -28,49 +45,18 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
     </section>
 
     <section class="section container center">
-      <div class="form-card login-card" style="max-width: 580px; margin: 0 auto; text-align: left;">
-        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border, #e2e8f0);">
-          <div class="avatar-lg" style="width: 54px; height: 54px; border-radius: 50%; background: var(--primary, #1677ff); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold;">
-            ${escapeHtml((session.name || "U").slice(0, 1).toUpperCase())}
-          </div>
-          <div>
-            <h2 style="margin: 0; font-size: 1.35rem;">${escapeHtml(session.name)}</h2>
-            <p style="margin: 0.25rem 0 0; color: #64748b; font-size: 0.9rem;">
-              <span class="status-pill status-${session.roleKey === 'admin' ? 'open' : session.roleKey === 'manager' ? 'vip' : session.roleKey === 'staff' ? 'confirmed' : 'pending'}">${escapeHtml(session.role || "Người dùng")}</span>
-              &nbsp;·&nbsp; Tài khoản: <strong>${escapeHtml(session.username)}</strong>
-            </p>
-          </div>
-        </div>
-
-        <h4 style="margin: 0 0 0.75rem; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: #475569;">
-          Lối tắt chức năng nhanh
-        </h4>
-        <div class="quick-nav-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
-          ${
-            staff
-              ? `
-              <a class="btn btn-primary" href="#/admin/tours" style="justify-content: flex-start; padding: 0.75rem 1rem;">
-                <span style="font-size: 1.2rem; margin-right: 0.5rem;">🧭</span> Quản lý tour
-              </a>
-              <a class="btn btn-primary" href="#/admin/bookings" style="justify-content: flex-start; padding: 0.75rem 1rem;">
-                <span style="font-size: 1.2rem; margin-right: 0.5rem;">📋</span> Quản lý đơn đặt tour
-              </a>
-              <a class="btn btn-outline" href="#/admin/dashboard" style="justify-content: flex-start; padding: 0.75rem 1rem;">
-                <span style="font-size: 1.2rem; margin-right: 0.5rem;">📊</span> Bảng điều khiển
-              </a>
-              <a class="btn btn-outline" href="#/tours" style="justify-content: flex-start; padding: 0.75rem 1rem;">
-                <span style="font-size: 1.2rem; margin-right: 0.5rem;">🌐</span> Xem trang khách
-              </a>
-              `
-              : `
-              <a class="btn btn-primary" href="#/account" style="justify-content: flex-start; padding: 0.75rem 1rem;">
-                <span style="font-size: 1.2rem; margin-right: 0.5rem;">👤</span> Đơn tour của tôi
-              </a>
-              <a class="btn btn-outline" href="#/tours" style="justify-content: flex-start; padding: 0.75rem 1rem;">
-                <span style="font-size: 1.2rem; margin-right: 0.5rem;">🏖️</span> Khám phá tour
-              </a>
-              `
-          }
+      <div class="form-card login-card">
+        <div class="success-icon">✓</div>
+        <h2>Bạn đã đăng nhập</h2>
+        <p>Xin chào <strong>${escapeHtml(session.name)}</strong> · ${escapeHtml(session.role)}</p>
+        ${
+          staff
+            ? ""
+            : `<p class="form-hint">Tài khoản khách hàng không được phép truy cập khu vực quản trị.</p>`
+        }
+        <div class="success-actions">
+          <a class="btn btn-primary" href="#/${home === "my-bookings" ? "account" : `${home}/dashboard`}">${label}</a>
+          <a class="btn btn-outline" href="#/">Về trang chủ</a>
         </div>
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; font-size: 0.875rem;">
@@ -138,8 +124,8 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
       </p>
 
       <div class="field">
-        <label for="lg-username">Tài khoản đăng nhập <span class="req">*</span></label>
-        <input id="lg-username" name="username" type="text" placeholder="Ví dụ: admin, vumoitap, nhanvien" autocomplete="username" required>
+        <label for="lg-username">Tài khoản hoặc email <span class="req">*</span></label>
+        <input id="lg-username" name="username" type="text" placeholder="Ví dụ: admin hoặc email của bạn" autocomplete="username" required>
         <p class="error" data-error="username"></p>
       </div>
 
@@ -247,7 +233,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     form.querySelectorAll("[data-error]").forEach((node) => (node.textContent = ""));
 
     if (!username) {
-      form.querySelector('[data-error="username"]').textContent = "Vui lòng nhập tài khoản.";
+      form.querySelector('[data-error="username"]').textContent = "Vui lòng nhập tài khoản hoặc email.";
       return;
     }
     if (!password) {
@@ -265,13 +251,17 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
-    const staff = isStaffRole(result.roleKey);
+    const home = homePathForRole(result.roleKey);
     const next = sanitizeNext(new URLSearchParams(detail.queryString).get("next"));
-    if (next?.startsWith("admin") && !staff) {
+    if (next?.startsWith("admin") && home !== "admin") {
       errorBox.textContent = "Tài khoản của bạn không có quyền vào khu vực quản trị.";
       return;
     }
+    if (next?.startsWith("guide") && home !== "guide") {
+      errorBox.textContent = "Tài khoản của bạn không phải hướng dẫn viên.";
+      return;
+    }
 
-    window.location.hash = `#/${next || (staff ? "admin/tours" : "account")}`;
+    window.location.hash = `#/${next || (home === "my-bookings" ? "account" : `${home}/dashboard`)}`;
   });
 });

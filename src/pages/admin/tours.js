@@ -19,14 +19,17 @@ import { hasPermission } from "../../auth.js";
 import {
   TOUR_PROGRESS_STAGES,
   TOUR_STATUS,
-  getDestinations,
+  checkTourDelete,
   getTourById,
+  getDestinations,
+  isSellableTour,
   listTours,
   normalizeTour,
   removeTour,
   resetTours,
   saveTour,
-  updateTourProgress,
+  setTourStatus,
+  tourOrderCount,
 } from "../../tour-repository.js";
 import { escapeHtml, searchKey } from "../../validate.js";
 
@@ -83,7 +86,8 @@ function progressCell(tour) {
 }
 
 function row(tour) {
-  const orders = listBookings().filter((item) => String(item.tourId) === String(tour.id)).length;
+  const orders = tourOrderCount(tour.id);
+  const sellable = isSellableTour(tour);
   return `
   <tr data-tour="${escapeHtml(tour.id)}" data-search="${escapeHtml(
     searchKey(`${tour.name} ${tour.location} ${tour.time}`)
@@ -111,16 +115,19 @@ function row(tour) {
       <button class="btn btn-sm btn-outline" type="button" data-tour-action="progress" title="Xem & cập nhật tiến độ chuyến đi" style="border-color: #0284c7; color: #0284c7;">📍 Tiến độ</button>
       ${canManage() ? `<button class="btn btn-sm btn-primary" type="button" data-tour-action="edit">Sửa</button>` : ""}
       ${canManage() ? `<button class="btn btn-sm btn-outline" type="button" data-tour-action="duplicate">Nhân bản</button>` : ""}
-      ${canManage() ? `<button class="btn btn-sm btn-outline-danger" type="button" data-tour-action="delete">Xoá</button>` : ""}
+      ${
+        canManage()
+          ? sellable
+            ? `<button class="btn btn-sm btn-outline-danger" type="button" data-tour-action="delete">Xoá</button>`
+            : `<button class="btn btn-sm btn-outline" type="button" data-tour-action="reopen">Mở bán</button>`
+          : ""
+      }
     </td>
   </tr>`;
 }
 
 function card(tour) {
-  const p = tour.progress || {};
-  const stage = TOUR_PROGRESS_STAGES[p.stage] || TOUR_PROGRESS_STAGES.not_started;
-  const dayStr = tour.days > 1 && p.currentDay ? `(N${p.currentDay}/${tour.days})` : "";
-
+  const sellable = isSellableTour(tour);
   return `
   <article class="tour-admin-card" data-tour="${escapeHtml(tour.id)}">
     <img src="${escapeHtml(tour.image)}" alt="${escapeHtml(tour.name)}" loading="lazy">
@@ -156,7 +163,13 @@ function card(tour) {
         <button class="btn btn-sm btn-ghost-soft" type="button" data-tour-action="view">Xem</button>
         <button class="btn btn-sm btn-outline" type="button" data-tour-action="progress" style="border-color: #0284c7; color: #0284c7;">📍 Tiến độ</button>
         ${canManage() ? `<button class="btn btn-sm btn-primary" type="button" data-tour-action="edit">Sửa</button>` : ""}
-        ${canManage() ? `<button class="btn btn-sm btn-outline-danger" type="button" data-tour-action="delete">Xoá</button>` : ""}
+        ${
+          canManage()
+            ? sellable
+              ? `<button class="btn btn-sm btn-outline-danger" type="button" data-tour-action="delete">Xoá</button>`
+              : `<button class="btn btn-sm btn-outline" type="button" data-tour-action="reopen">Mở bán</button>`
+            : ""
+        }
       </div>
     </div>
   </article>`;
@@ -584,6 +597,43 @@ function openTourForm(tour = null) {
   });
 }
 
+/* Tour có đơn thì không xoá vật lý - chuyển sang ngừng bán để giữ lịch sử.
+   Tour chưa có đơn thì cho xoá hẳn. */
+function handleDeleteTour(tour) {
+  const check = checkTourDelete(tour.id);
+
+  if (check.ok) {
+    if (!confirmAction(`Xoá tour "${tour.name}"? Tour chưa có đơn nào nên không mất dữ liệu.`)) return;
+    removeTour(tour.id);
+    logActivity("Xoá tour", `Xoá tour ${tour.name}`);
+    toast(`Đã xoá tour "${tour.name}".`);
+    return refreshAdmin();
+  }
+
+  openModal({
+    title: "Không thể xoá tour",
+    subtitle: tour.name,
+    size: "md",
+    body: `
+      <p class="form-hint">${escapeHtml(check.error)}</p>
+      <div class="note-box">
+        <strong>${check.orders} đơn</strong> đang tham chiếu tour này. Hệ thống giữ liên kết này để:
+        <ul class="it-list">
+          <li>Đơn của khách vẫn hiển thị đúng tên, giá và lịch trình tại thời điểm đặt.</li>
+          <li>Doanh thu và thống kê không bị sai lệch.</li>
+          <li>Lịch sử thanh toán không bị mất.</li>
+        </ul>
+      </div>
+      <p class="form-hint">
+        Chuyển sang <strong>Ngừng bán</strong> sẽ ẩn tour khỏi trang đặt tour nhưng vẫn cho phép
+        Admin quản lý và tra cứu đơn cũ.
+      </p>`,
+    footer: `
+      <button class="btn btn-light" type="button" data-modal-close>Đóng</button>
+      <button class="btn btn-primary" type="button" data-stop-selling="${escapeHtml(tour.id)}">Ngừng bán tour này</button>`,
+  });
+}
+
 function openTourView(tour) {
   const orders = listBookings().filter((item) => String(item.tourId) === String(tour.id));
   viewingTourId = tour.id;
@@ -675,34 +725,16 @@ export function Tours() {
   const completed = tours.filter((tour) => tour.status === "completed").length;
   const closed = tours.filter((tour) => tour.status === "closed").length;
   const seats = tours.reduce((sum, tour) => sum + (Number(tour.seatsLeft) || 0), 0);
+  const stopped = tours.filter((tour) => !isSellableTour(tour));
+  const lockedByOrders = stopped.filter((tour) => tourOrderCount(tour.id) > 0).length;
 
   return `
   <section class="kpi-grid kpi-grid-5">
-    <article class="kpi kpi-blue">
-      <p class="kpi-label">Tổng tour</p>
-      <strong class="kpi-value">${tours.length}</strong>
-      <span class="kpi-hint">${destinations.length} điểm đến</span>
-    </article>
-    <article class="kpi kpi-green">
-      <p class="kpi-label">Đang nhận khách</p>
-      <strong class="kpi-value">${open}</strong>
-      <span class="kpi-hint">Đang bán vé</span>
-    </article>
-    <article class="kpi kpi-violet">
-      <p class="kpi-label">Đang khởi hành</p>
-      <strong class="kpi-value">${ongoing}</strong>
-      <span class="kpi-hint">Đoàn đang trên đường</span>
-    </article>
-    <article class="kpi kpi-amber">
-      <p class="kpi-label">Sắp hết chỗ</p>
-      <strong class="kpi-value">${limited}</strong>
-      <span class="kpi-hint">${tours.filter((t) => t.seatsLeft <= 5).length} tour &le; 5 chỗ</span>
-    </article>
-    <article class="kpi kpi-teal">
-      <p class="kpi-label">Đã hoàn thành</p>
-      <strong class="kpi-value">${completed}</strong>
-      <span class="kpi-hint">${closed} tour tạm ngưng</span>
-    </article>
+    <article class="kpi kpi-blue"><p class="kpi-label">Tổng tour</p><strong class="kpi-value">${tours.length}</strong><span class="kpi-hint">${destinations.length} điểm đến</span></article>
+    <article class="kpi kpi-green"><p class="kpi-label">Đang bán</p><strong class="kpi-value">${open + limited}</strong><span class="kpi-hint">Hiển thị trên website</span></article>
+    <article class="kpi kpi-amber"><p class="kpi-label">Sắp hết chỗ</p><strong class="kpi-value">${limited}</strong><span class="kpi-hint">${tours.filter((t) => t.seatsLeft <= 4).length} tour dưới 5 chỗ</span></article>
+    <article class="kpi kpi-violet"><p class="kpi-label">Tổng suất còn</p><strong class="kpi-value">${seats}</strong><span class="kpi-hint">Toàn bộ tuyến</span></article>
+    <article class="kpi kpi-red"><p class="kpi-label">Ngừng bán</p><strong class="kpi-value">${stopped.length}</strong><span class="kpi-hint">${lockedByOrders} tour đang có đơn</span></article>
   </section>
 
   <section class="panel">
@@ -751,10 +783,10 @@ export function Tours() {
         canManage()
           ? `<div class="bulk-actions" id="tr-bulk" hidden>
               <span>Đã chọn <strong data-selected>0</strong> tour</span>
-              <button class="btn btn-sm btn-primary" type="button" data-bulk="open">Nhận khách</button>
-              <button class="btn btn-sm btn-outline" type="button" data-bulk="ongoing">Đang khởi hành</button>
-              <button class="btn btn-sm btn-outline" type="button" data-bulk="completed">Hoàn thành</button>
-              <button class="btn btn-sm btn-outline" type="button" data-bulk="closed">Tạm ngưng</button>
+              <button class="btn btn-sm btn-primary" type="button" data-bulk="open">Cho nhận khách</button>
+              <button class="btn btn-sm btn-outline" type="button" data-bulk="limited">Đánh dấu sắp hết</button>
+              <button class="btn btn-sm btn-outline" type="button" data-bulk="closed">Ngừng bán</button>
+              <button class="btn btn-sm btn-outline" type="button" data-bulk="finished">Đánh dấu kết thúc</button>
               <button class="btn btn-sm btn-outline-danger" type="button" data-bulk="delete">Xoá</button>
             </div>`
           : `<span></span>`
@@ -930,11 +962,12 @@ document.addEventListener("route:changed", ({ detail }) => {
       return refreshAdmin();
     }
 
-    if (action === "delete") {
-      if (!confirmAction(`Xoá tour "${tour.name}" khỏi hệ thống?`)) return;
-      removeTour(tour.id);
-      logActivity("Xoá tour", `Xoá tour ${tour.name}`);
-      toast(`Đã xoá tour "${tour.name}".`);
+    if (action === "delete") return handleDeleteTour(tour);
+
+    if (action === "reopen") {
+      setTourStatus(tour.id, "open");
+      logActivity("Mở bán tour", `Mở bán lại tour ${tour.name}`);
+      toast(`Tour "${tour.name}" đã mở bán trở lại.`);
       return refreshAdmin();
     }
     return undefined;
@@ -951,10 +984,37 @@ document.addEventListener("route:changed", ({ detail }) => {
     const action = button.dataset.bulk;
 
     if (action === "delete") {
-      if (!confirmAction(`Xoá ${ids.length} tour đã chọn khỏi hệ thống?`)) return;
-      ids.forEach((id) => removeTour(id));
-      logActivity("Xoá tour", `Xoá ${ids.length} tour: ${ids.join(", ")}`);
-      toast(`Đã xoá ${ids.length} tour.`);
+      if (!confirmAction(`Xoá ${ids.length} tour đã chọn? Tour có đơn sẽ không bị xoá mà chuyển sang ngừng bán.`)) return;
+      let removed = 0;
+      let stopped = 0;
+      const blocked = [];
+
+      ids.forEach((id) => {
+        const check = checkTourDelete(id);
+        if (check.ok) {
+          removeTour(id);
+          removed += 1;
+        } else {
+          /* Tour đã có đơn: giữ nguyên dữ liệu, chuyển sang ngừng bán */
+          if (!isSellableTour(getTourById(id))) {
+            blocked.push(getTourById(id)?.name || id);
+            return;
+          }
+          setTourStatus(id, "closed");
+          stopped += 1;
+        }
+      });
+
+      logActivity("Xoá tour", `Xoá ${removed}/${ids.length} tour${stopped ? `, chuyển ${stopped} tour sang ngừng bán` : ""}${blocked.length ? `, ${blocked.length} tour đã ngừng bán sẵn` : ""}`);
+      toast(
+        [
+          removed ? `Đã xoá ${removed} tour.` : "",
+          stopped ? `Đã chuyển ${stopped} tour có đơn sang ngừng bán.` : "",
+          blocked.length ? `${blocked.length} tour đã ngừng bán sẵn nên được giữ nguyên.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || "Không có tour nào được cập nhật."
+      );
     } else {
       ids.forEach((id) => saveTour({ ...getTourById(id), status: action }));
       logActivity("Cập nhật tour", `Đặt ${ids.length} tour sang trạng thái ${TOUR_STATUS[action]}`);
@@ -975,4 +1035,16 @@ document.addEventListener("click", (event) => {
     closeModal();
     if (tour) openProgressModal(tour);
   }
+});
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-stop-selling]");
+  if (!button) return;
+  const tour = getTourById(button.dataset.stopSelling);
+  closeModal();
+  if (!tour) return;
+  setTourStatus(tour.id, "closed");
+  logActivity("Ngừng bán tour", `Chuyển tour ${tour.name} sang ngừng bán vì đang có đơn`);
+  toast(`Tour "${tour.name}" đã ngừng bán. Đơn cũ vẫn được giữ nguyên.`);
+  refreshAdmin();
 });

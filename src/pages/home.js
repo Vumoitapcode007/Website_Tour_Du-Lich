@@ -1,4 +1,4 @@
-import { listTours } from "../tour-repository.js";
+import { sellableTours } from "../tour-repository.js";
 import { tourCard, imgFallback } from "../components/tour-card.js";
 import { searchKey } from "../validate.js";
 
@@ -12,7 +12,8 @@ const destNotes = {
 };
 
 export function Home() {
-  const allTours = listTours();
+  /* Trang chủ chỉ giới thiệu tour đang mở bán */
+  const allTours = sellableTours();
   const destinations = Object.entries(destNotes)
     .map(([name, note]) => {
       const tour = allTours.find((item) => item.location === name);
@@ -32,10 +33,6 @@ export function Home() {
         <input id="tour-query" name="q" type="search" placeholder="Bạn muốn đi đâu? (Đà Nẵng, Đà Lạt...)" autocomplete="off">
         <button class="btn btn-primary" type="submit">Tìm tour</button>
       </form>
-      <div class="hero-actions">
-        <a class="btn btn-primary btn-lg" href="#/tours">Xem tour ngay</a>
-        <a class="btn btn-ghost btn-lg" href="#/about">Tìm hiểu thêm</a>
-      </div>
     </div>
     <div class="hero-stats container">
       <div class="stat"><strong>10+</strong><span>Năm kinh nghiệm</span></div>

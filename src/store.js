@@ -21,11 +21,88 @@ const SETTINGS_KEY = "travelgo.settings";
 export const BOOKING_STATUS = {
   pending: "Chờ xác nhận",
   confirmed: "Đã xác nhận",
+  awaiting_payment: "Chờ thanh toán",
   paid: "Đã thanh toán",
-  departing: "Đang đi tour",
-  completed: "Đã hoàn thành",
+  upcoming: "Sắp khởi hành",
+  ongoing: "Đang diễn ra",
+  completed: "Hoàn thành",
   cancelled: "Đã huỷ",
 };
+
+/* Thứ tự đi của đơn: không được nhảy cóc, chỉ chuyển sang trạng thái kế tiếp hợp lệ */
+export const BOOKING_ORDER = [
+  "pending",
+  "confirmed",
+  "awaiting_payment",
+  "paid",
+  "upcoming",
+  "ongoing",
+  "completed",
+];
+
+/* Nhánh huỷ chỉ mở từ các trạng thái trước khi tour bắt đầu chạy */
+export const BOOKING_FLOW = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["awaiting_payment", "cancelled"],
+  awaiting_payment: ["paid", "cancelled"],
+  paid: ["upcoming", "cancelled"],
+  upcoming: ["ongoing", "cancelled"],
+  ongoing: ["completed"],
+  completed: [],
+  cancelled: [],
+};
+
+/* Trạng thái vận hành do Tour Guide cập nhật - chỉ đi tiếp từ "đã thanh toán" trở đi */
+export const GUIDE_FLOW = {
+  paid: ["upcoming"],
+  upcoming: ["ongoing"],
+  ongoing: ["completed"],
+};
+
+/* Mốc thời gian lưu kèm theo từng bước */
+export const BOOKING_STAMP_FIELD = {
+  pending: "createdAt",
+  confirmed: "confirmedAt",
+  awaiting_payment: "awaitingPaymentAt",
+  paid: "paidAt",
+  upcoming: "upcomingAt",
+  ongoing: "startedAt",
+  completed: "completedAt",
+  cancelled: "cancelledAt",
+};
+
+export const BOOKING_STATUS_FIELD = { pending: "createdBy", confirmed: "confirmedBy", cancelled: "cancelledBy" };
+
+export function isCancelledBooking(booking) {
+  return booking?.status === "cancelled";
+}
+
+/* Đơn còn "sống": chưa huỷ và chưa kết thúc - dùng cho doanh thu, lịch sử khách */
+export function isActiveBooking(booking) {
+  return Boolean(booking) && !["cancelled", "completed"].includes(booking.status);
+}
+
+/* Đơn đã được khách hoàn thành chuyến đi */
+export function isCompletedBooking(booking) {
+  return booking?.status === "completed";
+}
+
+export function canTransitionBooking(from, to) {
+  return (BOOKING_FLOW[from] || []).includes(to);
+}
+
+/* Trạng thái kế tiếp hợp lệ của một đơn (bỏ qua nhánh huỷ) */
+export function nextBookingStatus(status, { guide = false } = {}) {
+  if (guide) return GUIDE_FLOW[status]?.[0] || null;
+  const current = BOOKING_ORDER.indexOf(status);
+  if (current < 0) return null;
+  return BOOKING_ORDER[current + 1] || null;
+}
+
+/* Danh sách trạng thái đơn còn sống, dùng cho bộ lọc và thống kê */
+export function activeBookingStatusList() {
+  return BOOKING_ORDER;
+}
 
 export const MESSAGE_TOPICS = [
   "Tư vấn tour",
@@ -147,8 +224,39 @@ function nextId(list, prefix) {
 
 /* ---------- Đơn đặt tour ---------- */
 
+/* Chuẩn hoá đơn khi đọc: đơn cũ thiếu snapshot vẫn hiển thị được,
+   và đơn không còn tour trong danh mục vẫn giữ đúng tên/giá tại lúc đặt */
+export function normalizeBooking(booking = {}) {
+  const people = Math.max(Number(booking.people) || 0, 0);
+  const hasBreakdown = booking.adults !== undefined || booking.children !== undefined;
+  const adults = hasBreakdown ? Math.max(Number(booking.adults) || 0, 0) : people;
+  const children = hasBreakdown ? Math.max(Number(booking.children) || 0, 0) : 0;
+
+  return {
+    ...booking,
+    status: BOOKING_STATUS[booking.status] ? booking.status : "pending",
+    payment: PAYMENT_STATUS[booking.payment] ? booking.payment : "unpaid",
+    tourId: booking.tourId ?? "",
+    tourName: String(booking.tourName || "Tour không còn trong danh mục"),
+    /* giá tham chiếu tại thời điểm đặt - không bị thay đổi khi Admin sửa giá tour */
+    tourPrice: Math.max(Number(booking.tourPrice) || 0, 0),
+    tourLocation: String(booking.tourLocation || ""),
+    tourTime: String(booking.tourTime || ""),
+    date: String(booking.date || ""),
+    adults,
+    children,
+    people: people || adults + children,
+    total: Math.max(Number(booking.total) || 0, 0),
+    guideId: String(booking.guideId || ""),
+    guideName: String(booking.guideName || ""),
+    guidePhone: String(booking.guidePhone || ""),
+    statusHistory: Array.isArray(booking.statusHistory) ? booking.statusHistory : [],
+    note: String(booking.note || ""),
+  };
+}
+
 export function listBookings() {
-  return bookings.all();
+  return bookings.all().map(normalizeBooking);
 }
 
 export function getBooking(code) {
@@ -166,15 +274,19 @@ export function createBookingCode() {
   return `TG${Date.now()}`;
 }
 
+/* Đơn mới luôn lưu snapshot thông tin tour tại thời điểm đặt:
+   sau này Admin đổi giá / ngừng bán / xoá tour thì đơn vẫn hiển thị đúng */
 export function saveBooking(booking) {
   const list = listBookings();
-  const record = {
+  const now = new Date().toISOString();
+  const record = normalizeBooking({
     payment: "unpaid",
     ...booking,
     code: createBookingCode(),
     status: "pending",
-    createdAt: new Date().toISOString(),
-  };
+    createdAt: now,
+    statusHistory: [{ status: "pending", at: now, by: booking.accountUsername || "Khách hàng" }],
+  });
   list.unshift(record);
   bookings.set(list.slice(0, 200));
   return record;
@@ -185,11 +297,14 @@ const digits = (value) => String(value || "").replace(/\D/g, "");
 export function myBookings(profile = {}) {
   const phone = digits(profile.phone);
   const email = String(profile.email || "").trim().toLowerCase();
+  const username = String(profile.username || "").trim().toLowerCase();
 
   return listBookings().filter((item) => {
+    const sameAccount =
+      username && String(item.accountUsername || "").trim().toLowerCase() === username;
     const samePhone = phone && digits(item.phone) === phone;
     const sameEmail = email && String(item.email || "").trim().toLowerCase() === email;
-    return samePhone || sameEmail;
+    return sameAccount || samePhone || sameEmail;
   });
 }
 
@@ -200,8 +315,135 @@ export function updateBooking(code, patch) {
   return bookings.set(list);
 }
 
+/* Chuyển đơn sang trạng thái kế tiếp theo đúng luồng nghiệp vụ.
+   - Chỉ chấp nhận trạng thái hợp lệ từ trạng thái hiện tại (không nhảy cóc).
+   - Ghi mốc thời gian + lịch sử để tra cứu về sau.
+   - Khi đơn sang "đã thanh toán" thì payment được đồng bộ sang "paid". */
+export function advanceBooking(code, to, { guide = false, by = "Hệ thống", note = "" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: "Không tìm thấy đơn." };
+
+  const allowed = guide ? GUIDE_FLOW[current.status] || [] : BOOKING_FLOW[current.status] || [];
+
+  if (!allowed.includes(to)) {
+    return {
+      error: `Không thể chuyển đơn từ "${BOOKING_STATUS[current.status]}" sang "${
+        BOOKING_STATUS[to] || to
+      }".`,
+    };
+  }
+
+  const now = new Date().toISOString();
+  const patch = { status: to };
+  const stampField = BOOKING_STAMP_FIELD[to];
+  if (stampField) patch[stampField] = now;
+  if (BOOKING_STATUS_FIELD[to]) patch[BOOKING_STATUS_FIELD[to]] = by;
+  if (to === "paid") patch.payment = "paid";
+
+  updateBooking(code, {
+    ...patch,
+    statusHistory: [
+      ...current.statusHistory,
+      { status: to, at: now, by, note },
+    ],
+  });
+
+  return { booking: getBooking(code) };
+}
+
+/* Huỷ đơn theo nghiệp vụ: chỉ huỷ được trước khi tour chạy, có ghi lý do */
+export function cancelBooking(code, { by = "Hệ thống", reason = "" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: "Không tìm thấy đơn." };
+  if (!canTransitionBooking(current.status, "cancelled")) {
+    return { error: `Đơn đang "${BOOKING_STATUS[current.status]}" không thể huỷ.` };
+  }
+  const now = new Date().toISOString();
+  updateBooking(code, {
+    status: "cancelled",
+    cancelledAt: now,
+    cancelledBy: by,
+    cancelReason: reason,
+    statusHistory: [...current.statusHistory, { status: "cancelled", at: now, by, note: reason }],
+  });
+  return { booking: getBooking(code) };
+}
+
+/* Admin phân công Tour Guide. Nếu đơn đã thanh toán thì tự chuyển sang
+   "sắp khởi hành" để Tour Guide nhận việc theo luồng nghiệp vụ. */
+export function assignBookingGuide(code, guide) {
+  const current = getBooking(code);
+  if (!current) return { error: "Không tìm thấy đơn." };
+  if (current.status === "cancelled" || current.status === "completed") {
+    return { error: "Đơn đã kết thúc hoặc huỷ, không thể phân công hướng dẫn viên." };
+  }
+
+  const guideId = String(guide?.username || "").trim();
+  const patch = {
+    guideId,
+    guideName: String(guide?.name || ""),
+    guidePhone: String(guide?.phone || ""),
+  };
+
+  if (guideId && current.status === "paid") {
+    const now = new Date().toISOString();
+    patch.status = "upcoming";
+    patch.upcomingAt = now;
+    patch.statusHistory = [
+      ...current.statusHistory,
+      { status: "upcoming", at: now, by: "Admin", note: `Phân công ${guide.name}` },
+    ];
+  }
+
+  updateBooking(code, patch);
+  return { booking: getBooking(code) };
+}
+
+export function guideBookings(guideId) {
+  const key = String(guideId || "").trim().toLowerCase();
+  if (!key) return [];
+  return listBookings().filter((item) => item.guideId.toLowerCase() === key);
+}
+
+/* Danh sách khách của một tour mà Tour Guide được phép xem.
+   Guide không có "bookings.view" nên phải lọc theo guideId của chính mình. */
+export function tourGuests(tourId, guideId = "") {
+  const key = String(guideId || "").trim().toLowerCase();
+  return listBookings().filter((item) => {
+    if (String(item.tourId) !== String(tourId)) return false;
+    if (["cancelled", "pending"].includes(item.status)) return false;
+    if (key && item.guideId.toLowerCase() !== key) return false;
+    return true;
+  });
+}
+
+export function bookingTourStats(tourId) {
+  const rows = listBookings().filter((item) => String(item.tourId) === String(tourId));
+  return {
+    orders: rows.length,
+    guests: rows.reduce((sum, item) => sum + (Number(item.people) || 0), 0),
+    revenue: rows
+      .filter((item) => item.status !== "cancelled")
+      .reduce((sum, item) => sum + (Number(item.total) || 0), 0),
+    rows,
+  };
+}
+
+/* Đơn đã phát sinh giao dịch (đã thanh toán / đã hoàn thành) thì không được xoá vật lý,
+   chỉ được huỷ hoặc giữ lại để tra cứu lịch sử. */
+export function isProtectedBooking(booking) {
+  return ["paid", "upcoming", "ongoing", "completed"].includes(booking?.status);
+}
+
 export function removeBooking(code) {
-  return bookings.set(listBookings().filter((item) => item.code !== code));
+  const current = getBooking(code);
+  if (current && isProtectedBooking(current)) {
+    return {
+      error: `Đơn ${code} đã có giao dịch thanh toán, không thể xoá. Hãy chuyển sang trạng thái huỷ nếu cần.`,
+    };
+  }
+  bookings.set(listBookings().filter((item) => item.code !== code));
+  return { ok: true };
 }
 
 export function clearBookings() {
@@ -414,10 +656,13 @@ export function listNotifications() {
 const belongsTo = (item, profile) => {
   const phone = digits(profile.phone);
   const email = String(profile.email || "").trim().toLowerCase();
+  const username = String(profile.username || "").trim().toLowerCase();
+  const sameAccount =
+    username && String(item.accountUsername || "").trim().toLowerCase() === username;
   const samePhone = phone && digits(item.phone) === phone;
   const sameEmail = email && String(item.email || "").trim().toLowerCase() === email;
-  const forEveryone = !item.phone && !item.email;
-  return forEveryone || samePhone || sameEmail;
+  const forEveryone = !item.phone && !item.email && !item.accountUsername;
+  return forEveryone || sameAccount || samePhone || sameEmail;
 };
 
 export function myNotifications(profile = {}, limit = 0) {
@@ -440,6 +685,7 @@ export function saveNotification(payload = {}) {
     body: payload.body || "",
     phone: digits(payload.phone),
     email: String(payload.email || "").trim().toLowerCase(),
+    accountUsername: String(payload.accountUsername || "").trim(),
     read: false,
     createdAt: new Date().toISOString(),
   };

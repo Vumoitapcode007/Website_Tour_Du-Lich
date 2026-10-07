@@ -1,5 +1,5 @@
 import { listCompare, clearCompare, toggleCompare, isCompared, MAX_COMPARE } from "../favorites.js";
-import { listTours } from "../tour-repository.js";
+import { sellableTours } from "../tour-repository.js";
 import { imgFallback } from "./tour-card.js";
 
 export function compareBar() {
@@ -19,7 +19,8 @@ export function compareBar() {
 }
 
 function selectedTours() {
-  const all = listTours();
+  /* Tour đã ngừng bán không đưa vào danh sách so sánh để khách khỏi đặt nhầm */
+  const all = sellableTours();
   return listCompare()
     .map((id) => all.find((tour) => String(tour.id) === id))
     .filter(Boolean);

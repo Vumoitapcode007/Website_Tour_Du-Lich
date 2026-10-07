@@ -24,6 +24,7 @@ function isActive(active, item) {
 
 export function renderHeader(active = "") {
   const session = getSession();
+  const user = session;
   const staff = isStaffRole(session?.roleKey);
   const items = staff
     ? [...navItems, adminItem, profileItem, logoutItem]
@@ -42,6 +43,58 @@ export function renderHeader(active = "") {
       </li>`;
     })
     .join("");
+
+  // Nút Auth hoặc Dropdown User
+  let authNavHtml = "";
+  if (user) {
+    authNavHtml = `
+      <div class="user-menu-dropdown">
+        <button class="user-profile-btn" id="btn-user-menu" aria-haspopup="true">
+          <img src="${user.avatar}" alt="${user.name}" class="user-avatar-sm" />
+          <span class="user-name">${user.name.split(" ").slice(-1)[0] || user.name}</span>
+          <svg class="dropdown-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </button>
+        <div class="user-dropdown-menu" id="user-dropdown">
+          <div class="dropdown-header">
+            <strong>${user.name}</strong>
+            <small class="text-muted">${user.email}</small>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a href="#/account" class="dropdown-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Tài khoản của tôi
+          </a>
+          <a href="#/my-bookings" class="dropdown-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            Đơn đặt tour của tôi
+          </a>
+          <button class="dropdown-item text-danger" id="btn-header-logout" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            Đăng xuất
+          </button>
+        </div>
+      </div>
+    `;
+  } else {
+    authNavHtml = `
+      <div class="auth-btn-group">
+        <a class="btn-auth-link ${active === "login" ? "active" : ""}" href="#/login">Đăng nhập</a>
+        <a class="btn btn-primary btn-sm-pill" href="#/register">Đăng ký</a>
+      </div>
+    `;
+  }
 
   return `
   <header class="site-header">
@@ -64,7 +117,6 @@ export function renderHeader(active = "") {
         <ul class="menu">
           ${nav}
         </ul>
-        <a class="btn btn-primary" href="#/booking">Đặt tour</a>
       </nav>
     </div>
   </header>`;
@@ -87,14 +139,15 @@ export function renderFooter() {
         <p class="muted">${settings.footerNote}</p>
       </div>
       <div>
-        <h4>Liên kết</h4>
+        <h4>Liên kết nhanh</h4>
         <ul class="footer-links">
           <li><a href="#/">Trang chủ</a></li>
           <li><a href="#/tours">Danh sách tour</a></li>
-          <li><a href="#/about">Giới thiện</a></li>
+          <li><a href="#/about">Giới thiệu</a></li>
           <li><a href="#/contact">Liên hệ</a></li>
           <li><a href="#/register">Đăng ký tài khoản</a></li>
           <li><a href="#/account">Tài khoản của tôi</a></li>
+          <li><a href="#/my-bookings">Đơn đặt tour của tôi</a></li>
           <li><a href="#/admin">Quản trị</a></li>
         </ul>
       </div>
@@ -108,7 +161,7 @@ export function renderFooter() {
         </ul>
       </div>
       <div>
-        <h4>Theo dõi</h4>
+        <h4>Theo dõi chúng tôi</h4>
         <div class="socials">
           <a href="#" aria-label="Facebook">Facebook</a>
           <a href="#" aria-label="Instagram">Instagram</a>

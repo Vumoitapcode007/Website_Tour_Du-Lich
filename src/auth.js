@@ -8,6 +8,7 @@ export const PERMISSIONS = [
   "dashboard.view",
   "bookings.view",
   "bookings.manage",
+  "bookings.assign",
   "tours.view",
   "tours.manage",
   "customers.view",
@@ -24,12 +25,26 @@ export const PERMISSIONS = [
   "settings.view",
   "settings.manage",
   "logs.view",
+  "guide.dashboard.view",
+  "guide.tours.view",
+  "guide.tours.run",
+  "guide.customers.view",
+];
+
+/* Quyền dành riêng cho Tour Guide: chỉ xem tour được phân công và cập nhật
+   trạng thái vận hành (sắp khởi hành → đang diễn ra → hoàn thành) */
+const GUIDE_PERMISSIONS = [
+  "guide.dashboard.view",
+  "guide.tours.view",
+  "guide.tours.run",
+  "guide.customers.view",
 ];
 
 const STAFF_PERMISSIONS = [
   "dashboard.view",
   "bookings.view",
   "bookings.manage",
+  "bookings.assign",
   "tours.view",
   "customers.view",
   "messages.view",
@@ -56,6 +71,11 @@ export const ROLES = {
     label: "Nhân viên",
     desc: "Xử lý đơn đặt tour, tin nhắn, đánh giá và khách hàng.",
   },
+  tour_guide: {
+    key: "tour_guide",
+    label: "Hướng dẫn viên",
+    desc: "Xem tour được phân công, danh sách khách và cập nhật tiến trình tour.",
+  },
   customer: {
     key: "customer",
     label: "Khách hàng",
@@ -63,12 +83,16 @@ export const ROLES = {
   },
 };
 
+/* Nhóm tài khoản có thể truy cập khu vực quản trị (admin-style) */
+const ADMIN_ROLES = ["admin", "manager", "staff"];
+
 const ROLE_PERMISSIONS = {
   admin: PERMISSIONS,
   manager: PERMISSIONS.filter(
     (key) => !["users.manage", "settings.manage", "logs.view"].includes(key)
   ),
   staff: STAFF_PERMISSIONS,
+  tour_guide: GUIDE_PERMISSIONS,
   customer: [],
 };
 
@@ -81,7 +105,17 @@ export function rolePermissions(roleKey) {
 }
 
 export function isStaffRole(roleKey) {
-  return roleKey === "admin" || roleKey === "manager" || roleKey === "staff";
+  return ADMIN_ROLES.includes(roleKey) || roleKey === "tour_guide";
+}
+
+/* Admin-style = vào được toàn bộ khu vực quản trị (dùng chung layout/CSS) */
+export function isAdminRole(roleKey) {
+  return ADMIN_ROLES.includes(roleKey);
+}
+
+/* Tour Guide dùng chung layout nhưng không được chạm vào nghiệp vụ Admin */
+export function isGuideRole(roleKey) {
+  return roleKey === "tour_guide";
 }
 
 function resolveRoleKey(account) {
@@ -205,6 +239,17 @@ export function getAccount(username) {
 export function listAccounts(roleKey = "") {
   const list = allAccounts();
   return roleKey ? list.filter((item) => item.roleKey === roleKey) : list;
+}
+
+/* Danh sách hướng dẫn viên đang hoạt động - dùng cho ô phân công Tour Guide */
+export function listGuides() {
+  return listAccounts("tour_guide").filter((item) => item.status === "active");
+}
+
+export function getGuide(guideId) {
+  if (!guideId) return null;
+  const key = String(guideId).trim().toLowerCase();
+  return listAccounts("tour_guide").find((item) => item.username.toLowerCase() === key) || null;
 }
 
 function persistAccount(record) {
@@ -349,10 +394,13 @@ function startSession(account) {
   return session;
 }
 
+/* Đăng nhập bằng tài khoản hoặc email (không phân biệt hoa thường) */
 export function login(username, password) {
   const key = String(username || "").trim().toLowerCase();
   const account = allAccounts().find(
-    (item) => item.username.toLowerCase() === key && item.password === password
+    (item) =>
+      (item.username.toLowerCase() === key || item.email?.toLowerCase() === key) &&
+      item.password === password
   );
   if (!account) return null;
   if (account.status === "locked") return { locked: true, name: account.name };
@@ -410,6 +458,20 @@ export function canAccessAdmin() {
   const session = getSession();
   if (!session) return false;
   return isStaffRole(resolveRoleKey(session));
+}
+
+/* Chỉ Admin/Trưởng phòng/Nhân viên mới vào được khu vực #/admin */
+export function canAccessAdminArea() {
+  const session = getSession();
+  if (!session) return false;
+  return isAdminRole(resolveRoleKey(session));
+}
+
+/* Đích đến sau khi đăng nhập theo vai trò */
+export function homePathForRole(roleKey) {
+  if (isGuideRole(roleKey)) return "guide";
+  if (isAdminRole(roleKey)) return "admin";
+  return "my-bookings";
 }
 
 export function hasAnyPermission(keys) {

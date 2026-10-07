@@ -1,4 +1,4 @@
-import { listNotes, listReviews } from "./store.js";
+import { BOOKING_ORDER, BOOKING_STATUS, listBookings, listNotes, listReviews } from "./store.js";
 import { listTours } from "./tour-repository.js";
 
 const MONTH_LABELS = [
@@ -60,7 +60,7 @@ export function formatRelative(value) {
 
 export function bookingSummary(bookings) {
   const total = bookings.length;
-  const byStatus = { pending: 0, confirmed: 0, paid: 0, departing: 0, completed: 0, cancelled: 0 };
+  const byStatus = Object.fromEntries(BOOKING_ORDER.map((key) => [key, 0]));
   let revenue = 0;
   let cancelledValue = 0;
   let people = 0;
@@ -75,10 +75,15 @@ export function bookingSummary(bookings) {
     }
   });
 
-  const valid = total - byStatus.cancelled;
+  const cancelled = byStatus.cancelled || 0;
+  const valid = total - cancelled;
   return {
     total,
     ...byStatus,
+    cancelled,
+    /* "settled" = đơn đã xác nhận trở đi, dùng cho tỉ lệ chốt đơn.
+       Biến confirmed giữ đúng số đơn ở trạng thái confirmed. */
+    settled: valid,
     revenue,
     cancelledValue,
     people,
@@ -86,6 +91,15 @@ export function bookingSummary(bookings) {
     avgOrder: valid ? Math.round(revenue / valid) : 0,
     conversion: total ? Math.round((valid / total) * 100) : 0,
   };
+}
+
+/* Nhóm trạng thái phục vụ biểu đồ cơ cấu đơn */
+export function bookingStatusBreakdown(bookings) {
+  return BOOKING_ORDER.map((key) => ({
+    key,
+    label: BOOKING_STATUS[key],
+    value: bookings.filter((item) => item.status === key).length,
+  })).filter((item) => item.value > 0);
 }
 
 export function revenueByMonth(bookings, months = 6) {
@@ -208,7 +222,8 @@ export function listCustomers(bookings) {
       name: item.name,
       email: item.email || "",
       orders: 0,
-      confirmed: 0,
+      pending: 0,
+      settled: 0,
       cancelled: 0,
       total: 0,
       people: 0,
@@ -220,7 +235,8 @@ export function listCustomers(bookings) {
     if (item.email) current.email = item.email;
     current.orders += 1;
     current.people += Number(item.people) || 0;
-    if (item.status === "confirmed") current.confirmed += 1;
+    if (item.status === "pending") current.pending += 1;
+    if (item.status !== "pending" && item.status !== "cancelled") current.settled += 1;
     if (item.status === "cancelled") current.cancelled += 1;
     if (isRevenue(item)) current.total += Number(item.total) || 0;
     current.tours.add(item.tourName);
@@ -270,4 +286,13 @@ export function pendingAttention(bookings, messages) {
     tours: listTours().filter((tour) => (tour.seatsLeft || 0) <= 4).length,
     reviews: listReviews().filter((item) => item.status === "pending").length,
   };
+}
+
+/* Danh sách đơn của một Tour Guide, mới nhất trước */
+export function guideAssignments(guideId) {
+  const key = String(guideId || "").trim().toLowerCase();
+  if (!key) return [];
+  return listBookings()
+    .filter((item) => item.guideId.toLowerCase() === key)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
