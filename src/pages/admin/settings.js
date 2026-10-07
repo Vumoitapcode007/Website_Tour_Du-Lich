@@ -115,7 +115,7 @@ function panelPayment(settings) {
   return `
   <form class="settings-form" data-settings="payment" novalidate>
     <h3>Thanh toán</h3>
-    ${toggle({ id: "allowOnlinePayment", label: "Cho phép thanh toán trực tuyến", checked: settings.allowOnlinePayment, hint: "Hiển thị nút thanh toán trên trang đặt tour" })}
+    ${toggle({ id: "allowOnlinePayment", label: "Cho phép thanh toán trực tuyến", checked: settings.allowOnlinePayment, hint: "Hiển thị lựa chọn thanh toán online trong form đặt tour" })}
     <h3>Thông tin chuyển khoản</h3>
     ${field({ id: "bankName", label: "Ngân hàng", value: settings.bankName })}
     ${field({ id: "bankAccount", label: "Số tài khoản", value: settings.bankAccount })}

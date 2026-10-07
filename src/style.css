@@ -2588,6 +2588,115 @@ body.has-compare-bar {
   font-size: 12px;
 }
 
+/* ---------- Phương thức thanh toán ---------- */
+
+.pay-methods {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  background: var(--surface);
+}
+
+.pay-methods legend {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 6px;
+}
+
+.pay-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.pay-option:has(input:checked) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.pay-option span {
+  display: grid;
+  gap: 2px;
+  font-weight: 600;
+}
+
+.pay-option small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.pay-panel {
+  display: grid;
+  gap: 12px;
+  border-top: 1px dashed var(--border);
+  padding-top: 12px;
+}
+
+.pay-panel[hidden] {
+  display: none;
+}
+
+.pay-bank {
+  display: grid;
+  gap: 6px;
+}
+
+.pay-bank p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.pay-bank span {
+  color: var(--muted);
+}
+
+.pay-qr {
+  width: 148px;
+  height: 148px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background-image: repeating-conic-gradient(var(--ink) 0% 25%, var(--surface) 0% 50%);
+  background-size: 16px 16px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  justify-items: center;
+  gap: 4px;
+}
+
+.pay-qr strong {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 13px;
+}
+
+.pay-qr small {
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 1px 4px;
+  color: var(--muted);
+}
+
+.pay-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+}
+
+.pay-total strong {
+  color: var(--primary);
+}
+
 .error {
   min-height: 0;
   color: var(--danger);
