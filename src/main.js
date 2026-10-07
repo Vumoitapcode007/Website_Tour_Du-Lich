@@ -13,6 +13,7 @@ import { Contact } from "./pages/contact.js";
 import { Login } from "./pages/login.js";
 import { Register } from "./pages/register.js";
 import { Account } from "./pages/account.js";
+import { MyBookings } from "./pages/my-bookings.js";
 import { closeAdminShell, renderAdminShell } from "./components/admin-shell.js";
 import "./components/tour-tools.js";
 import { Dashboard } from "./pages/admin/dashboard.js";
@@ -28,6 +29,9 @@ import { Settings } from "./pages/admin/settings.js";
 import { Logs } from "./pages/admin/logs.js";
 import { Profile } from "./pages/admin/profile.js";
 import { AdminNotFound } from "./pages/admin/not-found.js";
+import { GuideDashboard } from "./pages/guide/dashboard.js";
+import { GuideTours } from "./pages/guide/tours.js";
+import { GuideBookings } from "./pages/guide/bookings.js";
 
 function NotFound() {
   return `
@@ -52,6 +56,13 @@ const ADMIN_PAGES = {
   users: { render: Users, title: "Quản lý tài khoản" },
   settings: { render: Settings, title: "Cài đặt hệ thống" },
   logs: { render: Logs, title: "Nhật ký hoạt động" },
+  profile: { render: Profile, title: "Hồ sơ cá nhân" },
+};
+
+const GUIDE_PAGES = {
+  dashboard: { render: GuideDashboard, title: "Bảng điều khiển hướng dẫn viên" },
+  tours: { render: GuideTours, title: "Tour của tôi" },
+  bookings: { render: GuideBookings, title: "Danh sách khách được phân công" },
   profile: { render: Profile, title: "Hồ sơ cá nhân" },
 };
 
@@ -141,6 +152,13 @@ const routes = [
     footer: renderFooter,
   },
   {
+    path: "my-bookings",
+    title: "Đơn đặt tour của tôi",
+    render: MyBookings,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
     path: "admin",
     title: "Bảng điều khiển",
     render: (path, params, query) => Dashboard(path, params, query),
@@ -153,6 +171,24 @@ const routes = [
       ADMIN_PAGES[params.section]?.title || "Không tìm thấy mục quản trị",
     render: (path, params, query) => {
       const page = ADMIN_PAGES[params.section];
+      return page ? page.render(path, params, query) : AdminNotFound(path, params, query);
+    },
+    layout: renderAdminShell,
+    footer: closeAdminShell,
+  },
+  {
+    path: "guide",
+    title: "Bảng điều khiển hướng dẫn viên",
+    render: (path, params, query) => GuideDashboard(path, params, query),
+    layout: renderAdminShell,
+    footer: closeAdminShell,
+  },
+  {
+    path: "guide/:section",
+    title: (path, params) =>
+      GUIDE_PAGES[params.section]?.title || "Không tìm thấy mục hướng dẫn viên",
+    render: (path, params, query) => {
+      const page = GUIDE_PAGES[params.section];
       return page ? page.render(path, params, query) : AdminNotFound(path, params, query);
     },
     layout: renderAdminShell,
@@ -294,7 +330,7 @@ document.addEventListener("click", (event) => {
 
   // Quên mật khẩu
   if (event.target.closest("#btn-forgot-password")) {
-    const emailPrompt = prompt("Nhập email tài khoản cần khôi phục mật khẩu:", "demo@travelgo.vn");
+    const emailPrompt = prompt("Nhập email tài khoản cần khôi phục mật khẩu:", "mvu191107@gmail.com");
     if (emailPrompt) {
       alert(`Liên kết đặt lại mật khẩu đã được gửi đến: ${emailPrompt} (Giả lập). Vui lòng kiểm tra hộp thư!`);
     }
@@ -333,6 +369,28 @@ document.addEventListener("click", (event) => {
       window.location.hash = "#/";
     }, 700);
     return;
+  }
+
+  const logoutButton = event.target.closest("[data-logout]");
+  if (logoutButton) {
+    event.preventDefault();
+    logout();
+    window.location.hash = "#/";
+    return;
+  }
+
+  const adminLink = event.target.closest('a[href^="#/admin"]');
+  if (adminLink && !isStaffRole(getSession()?.roleKey)) {
+    event.preventDefault();
+    window.location.hash = `#/login?next=${encodeURIComponent(adminLink.getAttribute("href").slice(1))}`;
+    return;
+  }
+
+  const accountLink = event.target.closest('a[href="#/account"], a[href^="#/my-bookings"]');
+  if (accountLink && !getSession()) {
+    event.preventDefault();
+    const path = accountLink.getAttribute("href").slice(1).split("?")[0];
+    window.location.hash = `#/login?next=${path}`;
   }
 });
 

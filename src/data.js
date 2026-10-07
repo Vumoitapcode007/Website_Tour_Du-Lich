@@ -668,6 +668,7 @@ export function formatPrice(price) {
 
 export function formatDate(iso) {
   const date = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "Chưa cập nhật";
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
     month: "2-digit",

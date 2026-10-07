@@ -26,11 +26,11 @@ const faqs = [
   },
   {
     q: "Trẻ em có được tham gia tour không?",
-    a: "Được. Trẻ em từ 2 tuổi trở lên đều có thể tham gia. Giá tour được tính theo giá trẻ em, bạn có thể ghi rõ trong phần ghi chú khi đặt tour.",
+    a: "Được. Trẻ em từ 2 tuổi trở lên đều có thể tham gia. Khi đặt tour bạn chọn số lượng ở mục Người lớn và Trẻ em, giá tour sẽ tự động tính trẻ em bằng 50% giá người lớn.",
   },
   {
-    q: "Tôi có thể đặt tour cho nhóm lớn?",
-    a: "Hoàn toàn được. Với nhóm từ 10 người trở lên, chúng tôi sẽ bố trí xe riêng và hướng dẫn viên riêng. Liên hệ hotline để nhận báo giá tốt nhất.",
+    q: "Tôi có thể đặt tour cho nhóm lớn không?",
+    a: "Mỗi đơn đặt tour tối đa 10 khách. Nhóm từ 10 người trở lên, chúng tôi sẽ bố trí thêm xe và hướng dẫn viên riêng. Liên hệ hotline để nhận báo giá tốt nhất.",
   },
 ];
 

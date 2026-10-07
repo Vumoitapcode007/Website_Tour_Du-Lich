@@ -1,4 +1,5 @@
 import { tours as seedTours } from "./data.js";
+import { listBookings } from "./store.js";
 
 const TOUR_KEY = "travelgo.tours";
 const SEED_VERSION = 3;
@@ -8,10 +9,19 @@ const DEAD_IMAGE_IDS = ["1556012018-50c5900c1935"];
 const isDeadImage = (url) => DEAD_IMAGE_IDS.some((id) => String(url || "").includes(id));
 
 export const TOUR_STATUS = {
-  open: "Đang nhận khách",
+  open: "Đang bán",
   limited: "Sắp hết chỗ",
-  closed: "Tạm ngưng",
+  closed: "Ngừng bán",
+  finished: "Đã kết thúc",
 };
+
+/* Tour chỉ còn nhận khách mới khi đang bán hoặc sắp hết chỗ */
+const SELLABLE_STATUS = ["open", "limited"];
+
+/* Tour không hiển thị cho khách đặt mới nhưng vẫn giữ lịch sử */
+export function isSellableTour(tour) {
+  return SELLABLE_STATUS.includes(tour?.status);
+}
 
 const clone = (value) =>
   typeof structuredClone === "function"
@@ -148,13 +158,18 @@ export function getTourById(id) {
 
 export function relatedTours(tour, limit = 3) {
   return listTours()
-    .filter((item) => item.id !== tour.id)
+    .filter((item) => item.id !== tour.id && isSellableTour(item))
     .sort((a, b) => Number(b.location === tour.location) - Number(a.location === tour.location))
     .slice(0, limit);
 }
 
 export function getDestinations() {
   return [...new Set(listTours().map((tour) => tour.location).filter(Boolean))];
+}
+
+/* Danh sách tour còn nhận khách - trang khách chỉ dùng hàm này */
+export function sellableTours() {
+  return listTours().filter(isSellableTour);
 }
 
 export function saveTour(tour) {
@@ -175,8 +190,43 @@ export function saveTour(tour) {
   return payload;
 }
 
+/* Ngừng bán / mở bán lại - thao tác an toàn, không mất dữ liệu đơn hàng */
+export function setTourStatus(id, status) {
+  const current = getTourById(id);
+  if (!current) return null;
+  if (!TOUR_STATUS[status]) return null;
+  return saveTour({ ...current, status });
+}
+
+/* Số đơn đang gắn với tour - quyết định có được xoá vật lý hay không */
+export function tourOrderCount(id) {
+  const key = String(id);
+  return listBookings().filter((item) => String(item.tourId) === key).length;
+}
+
+/* Tour đã có đơn / giao dịch thì tuyệt đối không xoá vật lý.
+   Hệ thống chỉ chuyển tour sang "Ngừng bán" để giữ lịch sử. */
+export function checkTourDelete(id) {
+  const tour = getTourById(id);
+  if (!tour) return { ok: false, error: "Không tìm thấy tour." };
+
+  const orders = tourOrderCount(id);
+  if (orders > 0) {
+    return {
+      ok: false,
+      orders,
+      error: `Tour "${tour.name}" đang có ${orders} đơn đặt. Không thể xoá vì sẽ mất dữ liệu đơn hàng và lịch sử thanh toán. Hãy chuyển sang trạng thái "Ngừng bán".`,
+    };
+  }
+
+  return { ok: true, orders: 0 };
+}
+
 export function removeTour(id) {
-  return write(listTours().filter((tour) => String(tour.id) !== String(id)), true);
+  const check = checkTourDelete(id);
+  if (!check.ok) return check;
+  write(listTours().filter((tour) => String(tour.id) !== String(id)), true);
+  return { ok: true };
 }
 
 export function resetTours() {

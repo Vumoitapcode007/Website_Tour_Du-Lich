@@ -63,7 +63,7 @@ export function renderHeader(active = "") {
             <small class="text-muted">${user.email}</small>
           </div>
           <div class="dropdown-divider"></div>
-          <a href="#/login" class="dropdown-item">
+          <a href="#/account" class="dropdown-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
@@ -118,7 +118,6 @@ export function renderHeader(active = "") {
         <ul class="menu">
           ${nav}
         </ul>
-        <a class="btn btn-primary" href="#/booking">Đặt tour</a>
       </nav>
     </div>
   </header>`;
@@ -149,6 +148,7 @@ export function renderFooter() {
           <li><a href="#/contact">Liên hệ</a></li>
           <li><a href="#/register">Đăng ký tài khoản</a></li>
           <li><a href="#/account">Tài khoản của tôi</a></li>
+          <li><a href="#/my-bookings">Đơn đặt tour của tôi</a></li>
           <li><a href="#/admin">Quản trị</a></li>
         </ul>
       </div>
