@@ -61,10 +61,12 @@ export const DEFAULT_SETTINGS = {
   bookingNotice: "Bạn không cần thanh toán ngay. Chuyên viên sẽ gọi cho bạn trong 30 phút.",
   minPeople: 1,
   maxPeople: 20,
-  allowOnlinePayment: false,
-  bankName: "Ngân hàng TMCP Ngoại thương Việt Nam",
+  allowOnlinePayment: true,
+  bankName: "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)",
   bankAccount: "0123 4567 8901",
   bankHolder: "Công ty TNHH Du lịch TravelGo",
+  momoPhone: "0909 888 777",
+  momoHolder: "TRAVELGO TOURIST VIETNAM",
   requireAccount: false,
   autoConfirm: false,
   footerNote: "Website đặt tour du lịch - đồng hành cùng mọi chuyến đi của bạn.",
@@ -195,6 +197,29 @@ export function updateBooking(code, patch) {
     item.code === code ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item
   );
   return bookings.set(list);
+}
+
+export function recordBookingPayment(code, { method = "momo", transId } = {}) {
+  const booking = getBooking(code);
+  if (!booking) return null;
+  const paymentTransId = transId || `MM${Date.now().toString().slice(-8)}${Math.floor(1000 + Math.random() * 9000)}`;
+  const patch = {
+    payment: "paid",
+    paymentMethod: method,
+    paymentTransId,
+    paidAt: new Date().toISOString(),
+    status: booking.status === "cancelled" ? "cancelled" : "confirmed",
+  };
+  updateBooking(code, patch);
+  logActivity("booking.payment", `Thanh toán thành công đơn ${code} qua ${method.toUpperCase()} (Mã GD: ${paymentTransId})`);
+  saveNotification({
+    type: "booking",
+    title: `Thanh toán thành công đơn ${code}`,
+    body: `Quý khách đã thanh toán thành công qua Ví MoMo với mã giao dịch ${paymentTransId}. Chuyến đi ${booking.tourName} đã sẵn sàng!`,
+    phone: booking.phone,
+    email: booking.email,
+  });
+  return { ...booking, ...patch };
 }
 
 export function removeBooking(code) {
