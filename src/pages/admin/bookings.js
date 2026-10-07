@@ -28,6 +28,17 @@ import { escapeHtml, searchKey } from "../../validate.js";
 
 const canManage = () => hasPermission("bookings.manage");
 
+const AGE_LABELS = { adults: "người lớn", seniors: "người cao tuổi", children: "trẻ em" };
+
+function groupsText(booking) {
+  const groups = booking.groups;
+  if (!groups || !Object.keys(groups).length) return "";
+  return Object.entries(AGE_LABELS)
+    .filter(([key]) => Number(groups[key]) > 0)
+    .map(([key, label]) => `${Number(groups[key])} ${label}`)
+    .join(" · ");
+}
+
 /* báo khách khi trạng thái đơn thay đổi */
 function notifyBooking(booking, status) {
   if (!booking) return;
@@ -155,6 +166,7 @@ function detailModal(booking) {
           <li><span>Tour</span><strong>${escapeHtml(booking.tourName)}</strong></li>
           <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
           <li><span>Số lượng</span><strong>${booking.people} khách</strong></li>
+          ${groupsText(booking) ? `<li><span>Thành phần</span><strong>${escapeHtml(groupsText(booking))}</strong></li>` : ""}
           <li><span>Đơn giá</span><strong>${formatMoney(tour?.price || Math.round(booking.total / (booking.people || 1)))}</strong></li>
           <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
         </ul>
@@ -325,7 +337,7 @@ function syncInputs() {
 function exportBookings(rows) {
   downloadCsv(
     `don-dat-tour-${stamp()}`,
-    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Số khách", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
+    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Số khách", "Thành phần", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
     rows.map((item) => [
       item.code,
       item.name,
@@ -334,6 +346,7 @@ function exportBookings(rows) {
       item.tourName,
       item.date,
       item.people,
+      groupsText(item),
       item.total,
       PAYMENT_STATUS[item.payment || "unpaid"],
       BOOKING_STATUS[item.status],

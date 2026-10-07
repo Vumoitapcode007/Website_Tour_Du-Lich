@@ -2537,6 +2537,46 @@ body.has-compare-bar {
   gap: 16px;
 }
 
+.age-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.age-grid.invalid .age-field input {
+  border-color: var(--danger);
+}
+
+.age-field {
+  display: grid;
+  gap: 6px;
+}
+
+.age-field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.age-field input {
+  border: 1px solid var(--border);
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 11px 14px;
+}
+
+.age-field input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.age-field small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .error {
   min-height: 0;
   color: var(--danger);
@@ -2956,6 +2996,7 @@ body.has-compare-bar {
 
   .include-grid,
   .field-row,
+  .age-grid,
   .timeline-item {
     grid-template-columns: 1fr;
   }

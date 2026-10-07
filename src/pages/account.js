@@ -30,6 +30,17 @@ function stat(value, label, key = "") {
   return `<div class="admin-stat"${key ? ` data-stat="${escapeHtml(key)}"` : ""}><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
 }
 
+const AGE_LABELS = { adults: "người lớn", seniors: "người cao tuổi", children: "trẻ em" };
+
+function bookingBreakdown(booking) {
+  const groups = booking.groups;
+  if (!groups) return "";
+  return Object.entries(AGE_LABELS)
+    .filter(([key]) => Number(groups[key]) > 0)
+    .map(([key, label]) => `${Number(groups[key])} ${label}`)
+    .join(" · ");
+}
+
 function bookingItem(booking) {
   return `
   <li class="account-booking" data-code="${escapeHtml(booking.code)}">
@@ -40,7 +51,7 @@ function bookingItem(booking) {
     <a class="account-booking-tour" href="#/tour/${booking.tourId}">${escapeHtml(booking.tourName)}</a>
     <ul class="account-booking-meta">
       <li>Ngày khởi hành: <strong>${formatDate(booking.date)}</strong></li>
-      <li>Số khách: <strong>${booking.people}</strong></li>
+      <li>Số khách: <strong>${booking.people}</strong>${bookingBreakdown(booking) ? ` (${bookingBreakdown(booking)})` : ""}</li>
       <li>Tổng tiền: <strong>${formatPrice(booking.total)}</strong></li>
     </ul>
     ${
