@@ -200,7 +200,6 @@ export function confirmAction(message) {
 function ensureModal() {
   let overlay = document.getElementById("admin-modal");
   if (overlay) {
-    overlay.innerHTML = "";
     overlay.hidden = false;
     return overlay;
   }
