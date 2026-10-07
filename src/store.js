@@ -755,3 +755,23 @@ export function clearAllData() {
   notes.clear();
   notifications.clear();
 }
+
+export function getLocalStorageStats() {
+  const keys = [
+    { key: BOOKING_KEY, label: "Đơn đặt tour", count: listBookings().length },
+    { key: "travelgo.tours", label: "Danh mục tour", count: (JSON.parse(localStorage.getItem("travelgo.tours") || "{}").list || []).length },
+    { key: "travelgo.users", label: "Tài khoản khách", count: (JSON.parse(localStorage.getItem("travelgo.users") || "[]")).length },
+    { key: LOG_KEY, label: "Nhật ký hệ thống", count: listLogs().length },
+    { key: NOTIFICATION_KEY, label: "Thông báo", count: listNotifications().length },
+  ];
+  let totalBytes = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("travelgo.")) {
+        totalBytes += (localStorage.getItem(k) || "").length * 2;
+      }
+    }
+  } catch {}
+  return { keys, totalBytes, totalKb: (totalBytes / 1024).toFixed(1) };
+}

@@ -17,6 +17,7 @@ import {
 } from "../../components/admin-ui.js";
 import { hasPermission } from "../../auth.js";
 import {
+  TOUR_PROGRESS_STAGES,
   TOUR_STATUS,
   checkTourDelete,
   getTourById,
@@ -34,6 +35,16 @@ import { escapeHtml, searchKey } from "../../validate.js";
 
 const canManage = () => hasPermission("tours.manage");
 
+const SAMPLE_IMAGES = [
+  { label: "Hà Giang", url: "https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80" },
+  { label: "Hạ Long", url: "https://live.staticflickr.com/3836/33523114580_bb89d2cc22_b.jpg" },
+  { label: "Sa Pa", url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80" },
+  { label: "Hội An", url: "https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?auto=format&fit=crop&w=800&q=80" },
+  { label: "Phú Quốc", url: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80" },
+  { label: "Ninh Bình", url: "https://images.unsplash.com/photo-1666160416071-f760a7af9ea6?auto=format&fit=crop&w=800&q=80" },
+  { label: "Đà Lạt", url: "https://images.unsplash.com/photo-1518684079-3c830dcef090?auto=format&fit=crop&w=800&q=80" },
+];
+
 const FILTERS = { q: "", location: "", status: "", sort: "name", view: "table" };
 
 function filterTours(list) {
@@ -41,7 +52,7 @@ function filterTours(list) {
   const result = list.filter((tour) => {
     if (FILTERS.location && tour.location !== FILTERS.location) return false;
     if (FILTERS.status && tour.status !== FILTERS.status) return false;
-    if (query && !searchKey(`${tour.name} ${tour.location} ${tour.time} ${tour.description}`).includes(query))
+    if (query && !searchKey(`${tour.name} ${tour.location} ${tour.time} ${tour.description} ${tour.progress?.currentLocation || ""}`).includes(query))
       return false;
     return true;
   });
@@ -56,6 +67,24 @@ function filterTours(list) {
   return result.sort(sorters[FILTERS.sort] || sorters.name);
 }
 
+function progressCell(tour) {
+  const p = tour.progress || {};
+  const stage = TOUR_PROGRESS_STAGES[p.stage] || TOUR_PROGRESS_STAGES.not_started;
+  const dayStr = tour.days > 1 && p.currentDay ? `Ngày ${p.currentDay}/${tour.days}` : "";
+
+  return `
+  <div class="progress-cell" title="${escapeHtml(p.note || stage.desc || '')}">
+    <span class="progress-chip stage-${escapeHtml(p.stage || 'not_started')}">
+      ${stage.icon} ${escapeHtml(stage.label)}${dayStr ? ` · ${dayStr}` : ""}
+    </span>
+    ${
+      p.currentLocation
+        ? `<div class="progress-loc" title="${escapeHtml(p.currentLocation)}">📍 ${escapeHtml(p.currentLocation)}</div>`
+        : ""
+    }
+  </div>`;
+}
+
 function row(tour) {
   const orders = tourOrderCount(tour.id);
   const sellable = isSellableTour(tour);
@@ -68,7 +97,7 @@ function row(tour) {
     </td>
     <td>
       <span class="cell-user">
-        <img class="cell-thumb" src="${escapeHtml(tour.image)}" alt="" loading="lazy" width="52" height="40">
+        <img class="cell-thumb" src="${escapeHtml(tour.image)}" alt="" loading="lazy" width="56" height="42" style="border-radius: 6px; object-fit: cover;">
         <span>
           <strong>${escapeHtml(tour.name)}</strong>
           <small>${escapeHtml(tour.description?.slice(0, 60) || "Chưa có mô tả")}</small>
@@ -78,11 +107,12 @@ function row(tour) {
     <td>${escapeHtml(tour.location || "-")}</td>
     <td>${escapeHtml(tour.time)}<br><small>${tour.departures.length} lịch khởi hành</small></td>
     <td><strong>${formatPrice(tour.price)}</strong>${tour.oldPrice ? `<br><small><del>${formatPrice(tour.oldPrice)}</del></small>` : ""}</td>
-    <td>${tour.seatsLeft}</td>
-    <td>${stars(tour.rating)}<br><small>${tour.reviews} đánh giá · ${orders} đơn</small></td>
+    <td><strong>${tour.seatsLeft}</strong> chỗ</td>
+    <td>${progressCell(tour)}</td>
     <td>${statusBadge(tour.status, TOUR_STATUS)}</td>
     <td class="row-actions">
-      <button class="btn btn-sm btn-ghost-soft" type="button" data-tour-action="view">Xem</button>
+      <button class="btn btn-sm btn-ghost-soft" type="button" data-tour-action="view" title="Xem chi tiết tour">Xem</button>
+      <button class="btn btn-sm btn-outline" type="button" data-tour-action="progress" title="Xem & cập nhật tiến độ chuyến đi" style="border-color: #0284c7; color: #0284c7;">📍 Tiến độ</button>
       ${canManage() ? `<button class="btn btn-sm btn-primary" type="button" data-tour-action="edit">Sửa</button>` : ""}
       ${canManage() ? `<button class="btn btn-sm btn-outline" type="button" data-tour-action="duplicate">Nhân bản</button>` : ""}
       ${
@@ -107,7 +137,22 @@ function card(tour) {
         <span class="tour-admin-price">${formatPrice(tour.price)}</span>
       </div>
       <h3>${escapeHtml(tour.name)}</h3>
-      <p>${escapeHtml(tour.description?.slice(0, 110) || "Chưa có mô tả")}</p>
+      <p>${escapeHtml(tour.description?.slice(0, 100) || "Chưa có mô tả")}</p>
+
+      <div class="tour-card-progress" style="margin: 8px 0 12px; padding: 8px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+          <strong style="color: #334155;">📍 Tiến độ đoàn:</strong>
+          <span class="progress-chip stage-${escapeHtml(p.stage || 'not_started')}" style="font-size: 0.75rem;">
+            ${stage.icon} ${escapeHtml(stage.label)} ${dayStr}
+          </span>
+        </div>
+        ${
+          p.currentLocation
+            ? `<div style="margin-top: 4px; color: #0369a1; font-weight: 500; font-size: 0.8rem;">Vị trí: ${escapeHtml(p.currentLocation)}</div>`
+            : ""
+        }
+      </div>
+
       <ul class="tour-admin-meta">
         <li>Điểm đến: <strong>${escapeHtml(tour.location || "-")}</strong></li>
         <li>Thời lượng: <strong>${escapeHtml(tour.time)}</strong></li>
@@ -116,6 +161,7 @@ function card(tour) {
       </ul>
       <div class="tour-admin-actions">
         <button class="btn btn-sm btn-ghost-soft" type="button" data-tour-action="view">Xem</button>
+        <button class="btn btn-sm btn-outline" type="button" data-tour-action="progress" style="border-color: #0284c7; color: #0284c7;">📍 Tiến độ</button>
         ${canManage() ? `<button class="btn btn-sm btn-primary" type="button" data-tour-action="edit">Sửa</button>` : ""}
         ${
           canManage()
@@ -129,36 +175,192 @@ function card(tour) {
   </article>`;
 }
 
-/* ---------- Biểu mẫu tour ---------- */
+/* ---------- Modal theo dõi & cập nhật tiến độ tour ---------- */
+
+function openProgressModal(tour) {
+  const p = tour.progress || {};
+  const currentStage = p.stage || "not_started";
+  const stages = Object.values(TOUR_PROGRESS_STAGES);
+
+  const stageKeys = Object.keys(TOUR_PROGRESS_STAGES);
+  const currentIdx = stageKeys.indexOf(currentStage);
+
+  const stepperHtml = stages
+    .map((s, idx) => {
+      const isPast = idx < currentIdx;
+      const isCurrent = idx === currentIdx;
+      const stepState = isCurrent ? "active" : isPast ? "completed" : "upcoming";
+      return `
+      <div class="stepper-step ${stepState}" data-stepper-key="${s.key}" style="cursor: pointer;" title="Chọn chặng: ${escapeHtml(s.label)}">
+        <div class="stepper-dot">${isPast ? "✓" : s.icon}</div>
+        <div class="stepper-label">${escapeHtml(s.label)}</div>
+      </div>`;
+    })
+    .join('<div class="stepper-line"></div>');
+
+  const daysOptions = Array.from({ length: tour.days || 1 }, (_, i) => i + 1)
+    .map((d) => {
+      const itItem = (tour.itinerary || []).find((it) => it.day === d || it.day === `Ngày ${d}`);
+      const title = itItem?.title ? ` - ${itItem.title}` : "";
+      return `<option value="${d}"${(p.currentDay || 1) === d ? " selected" : ""}>Ngày ${d}${escapeHtml(title)}</option>`;
+    })
+    .join("");
+
+  openModal({
+    title: `📍 Tiến độ chuyến đi: ${tour.name}`,
+    subtitle: `${tour.location || "Điểm đến"} · Thời lượng: ${tour.time} (${tour.days} ngày)`,
+    size: "lg",
+    body: `
+    <div class="progress-modal-container">
+      <div class="tour-stepper-box" style="margin-bottom: 1.5rem; padding: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;">
+        <h4 style="margin: 0 0 1rem; font-size: 0.95rem; color: #334155; display: flex; align-items: center; justify-content: space-between;">
+          <span>Hành trình diễn tiến chuyến đi</span>
+          <span class="status-pill status-${tour.status}">${TOUR_STATUS[tour.status]}</span>
+        </h4>
+        <div class="tour-progress-stepper" style="display: flex; align-items: center; justify-content: space-between; min-width: 600px;">
+          ${stepperHtml}
+        </div>
+      </div>
+
+      <form id="progress-form" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="prog-stage">Chặng tiến độ hiện tại <span class="req">*</span></label>
+            <select id="prog-stage" name="stage" required style="font-weight: 600;">
+              ${stages
+                .map(
+                  (s) =>
+                    `<option value="${s.key}"${currentStage === s.key ? " selected" : ""}>${s.icon} ${s.label} (${s.desc})</option>`
+                )
+                .join("")}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="prog-day">Đang ở ngày thứ mấy</label>
+            <select id="prog-day" name="currentDay">
+              ${daysOptions}
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="prog-location">Địa điểm thực tế hiện tại của đoàn <span class="req">*</span></label>
+          <input id="prog-location" name="currentLocation" type="text"
+                 value="${escapeHtml(p.currentLocation || "")}"
+                 placeholder="Ví dụ: Đèo Mã Pí Lèng, Bến tàu Tuần Châu, Khách sạn Mường Thanh..." required>
+          <small class="form-hint">Nhập mốc vị trí thực tế để khách hàng hoặc điều hành biết đoàn đang ở đâu.</small>
+        </div>
+
+        <div class="field">
+          <label for="prog-note">Tình hình đoàn &amp; Ghi chú thực địa</label>
+          <textarea id="prog-note" name="note" rows="3"
+                    placeholder="Ví dụ: Thời tiết nắng đẹp, đoàn đã chụp ảnh tại đỉnh đèo, chuẩn bị ăn trưa lúc 12:30...">${escapeHtml(p.note || "")}</textarea>
+        </div>
+
+        <div class="field" style="background: #eff6ff; padding: 10px 14px; border-radius: 8px; border: 1px solid #bfdbfe;">
+          <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; color: #1e40af; font-size: 0.9rem;">
+            <input type="checkbox" id="prog-sync-status" checked style="width: auto;">
+            <span>Tự động đồng bộ trạng thái tour: Nếu đang di chuyển/tham quan -> chuyển thành <strong>"Đang khởi hành"</strong>; nếu đã hoàn thành -> chuyển thành <strong>"Đã hoàn thành"</strong></span>
+          </label>
+        </div>
+
+        ${
+          p.updatedAt
+            ? `<p style="font-size: 0.8rem; color: #64748b; margin-top: 10px;">Lần cập nhật tiến độ trước: <strong>${new Date(p.updatedAt).toLocaleString("vi-VN")}</strong></p>`
+            : ""
+        }
+      </form>
+    </div>`,
+    footer: `
+      <button class="btn btn-light" type="button" data-modal-close>Đóng</button>
+      <button class="btn btn-primary" type="submit" form="progress-form">Lưu tiến độ tour</button>`,
+  });
+
+  // Clicking a step in stepper updates the dropdown
+  document.querySelectorAll("[data-stepper-key]").forEach((stepEl) => {
+    stepEl.addEventListener("click", () => {
+      const select = document.getElementById("prog-stage");
+      if (select) {
+        select.value = stepEl.dataset.stepperKey;
+        select.dispatchEvent(new Event("change"));
+      }
+    });
+  });
+
+  const form = document.getElementById("progress-form");
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const stage = document.getElementById("prog-stage").value;
+    const currentDay = Number(document.getElementById("prog-day").value) || 1;
+    const currentLocation = document.getElementById("prog-location").value.trim();
+    const note = document.getElementById("prog-note").value.trim();
+    const syncStatus = document.getElementById("prog-sync-status")?.checked;
+
+    updateTourProgress(tour.id, {
+      stage,
+      currentDay,
+      currentLocation,
+      note,
+    });
+
+    if (syncStatus) {
+      const currentTour = getTourById(tour.id);
+      if (currentTour) {
+        if (["gathering", "moving", "visiting", "resting", "returning"].includes(stage)) {
+          saveTour({ ...currentTour, status: "ongoing" });
+        } else if (stage === "finished") {
+          saveTour({ ...currentTour, status: "completed" });
+        }
+      }
+    }
+
+    const stageLabel = TOUR_PROGRESS_STAGES[stage]?.label || stage;
+    logActivity("Cập nhật tiến độ", `Cập nhật tiến độ "${tour.name}": ${stageLabel} ${currentLocation ? `tại ${currentLocation}` : ""}`);
+    toast(`Đã cập nhật tiến độ tour "${tour.name}".`);
+    closeModal();
+    refreshAdmin();
+  });
+}
+
+/* ---------- Biểu mẫu tour (Thêm / Sửa) ---------- */
 
 function listToText(value = []) {
   return value.join("\n");
 }
 
 function itineraryHtml(itinerary = []) {
-  if (!itinerary.length) return `<p class="itinerary-empty">Chưa có ngày nào. Bấm "Thêm ngày" để bắt đầu.</p>`;
+  if (!itinerary.length) return `<p class="itinerary-empty">Chưa có ngày nào. Bấm "+ Thêm ngày" để bắt đầu thiết kế lịch trình.</p>`;
   return itinerary
     .map(
       (day, index) => `
-    <fieldset class="itinerary-day" data-day="${index}">
-      <legend>Ngày ${index + 1}</legend>
+    <fieldset class="itinerary-day" data-day="${index}" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 10px; background: #fff;">
+      <legend style="font-weight: bold; color: #1e293b; padding: 0 6px;">Ngày ${index + 1}</legend>
       <div class="field-row">
-        <div class="field">
+        <div class="field" style="flex: 1;">
           <label>Tiêu đề ngày</label>
-          <input type="text" data-day-title value="${escapeHtml(day.title || "")}" placeholder="Hạ Long - Vùng Vịnh">
+          <input type="text" data-day-title value="${escapeHtml(day.title || "")}" placeholder="Ví dụ: Hà Nội - Tràng An - Tam Cốc">
         </div>
-        <div class="field">
-          <label>Nội dung (mỗi dòng một hoạt động)</label>
-          <textarea data-day-items rows="4" placeholder="06:30 Xuất phát&#10;11:00 Tham quan đảo">${escapeHtml(listToText(day.items))}</textarea>
+        <div class="field" style="flex: 2;">
+          <label>Nội dung hoạt động (mỗi dòng một gạch đầu dòng)</label>
+          <textarea data-day-items rows="3" placeholder="06:30 Xuất phát&#10;11:00 Ăn trưa đặc sản&#10;14:00 Tham quan thắng cảnh">${escapeHtml(listToText(day.items))}</textarea>
         </div>
       </div>
-      <button class="btn btn-sm btn-outline-danger" type="button" data-day-remove="${index}">Xoá ngày này</button>
+      <button class="btn btn-xs btn-outline-danger" type="button" data-day-remove="${index}" style="margin-top: 4px;">Xoá ngày này</button>
     </fieldset>`
     )
     .join("");
 }
 
 function formHtml(tour = null) {
+  const samplePills = SAMPLE_IMAGES.map(
+    (item) => `
+    <button class="sample-img-pill" type="button" data-fill-img="${escapeHtml(item.url)}" style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 20px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;">
+      <img src="${escapeHtml(item.url)}" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;">
+      <span>${escapeHtml(item.label)}</span>
+    </button>`
+  ).join("");
+
   return `
   <form id="tour-form" novalidate>
     <input type="hidden" name="id" value="${escapeHtml(tour?.id ?? "")}">
@@ -166,42 +368,42 @@ function formHtml(tour = null) {
     <div class="form-grid">
       <div class="field">
         <label for="tf-name">Tên tour <span class="req">*</span></label>
-        <input id="tf-name" name="name" type="text" value="${escapeHtml(tour?.name || "")}" placeholder="Tour Hà Giang 3N2Đ" required>
+        <input id="tf-name" name="name" type="text" value="${escapeHtml(tour?.name || "")}" placeholder="Ví dụ: Tour Hà Giang 3N2Đ Mùa Lúa Chín" required>
       </div>
       <div class="field">
         <label for="tf-location">Điểm đến <span class="req">*</span></label>
-        <input id="tf-location" name="location" type="text" value="${escapeHtml(tour?.location || "")}" placeholder="Hà Giang" required>
+        <input id="tf-location" name="location" type="text" value="${escapeHtml(tour?.location || "")}" placeholder="Ví dụ: Hà Giang, Hạ Long, Sa Pa..." required>
       </div>
       <div class="field">
-        <label for="tf-time">Thời lượng</label>
-        <input id="tf-time" name="time" type="text" value="${escapeHtml(tour?.time || "")}" placeholder="3 ngày 2 đêm">
+        <label for="tf-time">Thời lượng hiển thị</label>
+        <input id="tf-time" name="time" type="text" value="${escapeHtml(tour?.time || "")}" placeholder="Ví dụ: 3 ngày 2 đêm">
       </div>
       <div class="field">
-        <label for="tf-days">Số ngày</label>
+        <label for="tf-days">Số ngày thực tế</label>
         <input id="tf-days" name="days" type="number" min="1" value="${tour?.days || 1}">
       </div>
       <div class="field">
-        <label for="tf-price">Giá (VNĐ) <span class="req">*</span></label>
-        <input id="tf-price" name="price" type="number" min="0" step="1000" value="${tour?.price || ""}" placeholder="2500000" required>
+        <label for="tf-price">Giá vé tour (VNĐ) <span class="req">*</span></label>
+        <input id="tf-price" name="price" type="number" min="0" step="1000" value="${tour?.price || ""}" placeholder="Ví dụ: 2500000" required>
       </div>
       <div class="field">
-        <label for="tf-oldPrice">Giá cũ (VNĐ)</label>
-        <input id="tf-oldPrice" name="oldPrice" type="number" min="0" step="1000" value="${tour?.oldPrice || ""}" placeholder="2900000">
+        <label for="tf-oldPrice">Giá cũ / Giá gốc (VNĐ)</label>
+        <input id="tf-oldPrice" name="oldPrice" type="number" min="0" step="1000" value="${tour?.oldPrice || ""}" placeholder="Ví dụ: 2990000">
       </div>
       <div class="field">
         <label for="tf-seats">Số chỗ còn</label>
         <input id="tf-seats" name="seatsLeft" type="number" min="0" value="${tour?.seatsLeft ?? 10}">
       </div>
       <div class="field">
-        <label for="tf-status">Trạng thái</label>
-        <select id="tf-status" name="status">
+        <label for="tf-status">Trạng thái tour <span class="req">*</span></label>
+        <select id="tf-status" name="status" style="font-weight: 600;">
           ${Object.entries(TOUR_STATUS)
             .map(([value, label]) => `<option value="${value}"${tour?.status === value ? " selected" : ""}>${label}</option>`)
             .join("")}
         </select>
       </div>
       <div class="field">
-        <label for="tf-rating">Điểm đánh giá</label>
+        <label for="tf-rating">Điểm đánh giá (1-5)</label>
         <input id="tf-rating" name="rating" type="number" min="1" max="5" step="0.1" value="${tour?.rating ?? 5}">
       </div>
       <div class="field">
@@ -210,46 +412,63 @@ function formHtml(tour = null) {
       </div>
     </div>
 
-    <div class="field">
-      <label for="tf-image">Ảnh chính (URL)</label>
-      <input id="tf-image" name="image" type="text" value="${escapeHtml(tour?.image || "")}" placeholder="https://images.unsplash.com/...">
-    </div>
-    <div class="field">
-      <label for="tf-gallery">Thư viện ảnh (mỗi dòng một URL)</label>
-      <textarea id="tf-gallery" name="gallery" rows="2" placeholder="https://...&#10;https://...">${escapeHtml(listToText(tour?.gallery))}</textarea>
-    </div>
-    <div class="field">
-      <label for="tf-description">Mô tả ngắn</label>
-      <textarea id="tf-description" name="description" rows="3" placeholder="Giới thiệu ngắn về tour...">${escapeHtml(tour?.description || "")}</textarea>
-    </div>
-    <div class="field">
-      <label for="tf-highlights">Điểm nhấn (mỗi dòng một điểm)</label>
-      <textarea id="tf-highlights" name="highlights" rows="3">${escapeHtml(listToText(tour?.highlights))}</textarea>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label for="tf-includes">Bao gồm (mỗi dòng một mục)</label>
-        <textarea id="tf-includes" name="includes" rows="4">${escapeHtml(listToText(tour?.includes))}</textarea>
+    <div class="field" style="margin-top: 1rem;">
+      <label for="tf-image">Ảnh chính của tour (URL) <span class="req">*</span></label>
+      <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+        <input id="tf-image" name="image" type="text" value="${escapeHtml(tour?.image || "")}" placeholder="https://..." required style="flex: 1;">
+        <button class="btn btn-sm btn-outline" type="button" id="tf-preview-btn">Xem ảnh</button>
       </div>
-      <div class="field">
-        <label for="tf-excludes">Không bao gồm (mỗi dòng một mục)</label>
-        <textarea id="tf-excludes" name="excludes" rows="4">${escapeHtml(listToText(tour?.excludes))}</textarea>
+      <div style="margin: 6px 0 10px;">
+        <span style="font-size: 0.8rem; color: #64748b; margin-right: 6px;">Chọn nhanh ảnh đẹp:</span>
+        <div style="display: inline-flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;">
+          ${samplePills}
+        </div>
       </div>
-    </div>
-    <div class="field">
-      <label for="tf-departures">Ngày khởi hành (định dạng 2026-10-10, cách nhau bằng dấu phẩy)</label>
-      <input id="tf-departures" name="departures" type="text" value="${escapeHtml((tour?.departures || []).join(", "))}" placeholder="2026-10-10, 2026-10-17">
+      <div id="tf-img-preview" style="margin-top: 6px; max-height: 180px; overflow: hidden; border-radius: 8px; display: ${tour?.image ? 'block' : 'none'};">
+        <img src="${escapeHtml(tour?.image || '')}" alt="Preview" style="width: 100%; height: 180px; object-fit: cover; border-radius: 8px;">
+      </div>
     </div>
 
-    <div class="itinerary-block">
-      <div class="itinerary-head">
-        <h4>Lịch trình chi tiết</h4>
-        <button class="btn btn-sm btn-ghost-soft" type="button" id="itinerary-add">+ Thêm ngày</button>
+    <div class="field">
+      <label for="tf-gallery">Thư viện ảnh bổ sung (mỗi dòng một URL ảnh)</label>
+      <textarea id="tf-gallery" name="gallery" rows="2" placeholder="https://...&#10;https://...">${escapeHtml(listToText(tour?.gallery))}</textarea>
+    </div>
+
+    <div class="field">
+      <label for="tf-description">Mô tả ngắn</label>
+      <textarea id="tf-description" name="description" rows="3" placeholder="Giới thiệu tóm tắt về điểm đặc sắc của tour...">${escapeHtml(tour?.description || "")}</textarea>
+    </div>
+
+    <div class="field">
+      <label for="tf-highlights">Điểm nhấn nổi bật (mỗi dòng một điểm)</label>
+      <textarea id="tf-highlights" name="highlights" rows="3" placeholder="Ngắm hoàng hôn trên vịnh&#10;Thưởng thức đặc sản vùng cao">${escapeHtml(listToText(tour?.highlights))}</textarea>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="tf-includes">Dịch vụ bao gồm (mỗi dòng một mục)</label>
+        <textarea id="tf-includes" name="includes" rows="3" placeholder="Xe du lịch đời mới&#10;Khách sạn 4 sao&#10;Vé thắng cảnh">${escapeHtml(listToText(tour?.includes))}</textarea>
+      </div>
+      <div class="field">
+        <label for="tf-excludes">Dịch vụ không bao gồm (mỗi dòng một mục)</label>
+        <textarea id="tf-excludes" name="excludes" rows="3" placeholder="Chi phí cá nhân&#10;Tiền tip HDV">${escapeHtml(listToText(tour?.excludes))}</textarea>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="tf-departures">Lịch khởi hành (cách nhau bằng dấu phẩy)</label>
+      <input id="tf-departures" name="departures" type="text" value="${escapeHtml((tour?.departures || []).join(", "))}" placeholder="2026-10-10, 2026-10-17, 2026-10-24">
+    </div>
+
+    <div class="itinerary-block" style="margin-top: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem;">
+      <div class="itinerary-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">📅 Lịch trình chi tiết theo từng ngày</h4>
+        <button class="btn btn-sm btn-primary" type="button" id="itinerary-add">+ Thêm ngày</button>
       </div>
       <div id="itinerary-list">${itineraryHtml(tour?.itinerary)}</div>
     </div>
 
-    <p class="error" id="tour-error"></p>
+    <p class="error" id="tour-error" style="margin-top: 1rem;"></p>
   </form>`;
 }
 
@@ -273,17 +492,39 @@ function openTourForm(tour = null) {
   itineraryState = normalizeTour(tour || {}).itinerary.map((day) => ({ ...day, items: [...day.items] }));
 
   openModal({
-    title: tour ? "Cập nhật tour" : "Thêm tour mới",
-    subtitle: tour ? tour.name : "Điền đầy đủ thông tin để tour hiển thị trên website",
+    title: tour ? "✏️ Cập nhật tour" : "➕ Thêm tour mới",
+    subtitle: tour ? tour.name : "Điền đầy đủ thông tin để tour hiển thị và được lưu vào LocalStorage",
     size: "xl",
     body: formHtml(tour),
     footer: `
       <button class="btn btn-light" type="button" data-modal-close>Huỷ</button>
-      <button class="btn btn-primary" type="submit" form="tour-form">${tour ? "Lưu thay đổi" : "Thêm tour"}</button>`,
+      <button class="btn btn-primary" type="submit" form="tour-form">${tour ? "Lưu thay đổi" : "Tạo tour mới"}</button>`,
   });
 
   const form = document.getElementById("tour-form");
   const list = document.getElementById("itinerary-list");
+  const imgInput = document.getElementById("tf-image");
+  const imgPreview = document.getElementById("tf-img-preview");
+
+  const updatePreview = (url) => {
+    if (url && imgPreview) {
+      imgPreview.style.display = "block";
+      imgPreview.querySelector("img").src = url;
+    }
+  };
+
+  // Sample image clicks
+  document.querySelectorAll("[data-fill-img]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const url = btn.dataset.fillImg;
+      if (imgInput) imgInput.value = url;
+      updatePreview(url);
+    });
+  });
+
+  document.getElementById("tf-preview-btn")?.addEventListener("click", () => {
+    if (imgInput) updatePreview(imgInput.value.trim());
+  });
 
   const repaint = () => {
     list.innerHTML = itineraryHtml(itineraryState);
@@ -312,18 +553,18 @@ function openTourForm(tour = null) {
     const id = String(data.get("id") || "").trim();
     const error = document.getElementById("tour-error");
 
-    if (name.length < 2) return void (error.textContent = "Vui lòng nhập tên tour.");
+    if (name.length < 2) return void (error.textContent = "Vui lòng nhập tên tour hợp lệ.");
     if (!location) return void (error.textContent = "Vui lòng nhập điểm đến.");
-    if (!price || price <= 0) return void (error.textContent = "Vui lòng nhập giá tour lớn hơn 0.");
+    if (!price || price <= 0) return void (error.textContent = "Vui lòng nhập giá vé tour lớn hơn 0.");
 
     const current = id ? getTourById(id) : null;
-    const image = String(data.get("image") || "").trim();
+    const image = String(data.get("image") || "").trim() || SAMPLE_IMAGES[0].url;
     const gallery = String(data.get("gallery") || "")
       .split("\n")
       .map((item) => item.trim())
       .filter(Boolean);
 
-    saveTour({
+    const saved = saveTour({
       ...(current || {}),
       id: current ? current.id : undefined,
       name,
@@ -345,12 +586,12 @@ function openTourForm(tour = null) {
         .map((l) => l.trim())
         .filter(Boolean),
       gallery: gallery.length ? gallery : image ? [image] : [],
-      image: image || current?.image,
+      image,
       itinerary: collectItinerary(list),
     });
 
-    logActivity(current ? "Cập nhật tour" : "Tạo tour", `${current ? "Cập nhật" : "Thêm"} tour ${name}`);
-    toast(`Đã lưu tour "${name}".`);
+    logActivity(current ? "Cập nhật tour" : "Tạo tour", `${current ? "Cập nhật" : "Thêm mới"} tour ${name}`);
+    toast(`Đã lưu tour "${name}" vào LocalStorage thành công!`);
     closeModal();
     refreshAdmin();
   });
@@ -399,20 +640,36 @@ function openTourView(tour) {
   const revenue = orders
     .filter((item) => item.status !== "cancelled")
     .reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+  const p = tour.progress || {};
+  const stage = TOUR_PROGRESS_STAGES[p.stage] || TOUR_PROGRESS_STAGES.not_started;
 
   openModal({
     title: tour.name,
     subtitle: `${tour.location || "Chưa có điểm đến"} · ${tour.time}`,
     size: "lg",
     body: `
-      <img class="modal-cover" src="${escapeHtml(tour.image)}" alt="" loading="lazy">
+      <img class="modal-cover" src="${escapeHtml(tour.image)}" alt="" loading="lazy" style="height: 240px; object-fit: cover; border-radius: 8px;">
+      
+      <div style="margin: 1rem 0; padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h4 style="margin: 0; color: #166534; font-size: 0.95rem;">📍 Tiến độ hành trình đoàn</h4>
+          <button class="btn btn-xs btn-primary" type="button" data-view-progress style="font-size: 0.8rem;">Cập nhật tiến độ</button>
+        </div>
+        <p style="margin: 6px 0 0; font-size: 0.9rem; color: #15803d;">
+          <strong>${stage.icon} ${stage.label}</strong>
+          ${p.currentDay ? ` (Ngày ${p.currentDay}/${tour.days})` : ""}
+          ${p.currentLocation ? ` — 📍 <strong>${escapeHtml(p.currentLocation)}</strong>` : ""}
+        </p>
+        ${p.note ? `<p style="margin: 4px 0 0; font-size: 0.85rem; color: #475569;">Ghi chú: ${escapeHtml(p.note)}</p>` : ""}
+      </div>
+
       <div class="detail-grid">
         <section>
           <h4>Thông tin tour</h4>
           <ul class="summary-list">
-            <li><span>Giá</span><strong>${formatPrice(tour.price)}</strong></li>
-            <li><span>Giá cũ</span><strong>${tour.oldPrice ? formatPrice(tour.oldPrice) : "-"}</strong></li>
-            <li><span>Chỗ còn</span><strong>${tour.seatsLeft}</strong></li>
+            <li><span>Giá vé</span><strong>${formatPrice(tour.price)}</strong></li>
+            <li><span>Giá gốc</span><strong>${tour.oldPrice ? formatPrice(tour.oldPrice) : "-"}</strong></li>
+            <li><span>Số chỗ còn</span><strong>${tour.seatsLeft}</strong></li>
             <li><span>Đánh giá</span><strong>${stars(tour.rating)} ${tour.rating} (${tour.reviews})</strong></li>
             <li><span>Trạng thái</span><strong>${statusBadge(tour.status, TOUR_STATUS)}</strong></li>
           </ul>
@@ -420,15 +677,15 @@ function openTourView(tour) {
         <section>
           <h4>Hiệu quả bán hàng</h4>
           <ul class="summary-list">
-            <li><span>Số đơn</span><strong>${orders.length}</strong></li>
+            <li><span>Số đơn đặt</span><strong>${orders.length} đơn</strong></li>
             <li><span>Doanh thu</span><strong>${formatMoney(revenue)}</strong></li>
-            <li><span>Lượt khách</span><strong>${orders.reduce((sum, item) => sum + (Number(item.people) || 0), 0)}</strong></li>
-            <li><span>Lịch khởi hành</span><strong>${tour.departures.length}</strong></li>
+            <li><span>Lượt khách</span><strong>${orders.reduce((sum, item) => sum + (Number(item.people) || 0), 0)} khách</strong></li>
+            <li><span>Lịch khởi hành</span><strong>${tour.departures.length} đợt</strong></li>
           </ul>
         </section>
       </div>
 
-      <h4>Ngày khởi hành</h4>
+      <h4>Lịch khởi hành</h4>
       <p class="chip-row">${tour.departures.map((date) => `<span class="soft-chip">${escapeHtml(date)}</span>`).join("") || "Chưa có lịch"}</p>
 
       ${
@@ -444,16 +701,7 @@ function openTourView(tour) {
                .join("")}</ul>`
           : ""
       }
-
-      ${
-        tour.includes.length
-          ? `<div class="detail-grid"><section><h4>Bao gồm</h4><ul class="it-list tick">${tour.includes
-              .map((item) => `<li>${escapeHtml(item)}</li>`)
-              .join("")}</ul></section><section><h4>Không bao gồm</h4><ul class="it-list cross">${tour.excludes
-              .map((item) => `<li>${escapeHtml(item)}</li>`)
-              .join("")}</ul></section></div>`
-          : ""
-      }`,
+    `,
     footer: `
       <a class="btn btn-light" href="#/tour/${tour.id}" target="_blank" rel="noopener">Xem trên website</a>
       ${
@@ -472,7 +720,10 @@ export function Tours() {
   const tours = listTours();
   const destinations = getDestinations();
   const open = tours.filter((tour) => tour.status === "open").length;
+  const ongoing = tours.filter((tour) => tour.status === "ongoing").length;
   const limited = tours.filter((tour) => tour.status === "limited").length;
+  const completed = tours.filter((tour) => tour.status === "completed").length;
+  const closed = tours.filter((tour) => tour.status === "closed").length;
   const seats = tours.reduce((sum, tour) => sum + (Number(tour.seatsLeft) || 0), 0);
   const stopped = tours.filter((tour) => !isSellableTour(tour));
   const lockedByOrders = stopped.filter((tour) => tourOrderCount(tour.id) > 0).length;
@@ -489,8 +740,8 @@ export function Tours() {
   <section class="panel">
     <div class="filter-bar">
       <div class="filter-field filter-grow">
-        <label for="tr-q">Tìm tour</label>
-        <input id="tr-q" type="search" value="${escapeHtml(FILTERS.q)}" placeholder="Tên tour, điểm đến, mô tả..." autocomplete="off">
+        <label for="tr-q">Tìm kiếm tour</label>
+        <input id="tr-q" type="search" value="${escapeHtml(FILTERS.q)}" placeholder="Tên tour, điểm đến, địa điểm tiến độ..." autocomplete="off">
       </div>
       <div class="filter-field">
         <label for="tr-location">Điểm đến</label>
@@ -500,9 +751,9 @@ export function Tours() {
         </select>
       </div>
       <div class="filter-field">
-        <label for="tr-status">Trạng thái</label>
+        <label for="tr-status">Trạng thái tour</label>
         <select id="tr-status">
-          <option value="">Tất cả</option>
+          <option value="">Tất cả trạng thái</option>
           ${Object.entries(TOUR_STATUS)
             .map(([value, label]) => `<option value="${value}">${label}</option>`)
             .join("")}
@@ -515,11 +766,11 @@ export function Tours() {
           <option value="price-desc">Giá cao → thấp</option>
           <option value="price-asc">Giá thấp → cao</option>
           <option value="seats">Chỗ còn ít nhất</option>
-          <option value="rating">Đánh giá cao</option>
+          <option value="rating">Đánh giá cao nhất</option>
         </select>
       </div>
       <div class="filter-field">
-        <label for="tr-view">Hiển thị</label>
+        <label for="tr-view">Kiểu hiển thị</label>
         <select id="tr-view">
           <option value="table">Dạng bảng</option>
           <option value="card">Dạng thẻ</option>
@@ -541,9 +792,9 @@ export function Tours() {
           : `<span></span>`
       }
       <div class="toolbar-actions">
-        ${canManage() ? `<button class="btn btn-sm btn-primary" type="button" id="tr-add">+ Thêm tour</button>` : ""}
-        <button class="btn btn-sm btn-ghost-soft" type="button" id="tr-export">Xuất CSV</button>
-        ${canManage() ? `<button class="btn btn-sm btn-outline-danger" type="button" id="tr-reset">Khôi phục dữ liệu gốc</button>` : ""}
+        ${canManage() ? `<button class="btn btn-sm btn-primary" type="button" id="tr-add">➕ Thêm tour mới</button>` : ""}
+        <button class="btn btn-sm btn-ghost-soft" type="button" id="tr-export">📥 Xuất CSV</button>
+        ${canManage() ? `<button class="btn btn-sm btn-outline-danger" type="button" id="tr-reset">🔄 Khôi phục dữ liệu gốc</button>` : ""}
       </div>
     </div>
 
@@ -557,9 +808,9 @@ export function Tours() {
             <th>Tour</th>
             <th>Điểm đến</th>
             <th>Thời lượng</th>
-            <th>Giá</th>
+            <th>Giá vé</th>
             <th>Chỗ còn</th>
-            <th>Đánh giá</th>
+            <th>Tiến độ chuyến đi</th>
             <th>Trạng thái</th>
             <th>Thao tác</th>
           </tr>
@@ -664,7 +915,7 @@ document.addEventListener("route:changed", ({ detail }) => {
   bind("tr-export", "click", () => {
     downloadCsv(
       `danh-muc-tour-${stamp()}`,
-      ["Mã tour", "Tên tour", "Điểm đến", "Thời lượng", "Số ngày", "Giá", "Giá cũ", "Chỗ còn", "Đánh giá", "Số đánh giá", "Trạng thái", "Ngày khởi hành"],
+      ["Mã tour", "Tên tour", "Điểm đến", "Thời lượng", "Số ngày", "Giá", "Giá cũ", "Chỗ còn", "Trạng thái", "Tiến độ", "Vị trí hiện tại", "Ghi chú tiến độ"],
       filterTours(listTours()).map((tour) => [
         tour.id,
         tour.name,
@@ -674,19 +925,19 @@ document.addEventListener("route:changed", ({ detail }) => {
         tour.price,
         tour.oldPrice,
         tour.seatsLeft,
-        tour.rating,
-        tour.reviews,
         TOUR_STATUS[tour.status],
-        tour.departures.join(" | "),
+        TOUR_PROGRESS_STAGES[tour.progress?.stage]?.label || "",
+        tour.progress?.currentLocation || "",
+        tour.progress?.note || "",
       ])
     );
   });
 
   bind("tr-reset", "click", () => {
-    if (!confirmAction("Khôi phục toàn bộ danh sách tour về dữ liệu gốc? Các thay đổi sẽ mất.")) return;
+    if (!confirmAction("Khôi phục toàn bộ danh sách tour về dữ liệu gốc trên LocalStorage? Các tour thêm mới sẽ bị xóa.")) return;
     resetTours();
     logActivity("Khôi phục dữ liệu", "Khôi phục danh sách tour về dữ liệu gốc");
-    toast("Đã khôi phục danh sách tour gốc.");
+    toast("Đã khôi phục danh sách tour gốc thành công!");
     refreshAdmin();
   });
 
@@ -700,11 +951,12 @@ document.addEventListener("route:changed", ({ detail }) => {
     const action = button.dataset.tourAction;
 
     if (action === "view") return openTourView(tour);
+    if (action === "progress") return openProgressModal(tour);
     if (action === "edit") return openTourForm(tour);
 
     if (action === "duplicate") {
       const { id, ...rest } = tour;
-      saveTour({ ...rest, name: `${tour.name} (bản sao)`, status: "closed", reviews: 0 });
+      saveTour({ ...rest, name: `${tour.name} (Bản sao)`, status: "closed", reviews: 0 });
       logActivity("Nhân bản tour", `Tạo bản sao của tour ${tour.name}`);
       toast(`Đã nhân bản tour "${tour.name}".`);
       return refreshAdmin();
@@ -773,10 +1025,16 @@ document.addEventListener("route:changed", ({ detail }) => {
 });
 
 document.addEventListener("click", (event) => {
-  if (!event.target.closest("[data-view-edit]")) return;
-  const tour = getTourById(viewingTourId);
-  closeModal();
-  if (tour) openTourForm(tour);
+  if (event.target.closest("[data-view-edit]")) {
+    const tour = getTourById(viewingTourId);
+    closeModal();
+    if (tour) openTourForm(tour);
+  }
+  if (event.target.closest("[data-view-progress]")) {
+    const tour = getTourById(viewingTourId);
+    closeModal();
+    if (tour) openProgressModal(tour);
+  }
 });
 
 document.addEventListener("click", (event) => {

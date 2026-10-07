@@ -18,6 +18,11 @@ export function tourCard(tour) {
         <img src="${tour.image}" alt="${tour.name}" loading="lazy" onerror="${imgFallback}">
         ${tour.oldPrice ? `<span class="badge badge-sale">-${Math.round((1 - tour.price / tour.oldPrice) * 100)}%</span>` : ""}
         <span class="badge badge-place">${tour.location}</span>
+        ${
+          tour.status === "ongoing"
+            ? `<span class="badge" style="position: absolute; bottom: 10px; left: 10px; background: #0284c7; color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); font-weight: 600;">📍 Đang khởi hành${tour.progress?.currentLocation ? `: ${tour.progress.currentLocation}` : ""}</span>`
+            : ""
+        }
       </a>
       <button
         type="button"
