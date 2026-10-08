@@ -30,6 +30,7 @@ import {
   saveTour,
   setTourStatus,
   tourOrderCount,
+  updateTourProgress,
 } from "../../tour-repository.js";
 import { escapeHtml, searchKey } from "../../validate.js";
 
@@ -128,6 +129,9 @@ function row(tour) {
 
 function card(tour) {
   const sellable = isSellableTour(tour);
+  const p = tour.progress || {};
+  const stage = TOUR_PROGRESS_STAGES[p.stage] || TOUR_PROGRESS_STAGES.not_started;
+  const dayStr = tour.days > 1 && p.currentDay ? `Ngày ${p.currentDay}/${tour.days}` : "";
   return `
   <article class="tour-admin-card" data-tour="${escapeHtml(tour.id)}">
     <img src="${escapeHtml(tour.image)}" alt="${escapeHtml(tour.name)}" loading="lazy">

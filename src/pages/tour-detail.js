@@ -1,5 +1,11 @@
 import { formatPrice, formatDate, contactInfo } from "../data.js";
-import { getTourById, isSellableTour, relatedTours } from "../tour-repository.js";
+import {
+  TOUR_PROGRESS_STAGES,
+  TOUR_STATUS,
+  getTourById,
+  isSellableTour,
+  relatedTours,
+} from "../tour-repository.js";
 import { tourCard, imgFallback } from "../components/tour-card.js";
 import {
   CHILD_PRICE_RATE,
@@ -8,6 +14,7 @@ import {
   normalizePassengers,
   seatLimit,
 } from "../booking-rules.js";
+import { escapeHtml } from "../validate.js";
 
 function stars(rating) {
   const full = Math.round(rating);

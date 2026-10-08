@@ -1,4 +1,4 @@
-import { DEMO_CREDENTIALS, ROLES, getSession, homePathForRole, login } from "../auth.js";
+import { DEMO_CREDENTIALS, ROLES, getSession, homePathForRole, isStaffRole, login } from "../auth.js";
 import { escapeHtml } from "../validate.js";
 import { getLocalStorageStats, resetDemoData } from "../store.js";
 import { resetTours } from "../tour-repository.js";
@@ -31,6 +31,7 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
   const session = getSession();
   const home = homePathForRole(session?.roleKey);
   const staff = home !== "my-bookings";
+  const stats = getLocalStorageStats();
 
   if (session) {
     const label =
