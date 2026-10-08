@@ -1,5 +1,6 @@
 import { changePassword, getSession, updateProfile } from "../auth.js";
 import {
+  BOOKING_STATUS,
   NOTIFICATION_TYPE,
   cancelBooking,
   isCancelledBooking,
@@ -9,6 +10,7 @@ import {
   removeNotification,
 } from "../store.js";
 import { syncNotificationBadge } from "../components/notification-bell.js";
+import { formatDate, formatPrice } from "../data.js";
 import { bookingTracker } from "../components/booking-tracker.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
 
@@ -28,6 +30,44 @@ function Guard() {
 
 function stat(value, label, key = "") {
   return `<div class="admin-stat"${key ? ` data-stat="${escapeHtml(key)}"` : ""}><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
+}
+
+const AGE_LABELS = { adults: "người lớn", seniors: "người cao tuổi", children: "trẻ em" };
+
+function bookingBreakdown(booking) {
+  const groups = booking.groups;
+  if (!groups) return "";
+  return Object.entries(AGE_LABELS)
+    .filter(([key]) => Number(groups[key]) > 0)
+    .map(([key, label]) => `${Number(groups[key])} ${label}`)
+    .join(" · ");
+}
+
+function bookingItem(booking) {
+  return `
+  <li class="account-booking" data-code="${escapeHtml(booking.code)}">
+    <div class="account-booking-head">
+      <strong>${escapeHtml(booking.code)}</strong>
+      <span class="status-pill status-${escapeHtml(booking.status)}">${BOOKING_STATUS[booking.status]}</span>
+    </div>
+    <a class="account-booking-tour" href="#/tour/${booking.tourId}">${escapeHtml(booking.tourName)}</a>
+    <ul class="account-booking-meta">
+      <li>Ngày khởi hành: <strong>${formatDate(booking.date)}</strong></li>
+      <li>Số khách: <strong>${booking.people}</strong>${bookingBreakdown(booking) ? ` (${bookingBreakdown(booking)})` : ""}</li>
+      <li>Tổng tiền: <strong>${formatPrice(booking.total)}</strong></li>
+    </ul>
+    ${
+      booking.status === "pending"
+        ? `<button class="btn btn-sm btn-outline" data-cancel-booking="${escapeHtml(booking.code)}">Huỷ đơn</button>`
+        : booking.status === "confirmed"
+          ? `<p class="account-note">Đơn đã xác nhận. Cần huỷ vui lòng gọi hotline.</p>`
+          : booking.status === "ongoing"
+            ? `<p class="account-note">Tour đang diễn ra. Chúc bạn một chuyến đi vui vẻ!</p>`
+            : booking.status === "completed"
+              ? `<p class="account-note">Tour đã hoàn thành. Cảm ơn bạn đã đồng hành cùng TravelGo!</p>`
+              : ""
+    }
+  </li>`;
 }
 
 function notificationItem(item) {

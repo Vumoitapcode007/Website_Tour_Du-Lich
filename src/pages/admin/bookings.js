@@ -145,8 +145,10 @@ function row(booking) {
     <td class="row-actions">
       <button class="btn btn-sm btn-ghost-soft" type="button" data-booking-action="view">Chi tiết</button>
       ${
-        canManage() && booking.status === "pending"
-          ? `<button class="btn btn-sm btn-primary" type="button" data-booking-action="confirmed">Xác nhận</button>`
+        canManage() && nextBookingStatus(booking.status)
+          ? `<button class="btn btn-sm btn-primary" type="button" data-booking-action="${nextBookingStatus(
+              booking.status
+            )}">${confirmActionLabel(booking)}</button>`
           : ""
       }
       ${
@@ -418,14 +420,14 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
   const departingOrDone = all.filter((item) => item.status === "departing" || item.status === "completed").length;
 
   return `
-  <section class="kpi-grid kpi-grid-5">
+  <section class="kpi-grid kpi-grid-6">
     <article class="kpi kpi-blue"><p class="kpi-label">Tổng đơn</p><strong class="kpi-value">${summary.total}</strong><span class="kpi-hint">${summary.people} lượt khách</span></article>
     <article class="kpi kpi-amber"><p class="kpi-label">Chờ xác nhận</p><strong class="kpi-value">${summary.pending}</strong><span class="kpi-hint">${summary.awaiting_payment} đang chờ thanh toán</span></article>
     <article class="kpi kpi-green"><p class="kpi-label">Đang chạy tour</p><strong class="kpi-value">${
       summary.upcoming + summary.ongoing
     }</strong><span class="kpi-hint">${summary.completed} đã hoàn thành</span></article>
     <article class="kpi kpi-red"><p class="kpi-label">Đã huỷ</p><strong class="kpi-value">${summary.cancelled}</strong><span class="kpi-hint">${formatMoney(summary.cancelledValue)}</span></article>
-    <article class="kpi kpi-violet"><p class="kpi-label">Doanh thu</p><strong class="kpi-value">${formatMoney(summary.revenue)}</strong><span class="kpi-hint">TB ${formatMoney(summary.avgOrder)}</span></article>
+    <article class="kpi kpi-slate"><p class="kpi-label">Doanh thu</p><strong class="kpi-value">${formatMoney(summary.revenue)}</strong><span class="kpi-hint">TB ${formatMoney(summary.avgOrder)}</span></article>
   </section>
 
   <section class="panel">
@@ -541,7 +543,7 @@ function syncInputs() {
 function exportBookings(rows) {
   downloadCsv(
     `don-dat-tour-${stamp()}`,
-    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Người lớn", "Trẻ em", "Tổng khách", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
+    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Người lớn", "Trẻ em", "Tổng khách", "Nhân viên dẫn đoàn", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
     rows.map((item) => [
       item.code,
       item.name,
@@ -552,6 +554,7 @@ function exportBookings(rows) {
       passengerBreakdown(item).adults,
       passengerBreakdown(item).children,
       item.people,
+      item.guide || item.guideName || "",
       item.total,
       PAYMENT_STATUS[item.payment || "unpaid"] || item.payment,
       BOOKING_STATUS[item.status] || item.status,

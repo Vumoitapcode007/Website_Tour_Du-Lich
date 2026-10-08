@@ -1,6 +1,6 @@
 import { formatPrice, formatDate } from "../data.js";
 import { listTours, getTourById, isSellableTour } from "../tour-repository.js";
-import { saveBooking, saveNotification } from "../store.js";
+import { saveBooking, saveNotification, getSettings } from "../store.js";
 import { syncNotificationBadge } from "../components/notification-bell.js";
 import { imgFallback } from "../components/tour-card.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
@@ -118,6 +118,8 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
     query.get("children"),
     MAX_PASSENGERS
   );
+  const settings = getSettings();
+  const allowOnline = Boolean(settings.allowOnlinePayment);
 
   return `
   <section class="page-hero">
@@ -195,6 +197,34 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
       </label>
       <p class="error" data-error="agree"></p>
 
+      ${
+        allowOnline
+          ? `
+      <fieldset class="pay-methods">
+        <legend>Phương thức thanh toán</legend>
+        <label class="pay-option">
+          <input type="radio" name="payMethod" value="later" checked>
+          <span>Thanh toán trực tiếp<small>Đặt cọc tại văn phòng hoặc khi lên xe</small></span>
+        </label>
+        <label class="pay-option">
+          <input type="radio" name="payMethod" value="online">
+          <span>Thanh toán online<small>Chuyển khoản ngay để giữ chỗ</small></span>
+        </label>
+        <div class="pay-panel" id="pay-panel" hidden>
+          <div class="pay-bank">
+            <p><span>Ngân hàng</span><strong>${escapeHtml(settings.bankName)}</strong></p>
+            <p><span>Số tài khoản</span><strong>${escapeHtml(settings.bankAccount)}</strong></p>
+            <p><span>Chủ tài khoản</span><strong>${escapeHtml(settings.bankHolder)}</strong></p>
+            <p><span>Nội dung CK</span><strong>Mã đơn sẽ hiển thị sau khi đặt</strong></p>
+          </div>
+          <div class="pay-qr" aria-hidden="true"><strong>QR</strong><small>Quét mã chuyển khoản</small></div>
+          <p class="pay-total">Tổng cộng: <strong id="pay-total"></strong></p>
+          <p class="form-hint">Thanh toán mô phỏng cho bản demo — hệ thống ghi nhận đơn đã thanh toán ngay khi bạn xác nhận.</p>
+        </div>
+      </fieldset>`
+          : ""
+      }
+
       <button class="btn btn-primary btn-lg btn-block" type="submit">Xác nhận đặt tour</button>
       <p class="form-hint">
         Đơn sẽ được lưu vào tài khoản <strong>${escapeHtml(session.username)}</strong>.
@@ -214,6 +244,7 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
         <li><span>Người lớn</span><strong id="sum-adults"></strong></li>
         <li><span>Trẻ em</span><strong id="sum-children"></strong></li>
         <li><span>Tổng khách</span><strong id="sum-people"></strong></li>
+        <li id="sum-guide-row" hidden><span>Nhân viên dẫn đoàn</span><strong id="sum-guide"></strong></li>
         <li><span>Giá/người lớn</span><strong id="sum-price"></strong></li>
         <li><span>Giá/trẻ em</span><strong id="sum-child-price"></strong></li>
       </ul>
@@ -303,6 +334,13 @@ document.addEventListener("route:changed", ({ detail }) => {
     document.getElementById("sum-price").textContent = formatPrice(tour.price);
     document.getElementById("sum-child-price").textContent = formatPrice(childPrice(tour.price));
     document.getElementById("sum-total").textContent = formatPrice(bookingTotal(tour.price, counts));
+    const guideRow = document.getElementById("sum-guide-row");
+    if (guideRow) {
+      guideRow.hidden = !tour.guide;
+      document.getElementById("sum-guide").textContent = tour.guide || "";
+    }
+    const payTotal = document.getElementById("pay-total");
+    if (payTotal) payTotal.textContent = formatPrice(bookingTotal(tour.price, counts));
     syncPassengerErrors(tour);
   }
 
@@ -336,6 +374,15 @@ document.addEventListener("route:changed", ({ detail }) => {
   adultsInput.addEventListener("input", refreshSummary);
   childrenInput.addEventListener("input", refreshSummary);
 
+  const payPanel = document.getElementById("pay-panel");
+  if (payPanel) {
+    form.querySelectorAll('input[name="payMethod"]').forEach((radio) => {
+      radio.addEventListener("change", () => {
+        payPanel.hidden = form.elements.payMethod.value !== "online";
+      });
+    });
+  }
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const tour = getTourById(form.elements.tour.value);
@@ -347,6 +394,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     }
 
     const counts = normalizePassengers(data.get("adults"), data.get("children"), tour.seatsLeft);
+    const paid = String(data.get("payMethod") || "later") === "online";
     const record = saveBooking({
       name: String(data.get("name")).trim(),
       phone: String(data.get("phone")).trim(),
@@ -359,21 +407,26 @@ document.addEventListener("route:changed", ({ detail }) => {
       tourLocation: tour.location,
       tourTime: tour.time,
       tourImage: tour.image,
+      guide: tour.guide || "",
       date: data.get("date"),
       accountUsername: session.username,
       adults: counts.adults,
       children: counts.children,
       people: counts.people,
+      groups: { adults: counts.adults, children: counts.children },
       note: String(data.get("note") || "").trim(),
       total: bookingTotal(tour.price, counts),
+      payment: paid ? "paid" : "unpaid",
     });
 
     saveNotification({
       type: "booking",
       title: `Đã nhận đơn ${record.code}`,
-      body: `Yêu cầu đặt ${record.tourName} ngày ${formatDate(record.date)} cho ${record.adults} người lớn${
-        record.children ? ` và ${record.children} trẻ em` : ""
-      }. Chuyên viên sẽ gọi ${record.phone} để xác nhận.`,
+      body: paid
+        ? `Khách đã thanh toán online ${formatPrice(record.total)} cho ${record.tourName} ngày ${formatDate(record.date)}.`
+        : `Yêu cầu đặt ${record.tourName} ngày ${formatDate(record.date)} cho ${record.adults} người lớn${
+            record.children ? ` và ${record.children} trẻ em` : ""
+          }. Chuyên viên sẽ gọi ${record.phone} để xác nhận.`,
       phone: record.phone,
       email: record.email,
       accountUsername: session.username,
@@ -394,6 +447,12 @@ document.addEventListener("route:changed", ({ detail }) => {
           <li>Người lớn: ${record.adults}</li>
           <li>Trẻ em: ${record.children}</li>
           <li>Tổng khách: ${record.people}/${MAX_PASSENGERS}</li>
+          ${record.guide ? `<li>Nhân viên dẫn đoàn: ${escapeHtml(record.guide)}</li>` : ""}
+          ${
+            record.payment === "paid"
+              ? "<li>Đã thanh toán online (giao dịch mô phỏng)</li>"
+              : "<li>Thanh toán: trực tiếp khi xác nhận</li>"
+          }
           <li>Tổng tiền tạm tính: ${formatPrice(record.total)}</li>
         </ul>
         <p class="form-hint">Chuyên viên sẽ gọi ${escapeHtml(record.phone)} trong 30 phút để xác nhận.</p>

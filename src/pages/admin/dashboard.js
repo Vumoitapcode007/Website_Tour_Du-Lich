@@ -99,7 +99,7 @@ export function Dashboard() {
           <p>Phân bổ theo trạng thái</p>
         </div>
       </header>
-      ${donutChart(bookingStatusBreakdown(bookings))}
+${donutChart(bookingStatusBreakdown(bookings))}
     </article>
   </section>
 
