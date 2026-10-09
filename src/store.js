@@ -141,7 +141,7 @@ export const DEFAULT_SETTINGS = {
   bookingNotice: "Bạn không cần thanh toán ngay. Chuyên viên sẽ gọi cho bạn trong 30 phút.",
   minPeople: 1,
   maxPeople: 20,
-  allowOnlinePayment: true,
+  allowOnlinePayment: false,
   bankName: "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)",
   bankAccount: "0123 4567 8901",
   bankHolder: "Công ty TNHH Du lịch TravelGo",
@@ -338,6 +338,92 @@ export function recordBookingPayment(code, { method = "momo", transId } = {}) {
     email: booking.email,
   });
   return { ...booking, ...patch };
+}
+
+/* Đơn đã có giao dịch thanh toán thì không được xoá - chỉ được huỷ */
+export function isProtectedBooking(booking) {
+  if (!booking) return false;
+  const paid =
+    String(booking.payment || "").toLowerCase() === "paid" ||
+    Boolean(booking.paymentTransId) ||
+    Boolean(booking.paidAt);
+  const deposited = ["deposit", "paid", "partial"].includes(String(booking.payment || "").toLowerCase());
+  return Boolean(paid || deposited);
+}
+
+const bookingStampPatch = (current, next, by) => {
+  const now = new Date().toISOString();
+  const stampField = BOOKING_STAMP_FIELD[next];
+  const statusField = BOOKING_STATUS_FIELD[next];
+  const patch = {
+    status: next,
+    statusHistory: [
+      ...(current.statusHistory || []),
+      { status: next, at: now, by: by || "Admin" },
+    ],
+  };
+  if (stampField) patch[stampField] = now;
+  if (statusField) patch[statusField] = by || "Admin";
+  return patch;
+};
+
+/* Chuyển đơn sang một trạng thái hợp lệ kế tiếp (tuân theo BOOKING_FLOW) */
+export function advanceBooking(code, target, { by = "Admin" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: `Không tìm thấy đơn ${code}.` };
+  if (!canTransitionBooking(current.status, target)) {
+    return {
+      error: `Không thể chuyển đơn ${code} từ "${BOOKING_STATUS[current.status]}" sang "${BOOKING_STATUS[target] || target}".`,
+    };
+  }
+  updateBooking(code, bookingStampPatch(current, target, by));
+  logActivity("booking.status", `Đơn ${code} chuyển sang "${BOOKING_STATUS[target]}"`);
+  return { booking: getBooking(code) };
+}
+
+/* Huỷ đơn: chỉ mở từ các trạng thái trước khi tour bắt đầu chạy */
+export function cancelBooking(code, { by = "Admin", reason = "" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: `Không tìm thấy đơn ${code}.` };
+  if (!canTransitionBooking(current.status, "cancelled")) {
+    return { error: `Đơn ${code} ở trạng thái "${BOOKING_STATUS[current.status]}" không thể huỷ.` };
+  }
+  const now = new Date().toISOString();
+  const history = [
+    ...(current.statusHistory || []),
+    { status: "cancelled", at: now, by: by || "Admin", note: reason },
+  ];
+  updateBooking(code, {
+    status: "cancelled",
+    cancelledAt: now,
+    cancelledBy: by || "Admin",
+    cancelReason: String(reason || ""),
+    statusHistory: history,
+  });
+  logActivity("booking.cancel", `Huỷ đơn ${code}${reason ? `: ${reason}` : ""}`);
+  return { booking: getBooking(code) };
+}
+
+/* Các đơn đang do một hướng dẫn viên phụ trách */
+export function guideBookings(guideId) {
+  if (!guideId) return [];
+  return listBookings().filter((item) => item.guideId === guideId);
+}
+
+/* Gán / bỏ gán Tour Guide cho đơn (truyền null để bỏ gán) */
+export function assignBookingGuide(code, guideOrNull) {
+  const current = getBooking(code);
+  if (!current) return { error: `Không tìm thấy đơn ${code}.` };
+  const guide = guideOrNull
+    ? {
+        guideId: String(guideOrNull.username || guideOrNull.id || ""),
+        guideName: String(guideOrNull.name || guideOrNull.title || ""),
+        guidePhone: String(guideOrNull.phone || ""),
+      }
+    : { guideId: "", guideName: "", guidePhone: "" };
+  updateBooking(code, { ...guide, updatedBy: "Admin" });
+  logActivity("booking.assign_guide", `Phân công hướng dẫn viên cho đơn ${code}`);
+  return { booking: getBooking(code) };
 }
 
 export function removeBooking(code) {

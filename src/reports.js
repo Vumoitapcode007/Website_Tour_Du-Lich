@@ -60,7 +60,7 @@ export function formatRelative(value) {
 
 export function bookingSummary(bookings) {
   const total = bookings.length;
-  const byStatus = Object.fromEntries(BOOKING_ORDER.map((key) => [key, 0]));
+  const byStatus = Object.fromEntries([...BOOKING_ORDER, "cancelled"].map((key) => [key, 0]));
   let revenue = 0;
   let cancelledValue = 0;
   let people = 0;

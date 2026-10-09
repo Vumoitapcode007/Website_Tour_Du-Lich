@@ -446,6 +446,20 @@ export function logout() {
   }
 }
 
+/* Hiển thị cảnh báo trong form đăng nhập/đăng ký trực tiếp trên trang auth */
+export function showAuthAlert(message, type = "info") {
+  const alertEl = typeof document !== "undefined" ? document.getElementById("auth-alert") : null;
+  if (!alertEl) return;
+  const bubble =
+    type === "success"
+      ? "✓"
+      : type === "error"
+        ? "✕"
+        : "ℹ";
+  alertEl.className = `auth-alert auth-alert-${type}`;
+  alertEl.innerHTML = `<span class="auth-alert-icon">${bubble}</span><span>${String(message || "")}</span>`;
+}
+
 /* ---------- Kiểm tra quyền ---------- */
 
 export function hasPermission(key) {
