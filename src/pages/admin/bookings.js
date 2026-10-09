@@ -5,7 +5,6 @@ import {
   assignBookingGuide,
   cancelBooking,
   getBooking,
-  guideBookings,
   isCancelledBooking,
   isProtectedBooking,
   listBookings,
@@ -22,12 +21,14 @@ import {
   createListController,
   downloadCsv,
   formatMoney,
+  initials,
   openModal,
   setupSelection,
   stamp,
   statusBadge,
   toast,
 } from "../../components/admin-ui.js";
+import { imgFallback } from "../../components/tour-card.js";
 import { getSession, hasPermission, listGuides } from "../../auth.js";
 import { formatDate } from "../../data.js";
 import { getTourById, listTours } from "../../tour-repository.js";
@@ -108,6 +109,15 @@ function filterBookings(list) {
 function row(booking) {
   const tour = getTourById(booking.tourId);
   const { people } = passengerBreakdown(booking);
+  const thumb = booking.tourImage || tour?.image || "";
+  const unitPrice = booking.tourPrice || tour?.price || 0;
+  
+  let attendanceHtml = `<small class="soft-chip">Chưa ĐD</small>`;
+  if (booking.attendance === "present") attendanceHtml = `<small class="status-pill status-paid">Có mặt</small>`;
+  if (booking.attendance === "absent") attendanceHtml = `<small class="status-pill status-cancelled">Vắng mặt</small>`;
+
+  const cashHtml = booking.cashCollected > 0 ? `<br><small>Tiền mặt: ${formatMoney(booking.cashCollected)}</small>` : "";
+
   return `
   <tr data-code="${escapeHtml(booking.code)}" data-search="${escapeHtml(
     searchKey(`${booking.code} ${booking.name} ${booking.phone} ${booking.tourName}`)
@@ -115,27 +125,40 @@ function row(booking) {
     <td class="cell-check">
       ${canManage() ? `<input type="checkbox" data-select value="${escapeHtml(booking.code)}" aria-label="Chọn đơn ${escapeHtml(booking.code)}">` : ""}
     </td>
-    <td>
-      <strong style="color: var(--primary, #1677ff);">${escapeHtml(booking.code)}</strong><br>
-      <small style="color: #64748b;">${formatRelative(booking.createdAt)}</small>
+    <td class="cell-code">
+      <span class="code-chip">${escapeHtml(booking.code)}</span>
+      <small>${formatRelative(booking.createdAt)}</small>
     </td>
     <td>
       <span class="cell-user">
-        <span class="avatar-sm">${escapeHtml((booking.name || "?").slice(0, 2).toUpperCase())}</span>
-        <span>
+        <span class="avatar-sm">${escapeHtml(initials(booking.name))}</span>
+        <span class="cell-user-info">
           <strong>${escapeHtml(booking.name)}</strong>
           <small>${escapeHtml(booking.phone)}${booking.email ? ` · ${escapeHtml(booking.email)}` : ""}</small>
         </span>
       </span>
     </td>
     <td>
-      ${escapeHtml(booking.tourName)}<br>
-      <small style="color: #64748b;">Khởi hành: <strong>${formatDate(booking.date)}</strong>${tour ? ` · còn ${tour.seatsLeft} chỗ` : ""}</small>
+      <span class="cell-tour">
+        ${
+          thumb
+            ? `<img class="tour-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy" onerror="${imgFallback}">`
+            : `<span class="tour-thumb tour-thumb-empty" aria-hidden="true">🧭</span>`
+        }
+        <span class="cell-tour-info">
+          <strong>${escapeHtml(booking.tourName)}</strong>
+          <small>Khởi hành ${formatDate(booking.date)}${tour ? ` · còn ${tour.seatsLeft} chỗ` : ""}</small>
+        </span>
+      </span>
     </td>
-    <td>${people}<br><small>${escapeHtml(passengerLabel(booking))}</small></td>
-    <td><strong>${formatMoney(booking.total)}</strong><br><small>${formatMoney(
-      booking.tourPrice || tour?.price || 0
-    )}/khách</small></td>
+    <td>
+      <strong>${people} khách</strong>
+      <div style="margin-top:2px">${attendanceHtml}</div>
+    </td>
+    <td>
+      <strong>${formatMoney(booking.total)}</strong>
+      ${cashHtml}
+    </td>
     <td><span class="status-pill status-${escapeHtml(booking.payment || "unpaid")}">${
       PAYMENT_STATUS[booking.payment || "unpaid"] || booking.payment
     }</span></td>
@@ -217,32 +240,126 @@ function confirmActionLabel(booking) {
 function assignGuideHtml(booking) {
   if (!canAssign()) return "";
   const guides = listGuides();
+
   if (!guides.length) {
-    return `<p class="form-hint">Chưa có hướng dẫn viên nào trong hệ thống.</p>`;
+    return `
+      <section class="assign-guide-box">
+        <h4>🧭 Giao việc cho hướng dẫn viên</h4>
+        <p class="form-hint">
+          Chưa có hướng dẫn viên nào đang hoạt động. Vào mục <strong>Tài khoản</strong> để tạo
+          hướng dẫn viên trước khi phân công.
+        </p>
+      </section>`;
   }
 
   return `
-    <div class="field">
-      <label for="bk-guide">Hướng dẫn viên phụ trách</label>
-      <select id="bk-guide" data-assign-guide="${escapeHtml(booking.code)}">
-        <option value="">Chưa phân công</option>
-        ${guides
-          .map(
-            (guide) =>
-              `<option value="${escapeHtml(guide.username)}"${
-                booking.guideId === guide.username ? " selected" : ""
-              }>${escapeHtml(guide.name)} · ${escapeHtml(guide.phone || "")}</option>`
-          )
-          .join("")}
-      </select>
-      <p class="form-hint">
-        ${
-          booking.guideName
-            ? `Đang phụ trách: <strong>${escapeHtml(booking.guideName)}</strong>`
-            : "Hướng dẫn viên sẽ thấy tour và danh sách khách này trong khu vực của họ."
-        }
-      </p>
-    </div>`;
+    <section class="assign-guide-box">
+      <h4>🧭 Giao việc cho hướng dẫn viên</h4>
+      <div class="field">
+        <label for="bk-guide">Chọn hướng dẫn viên phụ trách (${guides.length} HDV có sẵn)</label>
+        <select id="bk-guide" data-assign-guide="${escapeHtml(booking.code)}">
+          <option value="">-- Chưa phân công --</option>
+          ${guides
+            .map(
+              (guide) =>
+                `<option value="${escapeHtml(guide.username)}"${
+                  booking.guideId === guide.username ? " selected" : ""
+                }>${escapeHtml(guide.name)} · ${escapeHtml(guide.phone || "")}</option>`
+            )
+            .join("")}
+        </select>
+        <p class="form-hint">
+          ${
+            booking.guideName
+              ? `Đang phụ trách: <strong>${escapeHtml(booking.guideName)}</strong>`
+              : "Chọn hướng dẫn viên để giao tour và danh sách khách này cho họ."
+          }
+        </p>
+      </div>
+    </section>`;
+}
+
+/* Section giao việc đầy đủ trong modal chi tiết - hiện sau khi đơn đã được xác nhận */
+function guideTaskSection(booking) {
+  if (!canAssign()) return "";
+  const cancelled = booking.status === "cancelled";
+  const completed = booking.status === "completed";
+  const guides = listGuides();
+  const assigned = guides.find((g) => g.username === booking.guideId);
+
+  /* Thông tin HDV đang phụ trách */
+  const currentGuideHtml = booking.guideName
+    ? `<div class="guide-task-current">
+        <span class="guide-task-avatar">${escapeHtml(initials(booking.guideName))}</span>
+        <div class="guide-task-info">
+          <strong>${escapeHtml(booking.guideName)}</strong>
+          ${booking.guidePhone ? `<small>📞 ${escapeHtml(booking.guidePhone)}</small>` : ""}
+          ${assigned?.email ? `<small>✉️ ${escapeHtml(assigned.email)}</small>` : ""}
+        </div>
+        <span class="status-pill status-confirmed">Đã phân công</span>
+      </div>`
+    : `<p class="guide-task-empty">Chưa có hướng dẫn viên nào được phân công cho đơn này.</p>`;
+
+  if (cancelled || completed) {
+    return `
+      <section class="assign-guide-box detail-span">
+        <h4>🧭 Hướng dẫn viên phụ trách</h4>
+        ${currentGuideHtml}
+      </section>`;
+  }
+
+  if (!guides.length) {
+    return `
+      <section class="assign-guide-box detail-span">
+        <h4>🧭 Giao việc cho hướng dẫn viên</h4>
+        ${currentGuideHtml}
+        <p class="form-hint" style="margin-top:.5rem">
+          Chưa có hướng dẫn viên đang hoạt động. Vào mục <strong>Tài khoản</strong> để thêm HDV.
+        </p>
+      </section>`;
+  }
+
+  return `
+    <section class="assign-guide-box detail-span" id="guide-task-section">
+      <h4>🧭 Giao việc cho hướng dẫn viên</h4>
+
+      ${currentGuideHtml}
+
+      <div class="guide-task-form">
+        <div class="field-row">
+          <div class="field">
+            <label for="gt-guide">Chọn / thay đổi hướng dẫn viên</label>
+            <select id="gt-guide">
+              <option value="">-- Chưa phân công --</option>
+              ${guides
+                .map(
+                  (g) =>
+                    `<option value="${escapeHtml(g.username)}"${
+                      booking.guideId === g.username ? " selected" : ""
+                    }>${escapeHtml(g.name)} · ${escapeHtml(g.phone || "")}</option>`
+                )
+                .join("")}
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="gt-note">Ghi chú nhiệm vụ cho hướng dẫn viên</label>
+          <textarea id="gt-note" rows="3" placeholder="Ví dụ: Đón khách tại sảnh khách sạn lúc 6:00 sáng, mặc đồng phục công ty, mang bảng tên đoàn...">${escapeHtml(booking.guideNote || "")}</textarea>
+        </div>
+        <div class="guide-task-actions">
+          <button class="btn btn-sm btn-primary" type="button" id="gt-save" data-booking-code="${escapeHtml(booking.code)}">
+            💾 Lưu phân công
+          </button>
+          ${
+            booking.guideId
+              ? `<button class="btn btn-sm btn-ghost-soft" type="button" id="gt-remove" data-booking-code="${escapeHtml(booking.code)}">
+                  Bỏ phân công
+                </button>`
+              : ""
+          }
+        </div>
+      </div>
+    </section>`;
 }
 
 function detailModal(booking) {
@@ -252,112 +369,129 @@ function detailModal(booking) {
     .slice(0, 5);
   const { adults, children, people } = passengerBreakdown(booking);
   activeCode = booking.code;
+  const remain = booking.total - (booking.cashCollected || 0);
 
   openModal({
     title: `📋 Chi tiết đơn: ${booking.code}`,
     subtitle: `Thời gian đặt: ${formatDateTime(booking.createdAt)}${booking.updatedAt ? ` · Cập nhật: ${formatDateTime(booking.updatedAt)}` : ""}`,
     size: "lg",
     body: `
-    <div class="detail-grid">
+    <div class="booking-detail">
       <section>
-        <h4>Thông tin khách hàng</h4>
+        <h4>Thông tin khách hàng & Trạng thái</h4>
         <ul class="summary-list">
           <li><span>Họ tên</span><strong>${escapeHtml(booking.name)}</strong></li>
           <li><span>Điện thoại</span><strong><a href="tel:${escapeHtml(booking.phone)}">${escapeHtml(booking.phone)}</a></strong></li>
           <li><span>Email</span><strong>${escapeHtml(booking.email || "Không có")}</strong></li>
           <li><span>Trạng thái đơn</span><strong>${statusBadge(booking.status, BOOKING_STATUS)}</strong></li>
           <li><span>Thanh toán</span><strong>${statusBadge(booking.payment || "unpaid", PAYMENT_STATUS)}</strong></li>
+          <li><span>Điểm danh (HDV)</span><strong>${
+            booking.attendance === "present" ? `<span class="status-pill status-paid">Có mặt</span>`
+            : booking.attendance === "absent" ? `<span class="status-pill status-cancelled">Vắng mặt</span>`
+            : `<span class="soft-chip">Chưa kiểm tra</span>`
+          }</strong></li>
         </ul>
       </section>
       <section>
-        <h4>Thông tin chuyến đi</h4>
+        <h4>Thông tin chuyến đi & Tài chính</h4>
         <ul class="summary-list">
           <li><span>Tour</span><strong>${escapeHtml(booking.tourName)}</strong></li>
           <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
-          <li><span>Người lớn</span><strong>${adults} khách</strong></li>
-          <li><span>Trẻ em</span><strong>${children} khách</strong></li>
-          <li><span>Tổng khách</span><strong>${people}/${MAX_PASSENGERS}</strong></li>
-          <li><span>Giá/người lớn</span><strong>${formatMoney(
-            booking.tourPrice || tour?.price || 0
-          )}</strong></li>
-          <li><span>Giá/trẻ em</span><strong>${formatMoney(
-            childPrice(booking.tourPrice || tour?.price || 0)
-          )}</strong></li>
+          <li><span>Tổng khách</span><strong>${people}/${MAX_PASSENGERS} (${adults} lớn, ${children} trẻ)</strong></li>
           <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
+          <li><span>Đã thu tiền mặt</span><strong>${formatMoney(booking.cashCollected || 0)}</strong></li>
+          <li><span>Còn lại cần thu</span><strong>${remain > 0 ? formatMoney(remain) : "0 đ"}</strong></li>
         </ul>
       </section>
-    </div>
 
-    <h4>Phụ trách và lịch sử</h4>
-    <ul class="summary-list">
-      <li><span>Hướng dẫn viên</span><strong>${
-        booking.guideName
-          ? `${escapeHtml(booking.guideName)}${booking.guidePhone ? ` · ${escapeHtml(booking.guidePhone)}` : ""}`
-          : "Chưa phân công"
-      }</strong></li>
-      <li><span>Phụ trách</span><strong>${guideBookings(booking.guideId).length} đơn cùng hướng dẫn viên</strong></li>
-    </ul>
+      ${
+        (booking.cashPayments || []).length > 0
+          ? `<section class="detail-span">
+               <h4>Lịch sử thu tiền mặt từ HDV</h4>
+               <ul class="history-list">
+                 ${booking.cashPayments.map((p) => `
+                   <li>
+                      <strong>${formatMoney(p.amount)}</strong>
+                      <ul class="it-list">
+                        <li>Thu lúc ${formatDateTime(p.at)} · Người thu: ${escapeHtml(p.by)}</li>
+                        ${p.note ? `<li>Ghi chú: ${escapeHtml(p.note)}</li>` : ""}
+                      </ul>
+                   </li>`).join("")}
+               </ul>
+             </section>`
+          : ""
+      }
 
-    ${
-      (booking.statusHistory || []).length
-        ? `<h4>Lịch sử trạng thái</h4>
-           <ul class="history-list">${booking.statusHistory
-             .map(
-               (entry) =>
-                 `<li><strong>${escapeHtml(
-                   BOOKING_STATUS[entry.status] || entry.status
-                 )}</strong><br><small>${formatDateTime(entry.at)} · ${escapeHtml(
-                   entry.by || ""
-                 )}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}</small></li>`
-             )
-             .join("")}</ul>`
-        : ""
-    }
+      ${guideTaskSection(booking)}
 
-    <h4>Ghi chú của khách</h4>
-    <p class="note-box">${booking.note ? escapeHtml(booking.note) : "Khách không để lại ghi chú."}</p>
+      ${
+        (booking.statusHistory || []).length
+          ? `<section class="detail-span">
+               <h4>Lịch sử trạng thái</h4>
+               <ul class="history-list">${booking.statusHistory
+                 .map(
+                   (entry) =>
+                     `<li><strong>${escapeHtml(
+                       BOOKING_STATUS[entry.status] || entry.status
+                     )}</strong><br><small>${formatDateTime(entry.at)} · ${escapeHtml(
+                       entry.by || ""
+                     )}${entry.note ? ` · ${escapeHtml(entry.note)}` : ""}</small></li>`
+                 )
+                 .join("")}</ul>
+             </section>`
+          : ""
+      }
 
-    ${
-      canManage()
-        ? `
-        <div class="order-status-manager" style="margin-top: 1.25rem; padding: 1rem; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px;">
-          <h4 style="margin: 0 0 0.75rem; font-size: 0.95rem; color: #1e293b;">⚡ Cập nhật trạng thái đơn hàng &amp; Thanh toán</h4>
-          <div class="field-row">
-            <div class="field" style="flex: 1;">
-              <label for="dlg-status">Trạng thái đơn hàng</label>
-              <select id="dlg-status" style="font-weight: 600;">
-                ${Object.entries(BOOKING_STATUS)
-                  .map(([val, label]) => `<option value="${val}"${booking.status === val ? " selected" : ""}>${label}</option>`)
-                  .join("")}
-              </select>
-            </div>
-            <div class="field" style="flex: 1;">
-              <label for="dlg-payment">Trạng thái thanh toán</label>
-              <select id="dlg-payment" style="font-weight: 600;">
-                ${Object.entries(PAYMENT_STATUS)
-                  .map(([val, label]) => `<option value="${val}"${(booking.payment || "unpaid") === val ? " selected" : ""}>${label}</option>`)
-                  .join("")}
-              </select>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-primary" type="button" id="dlg-save-status" style="margin-top: 0.5rem;">
-            💾 Lưu thay đổi trạng thái
-          </button>
-        </div>`
-        : ""
-    }
+      <section class="detail-span">
+        <h4>Ghi chú của khách</h4>
+        <p class="note-box">${booking.note ? escapeHtml(booking.note) : "Khách không để lại ghi chú."}</p>
+      </section>
 
-    ${
-      history.length
-        ? `<h4>Lịch sử các đơn khác của khách này (${history.length})</h4>
-           <ul class="history-list">${history
-             .map(
-               (item) =>
-                 `<li><a href="#/admin/bookings?q=${encodeURIComponent(item.code)}">${escapeHtml(item.code)}</a> · ${escapeHtml(item.tourName)} · ${formatDate(item.date)} · ${statusBadge(item.status, BOOKING_STATUS)}</li>`
-             )
-             .join("")}</ul>`
-        : ""
-    }${assignGuideHtml(booking)}`,
+      ${
+        canManage()
+          ? `<section class="detail-span">
+               <h4>⚡ Cập nhật trạng thái đơn hàng &amp; thanh toán</h4>
+               <div class="order-status-manager">
+                 <div class="field-row">
+                   <div class="field">
+                     <label for="dlg-status">Trạng thái đơn hàng</label>
+                     <select id="dlg-status">
+                       ${Object.entries(BOOKING_STATUS)
+                         .map(([val, label]) => `<option value="${val}"${booking.status === val ? " selected" : ""}>${label}</option>`)
+                         .join("")}
+                     </select>
+                   </div>
+                   <div class="field">
+                     <label for="dlg-payment">Trạng thái thanh toán</label>
+                     <select id="dlg-payment">
+                       ${Object.entries(PAYMENT_STATUS)
+                         .map(([val, label]) => `<option value="${val}"${(booking.payment || "unpaid") === val ? " selected" : ""}>${label}</option>`)
+                         .join("")}
+                     </select>
+                   </div>
+                 </div>
+                 <button class="btn btn-sm btn-primary" type="button" id="dlg-save-status">
+                   💾 Lưu thay đổi trạng thái
+                 </button>
+               </div>
+             </section>`
+          : ""
+      }
+
+      ${
+        history.length
+          ? `<section class="detail-span">
+               <h4>Lịch sử các đơn khác của khách này (${history.length})</h4>
+               <ul class="history-list">${history
+                 .map(
+                   (item) =>
+                     `<li><a href="#/admin/bookings?q=${encodeURIComponent(item.code)}">${escapeHtml(item.code)}</a> · ${escapeHtml(item.tourName)} · ${formatDate(item.date)} · ${statusBadge(item.status, BOOKING_STATUS)}</li>`
+                 )
+                 .join("")}</ul>
+             </section>`
+          : ""
+      }
+    </div>`,
     footer: `
       ${
         canManage()
@@ -395,6 +529,44 @@ function detailModal(booking) {
     closeModal();
     refreshAdmin();
   });
+
+  /* Lưu phân công Tour Guide kèm ghi chú nhiệm vụ */
+  document.getElementById("gt-save")?.addEventListener("click", () => {
+    if (!canAssign()) return;
+    const code = booking.code;
+    const guideId = document.getElementById("gt-guide")?.value || "";
+    const guideNote = document.getElementById("gt-note")?.value?.trim() || "";
+    const guide = listGuides().find((g) => g.username === guideId) || null;
+
+    const result = assignBookingGuide(code, guide);
+    if (result.error) return toast(result.error, "error");
+
+    /* Lưu thêm ghi chú nhiệm vụ vào đơn */
+    updateBooking(code, { guideNote });
+
+    logActivity(
+      "Phân công hướng dẫn viên",
+      guide
+        ? `Phân công ${guide.name} cho đơn ${code}${guideNote ? ` — "${guideNote}"` : ""}`
+        : `Bỏ phân công hướng dẫn viên cho đơn ${code}`
+    );
+    toast(guide ? `Đã phân công ${guide.name} cho đơn ${code}.` : `Đã bỏ phân công đơn ${code}.`);
+    closeModal();
+    refreshAdmin();
+  });
+
+  /* Bỏ phân công Tour Guide */
+  document.getElementById("gt-remove")?.addEventListener("click", () => {
+    if (!canAssign()) return;
+    if (!window.confirm(`Bỏ phân công hướng dẫn viên khỏi đơn ${booking.code}?`)) return;
+    const result = assignBookingGuide(booking.code, null);
+    if (result.error) return toast(result.error, "error");
+    updateBooking(booking.code, { guideNote: "" });
+    logActivity("Bỏ phân công HDV", `Đơn ${booking.code} — ${booking.guideName}`);
+    toast(`Đã bỏ phân công đơn ${booking.code}.`);
+    closeModal();
+    refreshAdmin();
+  });
 }
 
 export function Bookings(path, params = {}, query = new URLSearchParams()) {
@@ -428,8 +600,23 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
     <article class="kpi kpi-violet"><p class="kpi-label">Doanh thu</p><strong class="kpi-value">${formatMoney(summary.revenue)}</strong><span class="kpi-hint">TB ${formatMoney(summary.avgOrder)}</span></article>
   </section>
 
-  <section class="panel">
-    <div class="filter-bar">
+  <section class="panel bookings-panel">
+    <div class="panel-head bookings-head">
+      <div>
+        <h2>Danh sách đơn đặt tour</h2>
+        <p>Tra cứu, lọc và xử lý đơn của khách hàng.</p>
+      </div>
+      <div class="bookings-head-actions">
+        <button class="btn btn-sm btn-ghost-soft" type="button" id="bk-print">🖨️ In danh sách</button>
+        ${
+          canExport
+            ? `<button class="btn btn-sm btn-primary" type="button" id="bk-export">📥 Xuất CSV</button>`
+            : ""
+        }
+      </div>
+    </div>
+
+    <div class="booking-filters">
       <div class="filter-field filter-grow">
         <label for="bk-q">Tìm kiếm đơn</label>
         <input id="bk-q" type="search" value="${escapeHtml(FILTERS.q)}" placeholder="Mã đơn, tên khách, số điện thoại, tên tour..." autocomplete="off">
@@ -444,19 +631,19 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
         </select>
       </div>
       <div class="filter-field">
-        <label for="bk-tour">Tour</label>
-        <select id="bk-tour">
-          <option value="">Tất cả tour</option>
-          ${tours.map((tour) => `<option value="${tour.id}">${escapeHtml(tour.name)}</option>`).join("")}
-        </select>
-      </div>
-      <div class="filter-field">
         <label for="bk-payment">Thanh toán</label>
         <select id="bk-payment">
           <option value="">Tất cả thanh toán</option>
           ${Object.entries(PAYMENT_STATUS)
             .map(([value, label]) => `<option value="${value}">${label}</option>`)
             .join("")}
+        </select>
+      </div>
+      <div class="filter-field">
+        <label for="bk-tour">Tour</label>
+        <select id="bk-tour">
+          <option value="">Tất cả tour</option>
+          ${tours.map((tour) => `<option value="${tour.id}">${escapeHtml(tour.name)}</option>`).join("")}
         </select>
       </div>
       <div class="filter-field">
@@ -479,7 +666,7 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
       </div>
     </div>
 
-    <div class="toolbar-actions toolbar-actions-between">
+    <div class="bookings-toolbar">
       ${
         canManage()
           ? `<div class="bulk-actions" id="bk-bulk" hidden>
@@ -489,32 +676,23 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
               <button class="btn btn-sm btn-outline" type="button" data-bulk="cancelled">Huỷ</button>
               <button class="btn btn-sm btn-outline-danger" type="button" data-bulk="delete">Xoá</button>
             </div>`
-          : `<span></span>`
+          : ""
       }
-      <div class="toolbar-actions">
-        <button class="btn btn-sm btn-ghost-soft" type="button" id="bk-print">🖨️ In danh sách</button>
-        ${
-          canExport
-            ? `<button class="btn btn-sm btn-primary" type="button" id="bk-export">📥 Xuất CSV</button>`
-            : ""
-        }
-      </div>
+      <p class="result-count" id="bk-count" role="status"></p>
     </div>
 
-    <p class="result-count" id="bk-count" role="status"></p>
-
     <div class="table-wrap">
-      <table class="data-table">
+      <table class="data-table bookings-table">
         <thead>
           <tr>
             ${canManage() ? `<th class="cell-check"><input type="checkbox" id="bk-check-all" aria-label="Chọn tất cả"></th>` : ""}
             <th>Mã đơn</th>
             <th>Khách hàng</th>
-            <th>Tour &amp; Ngày khởi hành</th>
+            <th>Tour &amp; khởi hành</th>
             <th>Số lượng</th>
             <th>Tổng tiền</th>
             <th>Thanh toán</th>
-            <th>Trạng thái đơn</th>
+            <th>Trạng thái</th>
             <th>Thao tác</th>
           </tr>
         </thead>

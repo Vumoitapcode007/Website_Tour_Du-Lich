@@ -3525,6 +3525,7 @@ body.modal-open {
   align-content: start;
   gap: 18px;
   padding: 22px 24px 44px;
+  min-width: 0;
 }
 
 .admin-stamp {
@@ -3540,6 +3541,7 @@ body.modal-open {
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow);
   padding: 18px;
+  min-width: 0;
 }
 
 .panel-head {
@@ -3793,6 +3795,21 @@ body.modal-open {
   display: grid;
   gap: 4px;
   min-width: 140px;
+}
+
+/* Keep the bookings panel within the admin content; let its wide table scroll inside. */
+.admin-content > .panel,
+.admin-content > .kpi-grid {
+  min-width: 0;
+}
+
+.admin-shell .table-wrap {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.admin-shell .data-table {
+  min-width: 940px;
 }
 
 .filter-grow {
@@ -4066,6 +4083,261 @@ body.modal-open {
   font-size: 0.78rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* ---------- Trang đơn đặt tour ---------- */
+
+.bookings-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.bookings-head {
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.bookings-head h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.bookings-head p {
+  color: var(--admin-muted);
+  font-size: 0.84rem;
+}
+
+.bookings-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.booking-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: var(--admin-soft);
+}
+
+.booking-filters .filter-field {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.booking-filters .filter-grow {
+  flex: 2 1 260px;
+}
+
+.bookings-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.bookings-toolbar .bulk-actions {
+  margin-bottom: 0;
+}
+
+.bookings-toolbar .result-count {
+  margin: 0 0 0 auto;
+}
+
+.cell-code {
+  display: grid;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.cell-user-info,
+.cell-tour-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cell-user-info strong,
+.cell-tour-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-tour {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 290px;
+}
+
+.cell-tour .tour-thumb {
+  width: 56px;
+  height: 40px;
+  flex: 0 0 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--admin-soft);
+}
+
+.cell-tour .tour-thumb-empty {
+  display: grid;
+  place-items: center;
+  font-size: 1rem;
+  border: 1px dashed var(--admin-border);
+}
+
+.admin-shell .bookings-table {
+  min-width: 1060px;
+}
+
+.booking-detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.booking-detail > section {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 14px 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.booking-detail > .detail-span {
+  grid-column: 1 / -1;
+}
+
+.booking-detail > section > h4 {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.order-status-manager {
+  display: grid;
+  gap: 10px;
+}
+
+.order-status-manager select {
+  font-weight: 600;
+}
+
+/* ---- Section giao việc Tour Guide ---- */
+.assign-guide-box {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e0edff;
+  border-radius: 12px;
+  background: #f4f8ff;
+}
+
+.assign-guide-box h4 {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #d0e4ff;
+  color: #1a56db;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Card thông tin HDV đang phụ trách */
+.guide-task-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #c7dcff;
+}
+
+.guide-task-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #1a56db;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.guide-task-info {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+.guide-task-info strong {
+  font-size: 0.9rem;
+  color: var(--admin-text);
+}
+
+.guide-task-info small {
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+}
+
+.guide-task-empty {
+  font-size: 0.85rem;
+  color: var(--admin-muted);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Form chọn HDV + ghi chú nhiệm vụ */
+.guide-task-form {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.guide-task-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.confirm-box {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: var(--admin-soft);
+}
+
+.confirm-box-title {
+  color: var(--admin-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.confirm-box-total {
+  color: var(--admin-primary);
+  font-size: 1.02rem;
 }
 
 /* ---------- Badge & trạng thái ---------- */
@@ -5508,8 +5780,13 @@ body.modal-open {
   .form-grid,
   .field-row,
   .detail-grid,
+  .booking-detail,
   .admin-grid-3 {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .booking-detail > .detail-span {
+    grid-column: auto;
   }
 }
 
@@ -5532,6 +5809,16 @@ body.modal-open {
   .report-range {
     width: 100%;
   }
+
+  .bookings-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .booking-filters .filter-field,
+  .booking-filters .filter-grow {
+    flex: 1 1 100%;
+  }
 }
 
 /* ---------- In báo cáo ---------- */
@@ -5547,6 +5834,9 @@ body.modal-open {
   .row-actions,
   .toolbar-actions,
   .filter-bar,
+  .booking-filters,
+  .bookings-head-actions,
+  .bookings-toolbar,
   .pagination {
     display: none !important;
   }

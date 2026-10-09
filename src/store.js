@@ -254,6 +254,16 @@ export function normalizeBooking(booking = {}) {
     guidePhone: String(booking.guidePhone || ""),
     statusHistory: Array.isArray(booking.statusHistory) ? booking.statusHistory : [],
     note: String(booking.note || ""),
+    /* Điểm danh: "present" | "absent" | "" (chưa xác nhận) - do Tour Guide cập nhật */
+    attendance: ["present", "absent"].includes(booking.attendance) ? booking.attendance : "",
+    attendanceAt: String(booking.attendanceAt || ""),
+    attendanceBy: String(booking.attendanceBy || ""),
+    /* Thu tiền mặt: mảng {amount, by, at, note} - chỉ áp dụng khi thanh toán trực tiếp qua HDV */
+    cashPayments: Array.isArray(booking.cashPayments) ? booking.cashPayments : [],
+    /* Tổng tiền mặt đã thu (tính từ cashPayments) */
+    cashCollected: Array.isArray(booking.cashPayments)
+      ? booking.cashPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+      : 0,
   };
 }
 
@@ -329,15 +339,43 @@ export function recordBookingPayment(code, { method = "momo", transId } = {}) {
     status: booking.status === "cancelled" ? "cancelled" : "confirmed",
   };
   updateBooking(code, patch);
-  logActivity("booking.payment", `Thanh toán thành công đơn ${code} qua ${method.toUpperCase()} (Mã GD: ${paymentTransId})`);
-  saveNotification({
-    type: "booking",
-    title: `Thanh toán thành công đơn ${code}`,
-    body: `Quý khách đã thanh toán thành công qua Ví MoMo với mã giao dịch ${paymentTransId}. Chuyến đi ${booking.tourName} đã sẵn sàng!`,
-    phone: booking.phone,
-    email: booking.email,
+  return { booking: getBooking(code) };
+}
+
+export function guideBookings(guideId) {
+  const key = String(guideId || "").trim().toLowerCase();
+  if (!key) return [];
+  return listBookings().filter((item) => item.guideId.toLowerCase() === key);
+}
+
+/* Danh sách khách của một tour mà Tour Guide được phép xem.
+   Guide không có "bookings.view" nên phải lọc theo guideId của chính mình. */
+export function tourGuests(tourId, guideId = "") {
+  const key = String(guideId || "").trim().toLowerCase();
+  return listBookings().filter((item) => {
+    if (String(item.tourId) !== String(tourId)) return false;
+    if (["cancelled", "pending"].includes(item.status)) return false;
+    if (key && item.guideId.toLowerCase() !== key) return false;
+    return true;
   });
-  return { ...booking, ...patch };
+}
+
+export function bookingTourStats(tourId) {
+  const rows = listBookings().filter((item) => String(item.tourId) === String(tourId));
+  return {
+    orders: rows.length,
+    guests: rows.reduce((sum, item) => sum + (Number(item.people) || 0), 0),
+    revenue: rows
+      .filter((item) => item.status !== "cancelled")
+      .reduce((sum, item) => sum + (Number(item.total) || 0), 0),
+    rows,
+  };
+}
+
+/* Đơn đã phát sinh giao dịch (đã thanh toán / đã hoàn thành) thì không được xoá vật lý,
+   chỉ được huỷ hoặc giữ lại để tra cứu lịch sử. */
+export function isProtectedBooking(booking) {
+  return ["paid", "upcoming", "ongoing", "completed"].includes(booking?.status);
 }
 
 export function removeBooking(code) {

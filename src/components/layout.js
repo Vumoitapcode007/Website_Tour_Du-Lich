@@ -27,8 +27,13 @@ export function renderHeader(active = "") {
   const session = getSession();
   const user = session ? { ...session, avatar: session.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.name || "User")}&background=0284c7&color=fff` } : null;
   const staff = isStaffRole(session?.roleKey);
+  const isGuide = session?.roleKey === "tour_guide";
+  
+  const currentAdminItem = isGuide ? { path: "guide", label: "Bảng điều khiển", aliases: [] } : adminItem;
+  const currentProfileItem = isGuide ? { path: "guide/profile", label: "Hồ sơ", aliases: [] } : profileItem;
+
   const items = staff
-    ? [...navItems, adminItem, profileItem, logoutItem]
+    ? [...navItems, currentAdminItem, currentProfileItem, logoutItem]
     : session
       ? [...navItems, accountItem, logoutItem]
       : [...navItems, loginItem];
