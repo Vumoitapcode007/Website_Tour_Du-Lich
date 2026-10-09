@@ -1,4 +1,4 @@
-import { BOOKING_STATUS, guideBookings, nextBookingStatus, updateBooking } from "../../store.js";
+import { BOOKING_STATUS, PAYMENT_STATUS, guideBookings, nextBookingStatus, updateBooking, markAttendance, addCashPayment, removeCashPayment } from "../../store.js";
 import { getTourById } from "../../tour-repository.js";
 import { getSession, hasPermission } from "../../auth.js";
 import { guideGuard, refreshAdmin } from "../../components/admin-shell.js";
@@ -14,6 +14,7 @@ import {
 } from "../../components/admin-ui.js";
 import { formatPrice, formatDate } from "../../data.js";
 import { escapeHtml, searchKey } from "../../validate.js";
+import { formatDateTime } from "../../reports.js";
 
 const FILTERS = { q: "", status: "", tour: "" };
 
@@ -48,6 +49,16 @@ function filterRows(rows) {
 function row(booking) {
   const next = nextBookingStatus(booking.status, { guide: true });
   const canRun = hasPermission("guide.tours.run") && next;
+  
+  // Trạng thái điểm danh
+  let attendanceHtml = `<span class="soft-chip">Chưa điểm danh</span>`;
+  if (booking.attendance === "present") attendanceHtml = `<span class="status-pill status-paid">Có mặt</span>`;
+  if (booking.attendance === "absent") attendanceHtml = `<span class="status-pill status-cancelled">Vắng mặt</span>`;
+
+  // Trạng thái thanh toán & Tiền mặt
+  const remain = booking.total - (booking.cashCollected || 0);
+  let paymentHtml = statusBadge(booking.payment || "unpaid", BOOKING_STATUS); // using statusBadge but for payment, wait, let's use PAYMENT_STATUS if imported or just badge. We don't import PAYMENT_STATUS here yet.
+  
   return `
   <tr data-code="${escapeHtml(booking.code)}" data-search="${escapeHtml(
     searchKey(`${booking.code} ${booking.name} ${booking.phone} ${booking.tourName}`)
@@ -64,10 +75,13 @@ function row(booking) {
       </span>
     </td>
     <td>${escapeHtml(tourName(booking))}<br><small>${escapeHtml(booking.tourLocation || "-")}</small></td>
-    <td>${booking.people} khách<br><small>${formatPrice(booking.tourPrice || 0)}/người</small></td>
-    <td>${statusBadge(booking.status, BOOKING_STATUS)}</td>
+    <td>${booking.people} khách<br>${attendanceHtml}</td>
+    <td>
+       <span class="status-pill status-${escapeHtml(booking.payment || "unpaid")}">${booking.payment === 'paid' ? 'Đã thanh toán' : booking.payment === 'deposit' ? 'Đã cọc' : 'Chưa thanh toán'}</span>
+       ${booking.cashCollected > 0 ? `<br><small>Đã thu: ${formatMoney(booking.cashCollected)}</small>` : ""}
+    </td>
     <td class="row-actions">
-      <button class="btn btn-sm btn-ghost-soft" type="button" data-guide-view="${escapeHtml(booking.code)}">Chi tiết</button>
+      <button class="btn btn-sm btn-ghost-soft" type="button" data-guide-view="${escapeHtml(booking.code)}">Chi tiết & Cập nhật</button>
       ${
         canRun
           ? `<button class="btn btn-sm btn-primary" type="button" data-guide-advance="${escapeHtml(
@@ -220,6 +234,8 @@ document.addEventListener("click", (event) => {
   const booking = guideBookings(session.username).find((item) => item.code === button.dataset.guideView);
   if (!booking) return;
 
+  const remain = booking.total - (booking.cashCollected || 0);
+
   openModal({
       title: `Khách ${booking.name}`,
       subtitle: `${booking.code} · ${tourName(booking)}`,
@@ -227,32 +243,81 @@ document.addEventListener("click", (event) => {
       body: `
         <div class="detail-grid">
           <section>
-            <h4>Thông tin khách</h4>
+            <h4>Thông tin khách & Trạng thái</h4>
             <ul class="summary-list">
               <li><span>Họ tên</span><strong>${escapeHtml(booking.name)}</strong></li>
               <li><span>Điện thoại</span><strong>${escapeHtml(booking.phone)}</strong></li>
               <li><span>Email</span><strong>${escapeHtml(booking.email || "-")}</strong></li>
               <li><span>Số khách</span><strong>${booking.people} (${booking.adults} lớn, ${booking.children} trẻ)</strong></li>
-              <li><span>Tổng tiền</span><strong>${formatPrice(booking.total)}</strong></li>
+              <li><span>Trạng thái</span><strong>${statusBadge(booking.status, BOOKING_STATUS)}</strong></li>
+              <li>
+                <span>Điểm danh</span>
+                <div class="attendance-actions" style="margin-top:4px">
+                   ${
+                     booking.attendance === "present"
+                       ? `<span class="status-pill status-paid">Đã xác nhận có mặt</span>`
+                       : booking.attendance === "absent"
+                       ? `<span class="status-pill status-cancelled">Đã xác nhận vắng mặt</span>`
+                       : `<span class="soft-chip">Chưa kiểm tra</span>`
+                   }
+                   ${
+                     ["upcoming", "ongoing"].includes(booking.status)
+                       ? `<div style="margin-top:8px; display:flex; gap:8px">
+                            <button class="btn btn-sm btn-outline" type="button" data-attendance="present" data-code="${escapeHtml(booking.code)}">Có mặt</button>
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-attendance="absent" data-code="${escapeHtml(booking.code)}">Vắng mặt</button>
+                          </div>`
+                       : ""
+                   }
+                </div>
+              </li>
             </ul>
           </section>
           <section>
-            <h4>Chuyến đi</h4>
+            <h4>Thanh toán & Thu tiền mặt</h4>
             <ul class="summary-list">
-              <li><span>Tour</span><strong>${escapeHtml(tourName(booking))}</strong></li>
-              <li><span>Địa điểm</span><strong>${escapeHtml(booking.tourLocation || "-")}</strong></li>
-              <li><span>Thời lượng</span><strong>${escapeHtml(booking.tourTime || "-")}</strong></li>
-              <li><span>Khởi hành</span><strong>${escapeHtml(formatDate(booking.date))}</strong></li>
-              <li><span>Trạng thái</span><strong>${statusBadge(booking.status, BOOKING_STATUS)}</strong></li>
+              <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
+              <li><span>Trạng thái TT</span><strong>${statusBadge(booking.payment || "unpaid", PAYMENT_STATUS)}</strong></li>
+              <li><span>Đã thu tiền mặt</span><strong>${formatMoney(booking.cashCollected || 0)}</strong></li>
+              <li><span>Còn lại cần thu</span><strong>${remain > 0 ? formatMoney(remain) : "0 đ"}</strong></li>
             </ul>
+            ${
+              remain > 0 && ["upcoming", "ongoing", "awaiting_payment"].includes(booking.status)
+                ? `<div class="payment-action-box" style="margin-top:16px; background:var(--bg-soft); padding:12px; border-radius:8px;">
+                     <h5 style="margin-bottom:8px">Ghi nhận thu thêm tiền mặt</h5>
+                     <div style="display:flex; gap:8px;">
+                        <input type="number" id="guide-cash-amount" class="input-field" placeholder="Nhập số tiền..." max="${remain}" style="flex:1">
+                        <button class="btn btn-primary" type="button" data-add-cash="${escapeHtml(booking.code)}">Xác nhận thu</button>
+                     </div>
+                     <p class="form-hint" style="margin-top:4px">Khách thanh toán trực tiếp cho HDV</p>
+                   </div>`
+                : ""
+            }
           </section>
         </div>
+        
         ${
-          booking.note
-            ? `<h4>Ghi chú của khách</h4><div class="note-box">${escapeHtml(booking.note)}</div>`
+          (booking.cashPayments || []).length > 0
+            ? `<div class="detail-span" style="margin-top:16px;">
+                 <h4>Lịch sử thu tiền mặt của đơn này</h4>
+                 <ul class="history-list">
+                   ${booking.cashPayments.map((p, i) => `
+                     <li>
+                        <strong>${formatMoney(p.amount)}</strong>
+                        <ul class="it-list">
+                          <li>Thu lúc ${formatDateTime(p.at)} · Bời ${escapeHtml(p.by)}</li>
+                        </ul>
+                     </li>`).join("")}
+                 </ul>
+               </div>`
             : ""
         }
-        <div class="field">
+
+        ${
+          booking.note
+            ? `<div style="margin-top:16px;"><h4>Ghi chú của khách</h4><div class="note-box">${escapeHtml(booking.note)}</div></div>`
+            : ""
+        }
+        <div class="field" style="margin-top:16px;">
           <label for="guide-note">Ghi chú vận hành (nội bộ)</label>
           <textarea id="guide-note" rows="3" placeholder="Ghi chú riêng cho team, khách không thấy">${escapeHtml(
             booking.guideNote || ""
@@ -262,12 +327,52 @@ document.addEventListener("click", (event) => {
         <button class="btn btn-light" type="button" data-modal-close>Đóng</button>
         <button class="btn btn-primary" type="button" data-save-guide-note="${escapeHtml(booking.code)}">Lưu ghi chú</button>`,
     });
+});
 
-  document.querySelector("[data-save-guide-note]")?.addEventListener("click", () => {
+/* Lắng nghe sự kiện lưu ghi chú, điểm danh, thu tiền */
+document.addEventListener("click", (event) => {
+  const session = getSession();
+
+  // 1. Lưu ghi chú
+  const btnNote = event.target.closest("[data-save-guide-note]");
+  if (btnNote) {
+    const code = btnNote.dataset.saveGuideNote;
     const value = document.getElementById("guide-note")?.value || "";
-    updateBooking(booking.code, { guideNote: value, guideNoteBy: session.name });
+    updateBooking(code, { guideNote: value, guideNoteBy: session.name });
     closeModal();
     toast("Đã lưu ghi chú vận hành.");
     refreshAdmin();
-  });
+    return;
+  }
+
+  // 2. Điểm danh
+  const btnAtt = event.target.closest("[data-attendance]");
+  if (btnAtt) {
+    const code = btnAtt.dataset.code;
+    const status = btnAtt.dataset.attendance;
+    const res = markAttendance(code, status, { guideId: session.username, by: session.name });
+    if (res.error) return toast(res.error, "error");
+    toast(`Đã cập nhật điểm danh: ${status === "present" ? "Có mặt" : "Vắng mặt"}`);
+    closeModal();
+    refreshAdmin();
+    return;
+  }
+
+  // 3. Thu tiền mặt
+  const btnCash = event.target.closest("[data-add-cash]");
+  if (btnCash) {
+    const code = btnCash.dataset.addCash;
+    const amount = document.getElementById("guide-cash-amount")?.value;
+    if (!amount || amount <= 0) return toast("Vui lòng nhập số tiền hợp lệ", "error");
+    
+    if (!confirm(`Xác nhận đã thu ${formatMoney(amount)} tiền mặt từ khách?`)) return;
+
+    const res = addCashPayment(code, amount, { guideId: session.username, by: session.name });
+    if (res.error) return toast(res.error, "error");
+    
+    toast(`Đã ghi nhận thu ${formatMoney(amount)}`);
+    closeModal();
+    refreshAdmin();
+    return;
+  }
 });

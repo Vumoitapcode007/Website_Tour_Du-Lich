@@ -26,8 +26,13 @@ export function renderHeader(active = "") {
   const session = getSession();
   const user = session;
   const staff = isStaffRole(session?.roleKey);
+  const isGuide = session?.roleKey === "tour_guide";
+  
+  const currentAdminItem = isGuide ? { path: "guide", label: "Bảng điều khiển", aliases: [] } : adminItem;
+  const currentProfileItem = isGuide ? { path: "guide/profile", label: "Hồ sơ", aliases: [] } : profileItem;
+
   const items = staff
-    ? [...navItems, adminItem, profileItem, logoutItem]
+    ? [...navItems, currentAdminItem, currentProfileItem, logoutItem]
     : session
       ? [...navItems, accountItem, logoutItem]
       : [...navItems, loginItem];

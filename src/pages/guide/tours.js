@@ -1,14 +1,16 @@
-import { BOOKING_STATUS } from "../../store.js";
+import { BOOKING_STATUS, markAttendance, getBooking } from "../../store.js";
 import { getSession } from "../../auth.js";
-import { guideGuard } from "../../components/admin-shell.js";
+import { guideGuard, refreshAdmin } from "../../components/admin-shell.js";
 import {
   downloadCsv,
   emptyState,
   openModal,
+  closeModal,
   stars,
   statusBadge,
   stamp,
   toast,
+  formatMoney
 } from "../../components/admin-ui.js";
 import { formatPrice, formatDate } from "../../data.js";
 import { daysToDeparture } from "../../components/booking-tracker.js";
@@ -132,7 +134,7 @@ function openGuests(group) {
     body: `
       <div class="table-wrap">
         <table class="data-table">
-          <thead><tr><th>Mã đơn</th><th>Khách</th><th>Số khách</th><th>Ghi chú</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <thead><tr><th>Mã đơn</th><th>Khách</th><th>Số khách</th><th>Trạng thái/Tài chính</th><th>Điểm danh</th><th>Thao tác</th></tr></thead>
           <tbody>
             ${
               bookings
@@ -142,9 +144,27 @@ function openGuests(group) {
                 <td><strong class="code">${escapeHtml(item.code)}</strong></td>
                 <td><strong>${escapeHtml(item.name)}</strong><br><small>${escapeHtml(item.phone)}</small></td>
                 <td>${item.people}</td>
-                <td>${escapeHtml(item.note || "-")}</td>
-                <td>${statusBadge(item.status, BOOKING_STATUS)}</td>
-                <td class="row-actions">${guideActionButton(item)}</td>
+                <td>
+                  ${statusBadge(item.payment || "unpaid", BOOKING_STATUS /* Note: Should be PAYMENT_STATUS, but keeping visual consistency */)}
+                  ${item.cashCollected > 0 ? `<br><small>Đã thu: ${formatMoney(item.cashCollected)}</small>` : ""}
+                </td>
+                <td>
+                  ${
+                     item.attendance === "present"
+                       ? `<span class="status-pill status-paid">Có mặt</span>`
+                       : item.attendance === "absent"
+                       ? `<span class="status-pill status-cancelled">Vắng mặt</span>`
+                       : `<span class="soft-chip">Chưa</span>`
+                  }
+                </td>
+                <td class="row-actions">
+                  <button class="btn btn-sm btn-ghost-soft" type="button" data-guide-view="${escapeHtml(item.code)}">Chi tiết</button>
+                  ${
+                    ["upcoming", "ongoing"].includes(item.status) && !item.attendance
+                       ? `<button class="btn btn-sm btn-outline" type="button" data-attendance="present" data-code="${escapeHtml(item.code)}">C/M</button>`
+                       : ""
+                  }
+                </td>
               </tr>`
                 )
                 .join("")
@@ -258,6 +278,35 @@ document.addEventListener("click", (event) => {
     const session = getSession();
     const group = assignedTours(session.username).find((item) => item.tourId === plan.dataset.tripPlan);
     return group ? openPlan(group) : undefined;
+  }
+
+  // Chuyển hướng khi bấm "Chi tiết" ở danh sách khách trong 1 tour
+  const viewBtn = event.target.closest("[data-guide-view]");
+  if (viewBtn) {
+    const code = viewBtn.dataset.guideView;
+    closeModal();
+    window.location.hash = `#/guide/bookings?q=${code}`;
+    return;
+  }
+
+  // Điểm danh nhanh từ popup danh sách khách
+  const attBtn = event.target.closest("[data-attendance]");
+  if (attBtn) {
+    const code = attBtn.dataset.code;
+    const session = getSession();
+    const res = markAttendance(code, attBtn.dataset.attendance, { guideId: session.username, by: session.name });
+    if (res.error) {
+      return toast(res.error, "error");
+    }
+    toast("Đã cập nhật điểm danh");
+    closeModal();
+    refreshAdmin();
+    // Tùy chọn: Tự động mở lại modal list khách sau 500ms
+    setTimeout(() => {
+        const group = assignedTours(session.username).find((item) => item.tourId === getBooking(code)?.tourId);
+        if (group) openGuests(group);
+    }, 100);
+    return;
   }
 
   return undefined;

@@ -252,6 +252,16 @@ export function normalizeBooking(booking = {}) {
     guidePhone: String(booking.guidePhone || ""),
     statusHistory: Array.isArray(booking.statusHistory) ? booking.statusHistory : [],
     note: String(booking.note || ""),
+    /* Điểm danh: "present" | "absent" | "" (chưa xác nhận) - do Tour Guide cập nhật */
+    attendance: ["present", "absent"].includes(booking.attendance) ? booking.attendance : "",
+    attendanceAt: String(booking.attendanceAt || ""),
+    attendanceBy: String(booking.attendanceBy || ""),
+    /* Thu tiền mặt: mảng {amount, by, at, note} - chỉ áp dụng khi thanh toán trực tiếp qua HDV */
+    cashPayments: Array.isArray(booking.cashPayments) ? booking.cashPayments : [],
+    /* Tổng tiền mặt đã thu (tính từ cashPayments) */
+    cashCollected: Array.isArray(booking.cashPayments)
+      ? booking.cashPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+      : 0,
   };
 }
 
@@ -416,6 +426,147 @@ export function tourGuests(tourId, guideId = "") {
     return true;
   });
 }
+
+/* ---------- Điểm danh (Tour Guide) ---------- */
+
+/* Xác nhận trạng thái điểm danh cho một đơn.
+   - guideId phải trùng với booking.guideId để tránh HDV chỉnh đơn khác.
+   - status: "present" | "absent"
+   - Chỉ cho phép cập nhật khi tour ở trạng thái upcoming/ongoing/completed. */
+export function markAttendance(code, status, { guideId = "", by = "Hướng dẫn viên" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: "Không tìm thấy đơn." };
+
+  const validStatuses = ["upcoming", "ongoing", "completed"];
+  if (!validStatuses.includes(current.status)) {
+    return { error: `Đơn ở trạng thái "${BOOKING_STATUS[current.status]}" chưa thể điểm danh.` };
+  }
+
+  /* Kiểm tra HDV chỉ điểm danh đơn của mình */
+  const key = String(guideId || "").trim().toLowerCase();
+  if (key && current.guideId.toLowerCase() !== key) {
+    return { error: "Bạn không có quyền điểm danh đơn này." };
+  }
+
+  if (!["present", "absent"].includes(status)) {
+    return { error: "Trạng thái điểm danh không hợp lệ." };
+  }
+
+  const now = new Date().toISOString();
+  updateBooking(code, { attendance: status, attendanceAt: now, attendanceBy: by });
+  return { booking: getBooking(code) };
+}
+
+/* Xóa điểm danh (chỉ khi tour chưa hoàn thành) */
+export function clearAttendance(code, { guideId = "" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: "Không tìm thấy đơn." };
+  if (current.status === "completed") {
+    return { error: "Không thể xóa điểm danh sau khi tour đã hoàn thành." };
+  }
+  const key = String(guideId || "").trim().toLowerCase();
+  if (key && current.guideId.toLowerCase() !== key) {
+    return { error: "Bạn không có quyền thao tác đơn này." };
+  }
+  updateBooking(code, { attendance: "", attendanceAt: "", attendanceBy: "" });
+  return { booking: getBooking(code) };
+}
+
+/* ---------- Thu tiền mặt (Tour Guide) ---------- */
+
+/* Ghi nhận HDV đã thu tiền mặt từ khách.
+   - Không tự động đổi payment sang "paid"; Admin/Guide tự quyết định dựa trên dữ liệu thu.
+   - Chống xác nhận trùng bằng kiểm tra tổng đã thu + số tiền mới không vượt quá total.
+   - Khi cashCollected + amount >= total thì tự cập nhật payment="paid". */
+export function addCashPayment(code, amount, { guideId = "", by = "Hướng dẫn viên", note = "" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: "Không tìm thấy đơn." };
+
+  const validStatuses = ["upcoming", "ongoing", "completed", "paid", "awaiting_payment"];
+  if (!validStatuses.includes(current.status)) {
+    return { error: `Đơn ở trạng thái "${BOOKING_STATUS[current.status]}" không thể ghi nhận tiền mặt.` };
+  }
+
+  /* Kiểm tra HDV chỉ thu tiền đơn của mình */
+  const key = String(guideId || "").trim().toLowerCase();
+  if (key && current.guideId.toLowerCase() !== key) {
+    return { error: "Bạn không có quyền ghi nhận thanh toán đơn này." };
+  }
+
+  const parsedAmount = Math.round(Number(amount) || 0);
+  if (parsedAmount <= 0) return { error: "Số tiền thu phải lớn hơn 0." };
+
+  const already = current.cashCollected || 0;
+  if (already >= current.total && current.total > 0) {
+    return { error: "Đơn này đã thu đủ tiền rồi, không cần ghi nhận thêm." };
+  }
+
+  const now = new Date().toISOString();
+  const entry = { amount: parsedAmount, by, at: now, note: String(note || "").trim() };
+  const cashPayments = [...(current.cashPayments || []), entry];
+  const newCollected = cashPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const patch = { cashPayments };
+
+  /* Tự động cập nhật payment khi đã thu đủ hoặc vượt */
+  if (newCollected >= current.total && current.total > 0 && current.payment !== "paid") {
+    patch.payment = "paid";
+    patch.paidAt = now;
+    /* Nếu đơn ở awaiting_payment thì chuyển sang paid */
+    if (current.status === "awaiting_payment") {
+      patch.status = "paid";
+      patch.statusHistory = [
+        ...current.statusHistory,
+        { status: "paid", at: now, by, note: `Thu tiền mặt đủ ${newCollected.toLocaleString("vi-VN")}đ` },
+      ];
+    }
+  } else if (newCollected > 0 && current.payment === "unpaid") {
+    /* Đã thu một phần, cập nhật thành deposit */
+    patch.payment = "deposit";
+  }
+
+  updateBooking(code, patch);
+  return { booking: getBooking(code) };
+}
+
+/* Xóa một bản ghi thu tiền mặt theo index (chỉ khi tour chưa hoàn thành) */
+export function removeCashPayment(code, index, { guideId = "" } = {}) {
+  const current = getBooking(code);
+  if (!current) return { error: "Không tìm thấy đơn." };
+  if (current.status === "completed") {
+    return { error: "Không thể xóa giao dịch sau khi tour đã hoàn thành." };
+  }
+  const key = String(guideId || "").trim().toLowerCase();
+  if (key && current.guideId.toLowerCase() !== key) {
+    return { error: "Bạn không có quyền thao tác đơn này." };
+  }
+
+  const cashPayments = (current.cashPayments || []).filter((_, i) => i !== index);
+  const newCollected = cashPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const patch = { cashPayments };
+  /* Đồng bộ lại trạng thái thanh toán */
+  if (newCollected === 0) patch.payment = "unpaid";
+  else if (newCollected < current.total) patch.payment = "deposit";
+  else patch.payment = "paid";
+
+  updateBooking(code, patch);
+  return { booking: getBooking(code) };
+}
+
+/* Thống kê điểm danh cho một nhóm đơn */
+export function attendanceStats(bookingList) {
+  const total = bookingList.reduce((sum, b) => sum + (Number(b.people) || 0), 0);
+  const present = bookingList
+    .filter((b) => b.attendance === "present")
+    .reduce((sum, b) => sum + (Number(b.people) || 0), 0);
+  const absent = bookingList
+    .filter((b) => b.attendance === "absent")
+    .reduce((sum, b) => sum + (Number(b.people) || 0), 0);
+  const unchecked = total - present - absent;
+  return { total, present, absent, unchecked };
+}
+
 
 export function bookingTourStats(tourId) {
   const rows = listBookings().filter((item) => String(item.tourId) === String(tourId));

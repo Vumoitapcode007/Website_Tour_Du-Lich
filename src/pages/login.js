@@ -207,9 +207,11 @@ document.addEventListener("route:changed", ({ detail }) => {
       const password = button.dataset.instantPass;
       const result = login(username, password);
       if (result) {
-        const staff = isStaffRole(result.roleKey);
-        const next = sanitizeNext(new URLSearchParams(detail.queryString).get("next"));
-        window.location.hash = `#/${next || (staff ? "admin/tours" : "account")}`;
+        const home = homePathForRole(result.roleKey);
+        let next = sanitizeNext(new URLSearchParams(detail.queryString).get("next"));
+        if (next?.startsWith("admin") && home !== "admin") next = "";
+        if (next?.startsWith("guide") && home !== "guide") next = "";
+        window.location.hash = `#/${next || (home === "my-bookings" ? "account" : `${home}/dashboard`)}`;
       }
     });
   });
@@ -253,15 +255,9 @@ document.addEventListener("route:changed", ({ detail }) => {
     }
 
     const home = homePathForRole(result.roleKey);
-    const next = sanitizeNext(new URLSearchParams(detail.queryString).get("next"));
-    if (next?.startsWith("admin") && home !== "admin") {
-      errorBox.textContent = "Tài khoản của bạn không có quyền vào khu vực quản trị.";
-      return;
-    }
-    if (next?.startsWith("guide") && home !== "guide") {
-      errorBox.textContent = "Tài khoản của bạn không phải hướng dẫn viên.";
-      return;
-    }
+    let next = sanitizeNext(new URLSearchParams(detail.queryString).get("next"));
+    if (next?.startsWith("admin") && home !== "admin") next = "";
+    if (next?.startsWith("guide") && home !== "guide") next = "";
 
     window.location.hash = `#/${next || (home === "my-bookings" ? "account" : `${home}/dashboard`)}`;
   });
