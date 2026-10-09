@@ -5,6 +5,7 @@ import { notificationBell } from "./notification-bell.js";
 export const navItems = [
   { path: "", label: "Trang chủ", aliases: [] },
   { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
+  { path: "payment", label: "Thanh toán MoMo", aliases: [] },
   { path: "about", label: "Giới thiệu", aliases: [] },
   { path: "contact", label: "Liên hệ", aliases: [] },
 ];
@@ -24,7 +25,7 @@ function isActive(active, item) {
 
 export function renderHeader(active = "") {
   const session = getSession();
-  const user = session;
+  const user = session ? { ...session, avatar: session.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.name || "User")}&background=0284c7&color=fff` } : null;
   const staff = isStaffRole(session?.roleKey);
   const items = staff
     ? [...navItems, adminItem, profileItem, logoutItem]
@@ -69,12 +70,12 @@ export function renderHeader(active = "") {
             </svg>
             Tài khoản của tôi
           </a>
-          <a href="#/my-bookings" class="dropdown-item">
+          <a href="#/payment" class="dropdown-item">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 11l3 3L22 4"></path>
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
             </svg>
-            Đơn đặt tour của tôi
+            Thanh toán đơn tour (MoMo)
           </a>
           <button class="dropdown-item text-danger" id="btn-header-logout" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

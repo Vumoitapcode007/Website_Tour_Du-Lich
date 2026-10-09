@@ -30,6 +30,42 @@ function stat(value, label, key = "") {
   return `<div class="admin-stat"${key ? ` data-stat="${escapeHtml(key)}"` : ""}><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
 }
 
+function bookingItem(booking) {
+  const isPaid = booking.payment === "paid";
+  return `
+  <li class="account-booking" data-code="${escapeHtml(booking.code)}">
+    <div class="account-booking-head">
+      <strong>${escapeHtml(booking.code)}</strong>
+      <div class="account-booking-tags">
+        <span class="status-pill status-${escapeHtml(booking.status)}">${BOOKING_STATUS[booking.status]}</span>
+        <span class="status-pill status-${isPaid ? "paid" : "unpaid"}">${isPaid ? "Đã thanh toán MoMo" : "Chưa thanh toán"}</span>
+      </div>
+    </div>
+    <a class="account-booking-tour" href="#/tour/${booking.tourId}">${escapeHtml(booking.tourName)}</a>
+    <ul class="account-booking-meta">
+      <li>Ngày khởi hành: <strong>${formatDate(booking.date)}</strong></li>
+      <li>Số khách: <strong>${booking.people}</strong></li>
+      <li>Tổng tiền: <strong>${formatPrice(booking.total)}</strong></li>
+    </ul>
+    <div class="account-booking-actions">
+      ${
+        isPaid
+          ? `<a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">Xem biên lai MoMo</a>`
+          : booking.status !== "cancelled"
+            ? `<a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">⚡ Thanh toán MoMo</a>`
+            : ""
+      }
+      ${
+        booking.status === "pending"
+          ? `<button class="btn btn-sm btn-outline" data-cancel-booking="${escapeHtml(booking.code)}">Huỷ đơn</button>`
+          : booking.status === "confirmed" && !isPaid
+            ? `<p class="account-note">Đơn đã xác nhận. Vui lòng thanh toán trước ngày đi.</p>`
+            : ""
+      }
+    </div>
+  </li>`;
+}
+
 function notificationItem(item) {
   const type = NOTIFICATION_TYPE[item.type] || NOTIFICATION_TYPE.system;
   const time = new Intl.DateTimeFormat("vi-VN", {

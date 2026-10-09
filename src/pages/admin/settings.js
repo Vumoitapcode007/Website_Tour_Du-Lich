@@ -114,9 +114,12 @@ function panelAppearance(settings) {
 function panelPayment(settings) {
   return `
   <form class="settings-form" data-settings="payment" novalidate>
-    <h3>Thanh toán</h3>
-    ${toggle({ id: "allowOnlinePayment", label: "Cho phép thanh toán trực tuyến", checked: settings.allowOnlinePayment, hint: "Hiển thị nút thanh toán trên trang đặt tour" })}
-    <h3>Thông tin chuyển khoản</h3>
+    <h3>Thanh toán trực tuyến</h3>
+    ${toggle({ id: "allowOnlinePayment", label: "Cho phép thanh toán trực tuyến", checked: settings.allowOnlinePayment, hint: "Hiển thị tùy chọn thanh toán MoMo và trực tuyến cho khách" })}
+    <h3>Cấu hình Ví điện tử MoMo</h3>
+    ${field({ id: "momoPhone", label: "Số điện thoại / Ví MoMo", value: settings.momoPhone, hint: "Số điện thoại đăng ký MoMo nhận tiền từ khách hàng" })}
+    ${field({ id: "momoHolder", label: "Chủ tài khoản MoMo", value: settings.momoHolder, hint: "Tên người nhận tiền hiển thị trên mã QR MoMo" })}
+    <h3>Thông tin chuyển khoản ngân hàng</h3>
     ${field({ id: "bankName", label: "Ngân hàng", value: settings.bankName })}
     ${field({ id: "bankAccount", label: "Số tài khoản", value: settings.bankAccount })}
     ${field({ id: "bankHolder", label: "Chủ tài khoản", value: settings.bankHolder })}

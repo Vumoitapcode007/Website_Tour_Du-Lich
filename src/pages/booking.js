@@ -397,10 +397,18 @@ document.addEventListener("route:changed", ({ detail }) => {
           <li>Tổng tiền tạm tính: ${formatPrice(record.total)}</li>
         </ul>
         <p class="form-hint">Chuyên viên sẽ gọi ${escapeHtml(record.phone)} trong 30 phút để xác nhận.</p>
-        <div class="success-actions">
-          <a class="btn btn-primary" href="#/my-bookings">Theo dõi đơn ${escapeHtml(record.code)}</a>
-          <a class="btn btn-outline" href="#/tours">Xem thêm tour</a>
-          <a class="btn btn-ghost-soft" href="#/">Về trang chủ</a>
+        <div class="success-actions booking-success-momo">
+          <a class="btn btn-momo btn-lg" href="#/payment?code=${encodeURIComponent(record.code)}">
+            <svg width="20" height="20" viewBox="0 0 40 40" fill="none" style="vertical-align:middle;margin-right:6px">
+              <rect width="40" height="40" rx="8" fill="#fff"/>
+              <path d="M12.5 14C10.567 14 9 15.567 9 17.5V26.5C9 28.433 10.567 30 12.5 30C14.433 30 16 28.433 16 26.5V17.5C16 15.567 14.433 14 12.5 14ZM12.5 26.5C11.6716 26.5 11 25.8284 11 25V19C11 18.1716 11.6716 17.5 12.5 17.5C13.3284 17.5 14 18.1716 14 19V25C14 25.8284 13.3284 26.5 12.5 26.5Z" fill="#A50064"/>
+              <path d="M27.5 14C25.567 14 24 15.567 24 17.5V26.5C24 28.433 25.567 30 27.5 30C29.433 30 31 28.433 31 26.5V17.5C31 15.567 29.433 14 27.5 14ZM27.5 26.5C26.6716 26.5 26 25.8284 26 25V19C26 18.1716 26.6716 17.5 27.5 17.5C28.3284 17.5 29 18.1716 29 19V25C29 25.8284 28.3284 26.5 27.5 26.5Z" fill="#A50064"/>
+              <circle cx="20" cy="19.5" r="3.5" fill="#A50064"/>
+            </svg>
+            Thanh toán online qua MoMo ngay
+          </a>
+          <a class="btn btn-outline" href="#/account">Để thanh toán sau</a>
+          <a class="btn btn-light" href="#/tours">Xem thêm tour</a>
         </div>
       </div>`;
   });

@@ -7,6 +7,7 @@ import { Tours } from "./pages/tours.js";
 import { Compare } from "./pages/compare.js";
 import { TourDetail } from "./pages/tour-detail.js";
 import { Booking } from "./pages/booking.js";
+import { Payment } from "./pages/payment.js";
 import { About } from "./pages/about.js";
 import { Contact } from "./pages/contact.js";
 import { Login } from "./pages/login.js";
@@ -98,6 +99,20 @@ const routes = [
     path: "booking",
     title: "Đặt tour",
     render: Booking,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "payment",
+    title: "Thanh toán trực tuyến MoMo",
+    render: Payment,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "payment/:code",
+    title: "Thanh toán đơn tour MoMo",
+    render: Payment,
     layout: renderHeader,
     footer: renderFooter,
   },
@@ -231,7 +246,34 @@ document.addEventListener("click", (event) => {
   // Mobile Nav Hamburger Toggle
   const toggle = event.target.closest(".nav-toggle");
   if (toggle) {
-    document.querySelector(".menu-wrap")?.classList.toggle("open");
+    const wrap = document.querySelector(".menu-wrap");
+    const isOpen = wrap?.classList.toggle("open");
+    toggle.setAttribute("aria-expanded", String(Boolean(isOpen)));
+    return;
+  }
+
+  // Đăng xuất từ link có data-logout
+  const logoutButton = event.target.closest("[data-logout]");
+  if (logoutButton) {
+    event.preventDefault();
+    logout();
+    window.location.hash = "#/";
+    return;
+  }
+
+  // Kiểm tra quyền Admin khi click link
+  const adminLink = event.target.closest('a[href^="#/admin"]');
+  if (adminLink && !isStaffRole(getSession()?.roleKey)) {
+    event.preventDefault();
+    window.location.hash = `#/login?next=${encodeURIComponent(adminLink.getAttribute("href").slice(1))}`;
+    return;
+  }
+
+  // Kiểm tra quyền Account khi click link
+  const accountLink = event.target.closest('a[href="#/account"]');
+  if (accountLink && !getSession()) {
+    event.preventDefault();
+    window.location.hash = "#/login?next=account";
     return;
   }
 
