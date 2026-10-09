@@ -15,6 +15,52 @@ export const TOUR_STATUS = {
   finished: "Đã kết thúc",
 };
 
+/* Các chặng tiến độ chuyến đi - dùng cho bảng admin, stepper và trang chi tiết */
+export const TOUR_PROGRESS_STAGES = {
+  not_started: {
+    key: "not_started",
+    label: "Chưa khởi hành",
+    icon: "🕓",
+    desc: "Tour chưa bắt đầu, đoàn chưa tập trung",
+  },
+  gathering: {
+    key: "gathering",
+    label: "Tập trung",
+    icon: "🧍",
+    desc: "Đoàn tập trung và làm thủ tục xuất phát",
+  },
+  moving: {
+    key: "moving",
+    label: "Đang di chuyển",
+    icon: "🚌",
+    desc: "Xe đang trên đường di chuyển giữa các điểm",
+  },
+  visiting: {
+    key: "visiting",
+    label: "Tham quan",
+    icon: "📍",
+    desc: "Đoàn đang tham quan, trải nghiệm điểm đến",
+  },
+  resting: {
+    key: "resting",
+    label: "Nghỉ ngơi",
+    icon: "🏨",
+    desc: "Đoàn ăn trưa hoặc nghỉ ngơi tại khách sạn",
+  },
+  returning: {
+    key: "returning",
+    label: "Trở về",
+    icon: "🛫",
+    desc: "Đoàn đang di chuyển trở về điểm xuất phát",
+  },
+  finished: {
+    key: "finished",
+    label: "Hoàn thành",
+    icon: "✅",
+    desc: "Chuyến đi đã kết thúc tốt đẹp",
+  },
+};
+
 /* Tour chỉ còn nhận khách mới khi đang bán hoặc sắp hết chỗ */
 const SELLABLE_STATUS = ["open", "limited"];
 
