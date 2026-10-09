@@ -270,10 +270,11 @@ document.addEventListener("click", (event) => {
   }
 
   // Kiểm tra quyền Account khi click link
-  const accountLink = event.target.closest('a[href="#/account"]');
+  const accountLink = event.target.closest('a[href="#/account"], a[href^="#/my-bookings"]');
   if (accountLink && !getSession()) {
     event.preventDefault();
-    window.location.hash = "#/login?next=account";
+    const path = accountLink.getAttribute("href").slice(1).split("?")[0];
+    window.location.hash = `#/login?next=${path}`;
     return;
   }
 
@@ -372,27 +373,7 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const logoutButton = event.target.closest("[data-logout]");
-  if (logoutButton) {
-    event.preventDefault();
-    logout();
-    window.location.hash = "#/";
-    return;
-  }
 
-  const adminLink = event.target.closest('a[href^="#/admin"]');
-  if (adminLink && !isStaffRole(getSession()?.roleKey)) {
-    event.preventDefault();
-    window.location.hash = `#/login?next=${encodeURIComponent(adminLink.getAttribute("href").slice(1))}`;
-    return;
-  }
-
-  const accountLink = event.target.closest('a[href="#/account"], a[href^="#/my-bookings"]');
-  if (accountLink && !getSession()) {
-    event.preventDefault();
-    const path = accountLink.getAttribute("href").slice(1).split("?")[0];
-    window.location.hash = `#/login?next=${path}`;
-  }
 });
 
 // Xử lý Submit Form Đăng nhập & Đăng ký
