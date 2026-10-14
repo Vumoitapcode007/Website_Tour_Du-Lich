@@ -34,6 +34,11 @@ export const GUIDE_SECTIONS = {
   dashboard: { title: "Bảng điều khiển", desc: "Tour được phân công và tình trạng khách của bạn" },
   tours: { title: "Tour của tôi", desc: "Lịch trình và danh sách khách của từng chuyến" },
   bookings: { title: "Danh sách khách", desc: "Khách được phân công cùng trạng thái đơn" },
+  checkin: { title: "Check-in & Điểm danh vé", desc: "Tra cứu mã vé điện tử, quét mã và điểm danh khách nhanh" },
+  diary: { title: "Nhật ký hành trình", desc: "Ghi chép diễn biến tour, thời tiết, tâm trạng đoàn và báo cáo kết thúc" },
+  expenses: { title: "Chi tiêu & Quyết toán", desc: "Quản lý các khoản chi phát sinh và quyết toán tạm ứng đoàn" },
+  incidents: { title: "Báo cáo sự cố (SOS)", desc: "Ghi nhận sự cố y tế, thất lạc đồ, sự cố phương tiện và hỗ trợ khẩn cấp" },
+  announcements: { title: "Thông báo & Dặn dò", desc: "Soạn tin nhắn dặn dò giờ tập trung, trang phục gửi đoàn khách" },
   profile: { title: "Hồ sơ cá nhân", desc: "Thông tin tài khoản và bảo mật" },
 };
 
@@ -80,6 +85,16 @@ export const GUIDE_NAV = [
       { path: "dashboard", label: "Bảng điều khiển", icon: "◈", perm: "guide.dashboard.view" },
       { path: "tours", label: "Tour của tôi", icon: "◉", perm: "guide.tours.view", badge: "guideTours" },
       { path: "bookings", label: "Danh sách khách", icon: "◍", perm: "guide.customers.view", badge: "guideGuests" },
+      { path: "checkin", label: "Check-in vé", icon: "🎟", perm: "guide.checkin.manage" },
+    ],
+  },
+  {
+    group: "Nghiệp vụ dẫn tour",
+    items: [
+      { path: "diary", label: "Nhật ký hành trình", icon: "📖", perm: "guide.diary.manage" },
+      { path: "expenses", label: "Chi tiêu & Quyết toán", icon: "💳", perm: "guide.expenses.manage" },
+      { path: "incidents", label: "Báo cáo sự cố", icon: "⚠️", perm: "guide.incidents.manage" },
+      { path: "announcements", label: "Dặn dò đoàn", icon: "📢", perm: "guide.announcements.manage" },
     ],
   },
   {

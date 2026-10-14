@@ -17,6 +17,11 @@ const LOG_KEY = "travelgo.logs";
 const NOTE_KEY = "travelgo.notes";
 const NOTIFICATION_KEY = "travelgo.notifications";
 const SETTINGS_KEY = "travelgo.settings";
+const GUIDE_DIARY_KEY = "travelgo.guide_diaries";
+const GUIDE_EXPENSE_KEY = "travelgo.guide_expenses";
+const GUIDE_INCIDENT_KEY = "travelgo.guide_incidents";
+const GUIDE_CHECKLIST_KEY = "travelgo.guide_checklists";
+const GUIDE_ANNOUNCEMENT_KEY = "travelgo.guide_announcements";
 
 export const BOOKING_STATUS = {
   pending: "Chờ xác nhận",
@@ -203,6 +208,143 @@ const coupons = createCollection(COUPON_KEY, demoCoupons);
 const logs = createCollection(LOG_KEY, demoLogs);
 const notes = createCollection(NOTE_KEY, demoNotes);
 const notifications = createCollection(NOTIFICATION_KEY, demoNotifications);
+
+const demoGuideDiaries = [
+  {
+    id: "GD-1",
+    tourId: "1",
+    guideId: "huongdan",
+    dayNumber: 1,
+    date: "2026-10-15",
+    title: "Đón đoàn tại Nhà Hát Lớn & Tham quan chùa Bái Đính",
+    content: "Đoàn tập trung đông đủ và đúng giờ 07:00. Bác tài xe 29 chỗ nhiệt tình, lái xe êm ái. Buổi sáng thời tiết mát mẻ, đoàn lên chùa Bái Đính thắp hương và đi xe điện thuận lợi. Khách lớn tuổi được hỗ trợ xe điện chu đáo.",
+    weather: "Nắng nhẹ, mát mẻ (26°C)",
+    mood: "Hào hứng, vui vẻ",
+    by: "Ngô Thanh Sơn",
+    createdAt: "2026-10-15T04:30:00.000Z",
+  },
+  {
+    id: "GD-2",
+    tourId: "1",
+    guideId: "huongdan",
+    dayNumber: 2,
+    date: "2026-10-16",
+    title: "Đi thuyền Tràng An & Khởi hành về Hà Nội",
+    content: "Buổi sáng thuyền Tràng An tuyến 2 cảnh rất đẹp, đoàn chụp nhiều ảnh lưu niệm. Ăn trưa tại nhà hàng thịt dê Ninh Bình ngon miệng. 14:30 đoàn lên xe về Hà Nội an toàn, khách phản hồi 5 sao rất hài lòng.",
+    weather: "Trời trong xanh, có gió nhẹ",
+    mood: "Rất hài lòng, gắn kết",
+    by: "Ngô Thanh Sơn",
+    createdAt: "2026-10-16T08:00:00.000Z",
+  },
+];
+
+const demoGuideExpenses = [
+  {
+    id: "EXP-1",
+    tourId: "1",
+    guideId: "huongdan",
+    category: "ticket",
+    categoryLabel: "Vé thắng cảnh",
+    title: "Vé xe điện chùa Bái Đính khứ hồi",
+    amount: 300000,
+    receiptNo: "HD-BD-882",
+    date: "2026-10-15",
+    note: "Mua vé cho cả đoàn 5 khách",
+    by: "Ngô Thanh Sơn",
+    createdAt: "2026-10-15T02:15:00.000Z",
+  },
+  {
+    id: "EXP-2",
+    tourId: "1",
+    guideId: "huongdan",
+    category: "fnb",
+    categoryLabel: "Ăn uống & Nước",
+    title: "Nước khoáng Lavie 2 thùng & khăn lạnh cho đoàn",
+    amount: 180000,
+    receiptNo: "BL-CH-12",
+    date: "2026-10-15",
+    note: "Mua tại trạm dừng nghỉ cao tốc",
+    by: "Ngô Thanh Sơn",
+    createdAt: "2026-10-15T01:30:00.000Z",
+  },
+  {
+    id: "EXP-3",
+    tourId: "1",
+    guideId: "huongdan",
+    category: "transport",
+    categoryLabel: "Phí cầu đường & Xe",
+    title: "Phí trạm BOT cao tốc Pháp Vân - Cầu Giẽ - Ninh Bình",
+    amount: 210000,
+    receiptNo: "ETC-VETC-912",
+    date: "2026-10-15",
+    note: "Thanh toán ETC chiều đi",
+    by: "Ngô Thanh Sơn",
+    createdAt: "2026-10-15T03:00:00.000Z",
+  },
+  {
+    id: "EXP-4",
+    tourId: "1",
+    guideId: "huongdan",
+    category: "other",
+    categoryLabel: "Chi phí phát sinh",
+    title: "Trà giải khát & hoa quả đặc sản mời khách tại bến thuyền",
+    amount: 150000,
+    receiptNo: "",
+    date: "2026-10-16",
+    note: "Chiêu đãi khách sau khi chèo thuyền Tràng An",
+    by: "Ngô Thanh Sơn",
+    createdAt: "2026-10-16T04:45:00.000Z",
+  },
+];
+
+const demoGuideIncidents = [
+  {
+    id: "INC-1",
+    tourId: "1",
+    guideId: "huongdan",
+    level: "low",
+    levelLabel: "Nhẹ / Chú ý",
+    title: "Khách bỏ quên kính râm tại nhà hàng trưa",
+    description: "Khách anh Nguyễn Văn A quên kính râm tại bàn ăn nhà hàng Hoàng Giang. HDV đã gọi quản lý nhà hàng giữ lại và chuyển về khách sạn The Reed lúc 17:00 cùng ngày.",
+    location: "Nhà hàng Hoàng Giang, Ninh Bình",
+    status: "resolved",
+    resolution: "Đã lấy lại kính và trao tận tay cho khách lúc 17:30.",
+    resolvedAt: "2026-10-15T10:30:00.000Z",
+    resolvedBy: "Ngô Thanh Sơn",
+    by: "Ngô Thanh Sơn",
+    createdAt: "2026-10-15T06:00:00.000Z",
+  },
+];
+
+const demoGuideAnnouncements = [
+  {
+    id: "ANN-1",
+    tourId: "1",
+    guideId: "huongdan",
+    title: "⏰ Dặn dò giờ tập trung & trang phục ngày thứ 2",
+    message: "Kính chào quý khách! Ngày mai đoàn sẽ tham quan quần thể Tràng An và leo Hang Múa. Quý khách vui lòng ăn sáng tại khách sạn từ 06:30 và có mặt tại sảnh lúc 07:15. Nên đi giày thể thao có độ bám tốt và mang theo mũ nón, kem chống nắng.",
+    priority: "important",
+    by: "Ngô Thanh Sơn (HDV Trưởng)",
+    createdAt: "2026-10-15T13:00:00.000Z",
+  },
+];
+
+const DEFAULT_GUIDE_CHECKLIST = [
+  { id: "chk-1", text: "In danh sách đoàn và số điện thoại liên hệ từng khách", category: "docs", checked: true },
+  { id: "chk-2", text: "Gọi điện trước 24h xác nhận giờ và điểm đón khách", category: "contact", checked: true },
+  { id: "chk-3", text: "Kiểm tra hợp đồng xe, xác nhận biển số xe & số hotline tài xế", category: "transport", checked: true },
+  { id: "chk-4", text: "Xác nhận với khách sạn về giờ nhận phòng (early check-in nếu có)", category: "hotel", checked: true },
+  { id: "chk-5", text: "Xác nhận thực đơn nhà hàng (lưu ý suất ăn chay / dị ứng hải sản)", category: "fnb", checked: false },
+  { id: "chk-6", text: "Chuẩn bị cờ đoàn TravelGo, thẻ đeo đoàn và loa micro cầm tay", category: "tools", checked: true },
+  { id: "chk-7", text: "Kiểm tra túi y tế sơ cấp cứu: thuốc say xe, hạ sốt, băng gạc, dầu gió", category: "medical", checked: true },
+  { id: "chk-8", text: "Tạm ứng tiền mặt từ kế toán để chi tiêu vé và nước uống", category: "finance", checked: true },
+];
+
+const guideDiaries = createCollection(GUIDE_DIARY_KEY, demoGuideDiaries);
+const guideExpenses = createCollection(GUIDE_EXPENSE_KEY, demoGuideExpenses);
+const guideIncidents = createCollection(GUIDE_INCIDENT_KEY, demoGuideIncidents);
+const guideChecklists = createCollection(GUIDE_CHECKLIST_KEY, []);
+const guideAnnouncements = createCollection(GUIDE_ANNOUNCEMENT_KEY, demoGuideAnnouncements);
 
 function ensureIds(collection, prefix) {
   const list = collection.all();
@@ -571,6 +713,326 @@ export function removeCashPayment(code, index, { guideId = "" } = {}) {
   return { booking: getBooking(code) };
 }
 
+/* ---------- Nhật ký hành trình (Tour Guide Diary) ---------- */
+
+export function listTourLogs(tourId = "", guideId = "") {
+  const gKey = String(guideId || "").trim().toLowerCase();
+  const tKey = String(tourId || "").trim();
+  return guideDiaries.all().filter((item) => {
+    if (tKey && String(item.tourId) !== tKey) return false;
+    if (gKey && String(item.guideId || "").toLowerCase() !== gKey) return false;
+    return true;
+  }).sort((a, b) => (Number(a.dayNumber) || 0) - (Number(b.dayNumber) || 0) || String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+export function addTourLog({ tourId, guideId = "", dayNumber = 1, date = "", title = "", content = "", weather = "", mood = "", by = "Hướng dẫn viên" } = {}) {
+  const list = guideDiaries.all();
+  const id = `GD-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+  const record = {
+    id,
+    tourId: String(tourId || ""),
+    guideId: String(guideId || ""),
+    dayNumber: Number(dayNumber) || 1,
+    date: date || new Date().toISOString().slice(0, 10),
+    title: String(title || "").trim(),
+    content: String(content || "").trim(),
+    weather: String(weather || "").trim(),
+    mood: String(mood || "").trim(),
+    by: String(by || "Hướng dẫn viên").trim(),
+    createdAt: new Date().toISOString(),
+  };
+  guideDiaries.set([record, ...list]);
+  return { log: record };
+}
+
+export function deleteTourLog(id) {
+  const list = guideDiaries.all();
+  guideDiaries.set(list.filter((item) => item.id !== id));
+  return { ok: true };
+}
+
+/* ---------- Chi tiêu & Quyết toán đoàn (Tour Guide Expenses) ---------- */
+
+export const EXPENSE_CATEGORIES = {
+  ticket: "Vé thắng cảnh & Tham quan",
+  fnb: "Ăn uống & Nước uống đoàn",
+  transport: "Xe, Vé cầu đường & Xăng xe",
+  hotel: "Khách sạn & Phòng nghỉ",
+  tip: "Tip tài xế / Hỗ trợ viên",
+  medical: "Thuốc men & Y tế phát sinh",
+  other: "Chi phí phát sinh khác",
+};
+
+export function listTourExpenses(tourId = "", guideId = "") {
+  const gKey = String(guideId || "").trim().toLowerCase();
+  const tKey = String(tourId || "").trim();
+  return guideExpenses.all().filter((item) => {
+    if (tKey && String(item.tourId) !== tKey) return false;
+    if (gKey && String(item.guideId || "").toLowerCase() !== gKey) return false;
+    return true;
+  }).sort((a, b) => String(b.date || b.createdAt).localeCompare(String(a.date || a.createdAt)));
+}
+
+export function addTourExpense({ tourId, guideId = "", category = "other", title = "", amount = 0, receiptNo = "", date = "", note = "", by = "Hướng dẫn viên" } = {}) {
+  const parsedAmount = Math.max(0, Math.round(Number(amount) || 0));
+  if (parsedAmount <= 0) return { error: "Số tiền chi tiêu phải lớn hơn 0." };
+  if (!title.trim()) return { error: "Vui lòng nhập tên khoản chi." };
+
+  const list = guideExpenses.all();
+  const id = `EXP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+  const record = {
+    id,
+    tourId: String(tourId || ""),
+    guideId: String(guideId || ""),
+    category,
+    categoryLabel: EXPENSE_CATEGORIES[category] || "Khác",
+    title: String(title).trim(),
+    amount: parsedAmount,
+    receiptNo: String(receiptNo || "").trim(),
+    date: date || new Date().toISOString().slice(0, 10),
+    note: String(note || "").trim(),
+    by: String(by || "Hướng dẫn viên").trim(),
+    createdAt: new Date().toISOString(),
+  };
+  guideExpenses.set([record, ...list]);
+  return { expense: record };
+}
+
+export function deleteTourExpense(id) {
+  const list = guideExpenses.all();
+  guideExpenses.set(list.filter((item) => item.id !== id));
+  return { ok: true };
+}
+
+export function getTourExpenseSummary(tourId = "", guideId = "", advanceBudget = 5000000) {
+  const expenses = listTourExpenses(tourId, guideId);
+  const totalExpense = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+  // Tiền mặt HDV đã thu từ khách của chuyến này
+  const bookings = guideBookings(guideId).filter((b) => !tourId || String(b.tourId) === String(tourId));
+  const cashCollected = bookings.reduce((sum, b) => sum + (Number(b.cashCollected) || 0), 0);
+
+  // Phân loại chi tiêu
+  const byCategory = {};
+  for (const exp of expenses) {
+    const cat = exp.category || "other";
+    byCategory[cat] = (byCategory[cat] || 0) + exp.amount;
+  }
+
+  // Cân đối tài chính: (Tạm ứng + Tiền mặt đã thu) - Tổng chi
+  const totalFund = advanceBudget + cashCollected;
+  const balance = totalFund - totalExpense;
+
+  return {
+    advanceBudget,
+    cashCollected,
+    totalFund,
+    totalExpense,
+    balance,
+    count: expenses.length,
+    byCategory,
+  };
+}
+
+/* ---------- Báo cáo sự cố khẩn cấp (Incident / SOS) ---------- */
+
+export const INCIDENT_LEVELS = {
+  low: { label: "Nhẹ / Cần chú ý", color: "blue", badgeClass: "status-confirmed" },
+  medium: { label: "Trung bình", color: "amber", badgeClass: "status-pending" },
+  high: { label: "Nghiêm trọng", color: "orange", badgeClass: "status-deposit" },
+  urgent: { label: "Khẩn cấp SOS", color: "red", badgeClass: "status-cancelled" },
+};
+
+export function listTourIncidents(tourId = "", guideId = "") {
+  const gKey = String(guideId || "").trim().toLowerCase();
+  const tKey = String(tourId || "").trim();
+  return guideIncidents.all().filter((item) => {
+    if (tKey && String(item.tourId) !== tKey) return false;
+    if (gKey && String(item.guideId || "").toLowerCase() !== gKey) return false;
+    return true;
+  }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+export function addTourIncident({ tourId, guideId = "", level = "medium", title = "", description = "", location = "", by = "Hướng dẫn viên" } = {}) {
+  if (!title.trim()) return { error: "Vui lòng nhập tiêu đề sự cố." };
+  if (!description.trim()) return { error: "Vui lòng mô tả chi tiết sự cố." };
+
+  const list = guideIncidents.all();
+  const id = `INC-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+  const record = {
+    id,
+    tourId: String(tourId || ""),
+    guideId: String(guideId || ""),
+    level,
+    levelLabel: INCIDENT_LEVELS[level]?.label || "Trung bình",
+    title: String(title).trim(),
+    description: String(description).trim(),
+    location: String(location || "").trim(),
+    status: "open",
+    resolution: "",
+    resolvedAt: "",
+    resolvedBy: "",
+    by: String(by || "Hướng dẫn viên").trim(),
+    createdAt: new Date().toISOString(),
+  };
+  guideIncidents.set([record, ...list]);
+  return { incident: record };
+}
+
+export function resolveTourIncident(id, { resolution = "", by = "Hướng dẫn viên" } = {}) {
+  const list = guideIncidents.all();
+  const found = list.find((item) => item.id === id);
+  if (!found) return { error: "Không tìm thấy sự cố." };
+
+  found.status = "resolved";
+  found.resolution = String(resolution || "Đã giải quyết xong.").trim();
+  found.resolvedAt = new Date().toISOString();
+  found.resolvedBy = by;
+
+  guideIncidents.set([...list]);
+  return { incident: found };
+}
+
+/* ---------- Thông báo dặn dò đoàn (Tour Announcements) ---------- */
+
+export function listTourAnnouncements(tourId = "", guideId = "") {
+  const gKey = String(guideId || "").trim().toLowerCase();
+  const tKey = String(tourId || "").trim();
+  return guideAnnouncements.all().filter((item) => {
+    if (tKey && String(item.tourId) !== tKey) return false;
+    if (gKey && String(item.guideId || "").toLowerCase() !== gKey) return false;
+    return true;
+  }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+
+export function addTourAnnouncement({ tourId, guideId = "", title = "", message = "", priority = "normal", by = "Hướng dẫn viên" } = {}) {
+  if (!title.trim()) return { error: "Vui lòng nhập tiêu đề thông báo." };
+  if (!message.trim()) return { error: "Vui lòng nhập nội dung dặn dò." };
+
+  const list = guideAnnouncements.all();
+  const id = `ANN-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`;
+  const record = {
+    id,
+    tourId: String(tourId || ""),
+    guideId: String(guideId || ""),
+    title: String(title).trim(),
+    message: String(message).trim(),
+    priority: priority === "urgent" ? "urgent" : priority === "important" ? "important" : "normal",
+    by: String(by || "Hướng dẫn viên").trim(),
+    createdAt: new Date().toISOString(),
+  };
+  guideAnnouncements.set([record, ...list]);
+  return { announcement: record };
+}
+
+export function deleteTourAnnouncement(id) {
+  const list = guideAnnouncements.all();
+  guideAnnouncements.set(list.filter((item) => item.id !== id));
+  return { ok: true };
+}
+
+/* ---------- Checklist chuẩn bị trước chuyến đi ---------- */
+
+export function getTourChecklist(tourId = "1", guideId = "") {
+  const savedAll = guideChecklists.all();
+  const key = `${tourId}_${guideId}`;
+  const found = savedAll.find((item) => item.key === key);
+  if (found) return found.items;
+
+  // Khởi tạo checklist mặc định
+  const initial = DEFAULT_GUIDE_CHECKLIST.map((item) => ({ ...item }));
+  savedAll.push({ key, items: initial });
+  guideChecklists.set(savedAll);
+  return initial;
+}
+
+export function toggleChecklistItem(tourId = "1", guideId = "", itemId = "") {
+  const savedAll = guideChecklists.all();
+  const key = `${tourId}_${guideId}`;
+  let found = savedAll.find((item) => item.key === key);
+  if (!found) {
+    found = { key, items: DEFAULT_GUIDE_CHECKLIST.map((i) => ({ ...i })) };
+    savedAll.push(found);
+  }
+  const target = found.items.find((i) => i.id === itemId);
+  if (target) {
+    target.checked = !target.checked;
+    guideChecklists.set([...savedAll]);
+  }
+  return { items: found.items };
+}
+
+export function addChecklistItem(tourId = "1", guideId = "", text = "", category = "custom") {
+  if (!text.trim()) return { error: "Nội dung checklist không được trống." };
+  const savedAll = guideChecklists.all();
+  const key = `${tourId}_${guideId}`;
+  let found = savedAll.find((item) => item.key === key);
+  if (!found) {
+    found = { key, items: DEFAULT_GUIDE_CHECKLIST.map((i) => ({ ...i })) };
+    savedAll.push(found);
+  }
+  const newItem = {
+    id: `chk-custom-${Date.now()}`,
+    text: text.trim(),
+    category,
+    checked: false,
+  };
+  found.items.push(newItem);
+  guideChecklists.set([...savedAll]);
+  return { item: newItem, items: found.items };
+}
+
+export function resetTourChecklist(tourId = "1", guideId = "") {
+  const savedAll = guideChecklists.all();
+  const key = `${tourId}_${guideId}`;
+  const filtered = savedAll.filter((item) => item.key !== key);
+  const fresh = { key, items: DEFAULT_GUIDE_CHECKLIST.map((i) => ({ ...i })) };
+  filtered.push(fresh);
+  guideChecklists.set(filtered);
+  return { items: fresh.items };
+}
+
+/* ---------- Check-in nhanh theo mã vé ---------- */
+
+export function quickCheckIn(inputCode = "", { guideId = "", by = "Hướng dẫn viên" } = {}) {
+  const cleanCode = String(inputCode || "").trim().toUpperCase();
+  if (!cleanCode) return { error: "Vui lòng nhập mã vé hoặc mã đơn đặt tour." };
+
+  const all = listBookings();
+  const booking = all.find((b) => b.code.toUpperCase() === cleanCode);
+  if (!booking) {
+    return { error: `Không tìm thấy đơn hoặc vé nào có mã "${cleanCode}".` };
+  }
+
+  // Kiểm tra quyền của HDV nếu có phân công
+  const gKey = String(guideId || "").trim().toLowerCase();
+  if (gKey && booking.guideId && booking.guideId.toLowerCase() !== gKey) {
+    return { error: `Đơn này được phân công cho HDV khác (${booking.guideName || booking.guideId}).` };
+  }
+
+  if (["cancelled", "pending"].includes(booking.status)) {
+    return { error: `Đơn "${cleanCode}" đang ở trạng thái "${BOOKING_STATUS[booking.status]}", không thể check-in.` };
+  }
+
+  const alreadyChecked = booking.attendance === "present";
+  const now = new Date().toISOString();
+
+  if (!alreadyChecked) {
+    updateBooking(booking.code, {
+      attendance: "present",
+      attendanceAt: now,
+      attendanceBy: by,
+    });
+  }
+
+  const updated = getBooking(booking.code);
+  return {
+    success: true,
+    alreadyChecked,
+    booking: updated,
+  };
+}
+
 /* Thống kê điểm danh cho một nhóm đơn */
 export function attendanceStats(bookingList) {
   const total = bookingList.reduce((sum, b) => sum + (Number(b.people) || 0), 0);
@@ -910,6 +1372,11 @@ export function resetDemoData() {
   logs.reset();
   notes.reset();
   notifications.reset();
+  guideDiaries.reset();
+  guideExpenses.reset();
+  guideIncidents.reset();
+  guideChecklists.reset();
+  guideAnnouncements.reset();
   resetSettings();
 }
 
@@ -921,6 +1388,11 @@ export function clearAllData() {
   logs.clear();
   notes.clear();
   notifications.clear();
+  guideDiaries.clear();
+  guideExpenses.clear();
+  guideIncidents.clear();
+  guideChecklists.clear();
+  guideAnnouncements.clear();
 }
 
 export function getLocalStorageStats() {
@@ -930,6 +1402,9 @@ export function getLocalStorageStats() {
     { key: "travelgo.users", label: "Tài khoản khách", count: (JSON.parse(localStorage.getItem("travelgo.users") || "[]")).length },
     { key: LOG_KEY, label: "Nhật ký hệ thống", count: listLogs().length },
     { key: NOTIFICATION_KEY, label: "Thông báo", count: listNotifications().length },
+    { key: GUIDE_DIARY_KEY, label: "Nhật ký HDV", count: guideDiaries.all().length },
+    { key: GUIDE_EXPENSE_KEY, label: "Chi tiêu đoàn", count: guideExpenses.all().length },
+    { key: GUIDE_INCIDENT_KEY, label: "Sự cố đoàn", count: guideIncidents.all().length },
   ];
   let totalBytes = 0;
   try {

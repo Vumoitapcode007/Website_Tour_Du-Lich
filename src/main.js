@@ -37,6 +37,11 @@ import { AdminNotFound } from "./pages/admin/not-found.js";
 import { GuideDashboard } from "./pages/guide/dashboard.js";
 import { GuideTours } from "./pages/guide/tours.js";
 import { GuideBookings } from "./pages/guide/bookings.js";
+import { GuideCheckIn } from "./pages/guide/checkin.js";
+import { GuideDiary } from "./pages/guide/diary.js";
+import { GuideExpenses } from "./pages/guide/expenses.js";
+import { GuideIncidents } from "./pages/guide/incidents.js";
+import { GuideAnnouncements } from "./pages/guide/announcements.js";
 
 function NotFound() {
   return `
@@ -68,6 +73,11 @@ const GUIDE_PAGES = {
   dashboard: { render: GuideDashboard, title: "Bảng điều khiển hướng dẫn viên" },
   tours: { render: GuideTours, title: "Tour của tôi" },
   bookings: { render: GuideBookings, title: "Danh sách khách được phân công" },
+  checkin: { render: GuideCheckIn, title: "Check-in & Điểm danh vé" },
+  diary: { render: GuideDiary, title: "Nhật ký hành trình" },
+  expenses: { render: GuideExpenses, title: "Chi tiêu & Quyết toán" },
+  incidents: { render: GuideIncidents, title: "Báo cáo sự cố" },
+  announcements: { render: GuideAnnouncements, title: "Thông báo & Dặn dò đoàn" },
   profile: { render: Profile, title: "Hồ sơ cá nhân" },
 };
 

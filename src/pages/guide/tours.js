@@ -118,9 +118,12 @@ function tripCard(group) {
         <li>Giá: <strong>${formatPrice(first.tourPrice || tour?.price || 0)}</strong>${tour?.rating ? ` · ${stars(tour.rating)}` : ""}</li>
       </ul>
     </div>
-    <div class="guide-trip-actions">
+    <div class="guide-trip-actions" style="display: flex; gap: 6px; flex-wrap: wrap;">
       <button class="btn btn-sm btn-primary" type="button" data-trip-guests="${escapeHtml(group.tourId)}">Danh sách khách</button>
-      ${tour?.itinerary?.length ? `<button class="btn btn-sm btn-outline" type="button" data-trip-plan="${escapeHtml(group.tourId)}">Lịch trình</button>` : ""}
+      <a class="btn btn-sm btn-outline" href="#/guide/checkin">🎟️ Check-in</a>
+      <a class="btn btn-sm btn-ghost-soft" href="#/guide/diary">📖 Nhật ký</a>
+      <a class="btn btn-sm btn-ghost-soft" href="#/guide/expenses">💳 Chi tiêu</a>
+      ${tour?.itinerary?.length ? `<button class="btn btn-sm btn-ghost-soft" type="button" data-trip-plan="${escapeHtml(group.tourId)}">Lịch trình</button>` : ""}
     </div>
   </article>`;
 }

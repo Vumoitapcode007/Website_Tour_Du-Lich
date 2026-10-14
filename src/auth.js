@@ -29,15 +29,25 @@ export const PERMISSIONS = [
   "guide.tours.view",
   "guide.tours.run",
   "guide.customers.view",
+  "guide.checkin.manage",
+  "guide.diary.manage",
+  "guide.expenses.manage",
+  "guide.incidents.manage",
+  "guide.announcements.manage",
 ];
 
-/* Quyền dành riêng cho Tour Guide: chỉ xem tour được phân công và cập nhật
-   trạng thái vận hành (sắp khởi hành → đang diễn ra → hoàn thành) */
+/* Quyền dành riêng cho Tour Guide: xem tour phân công, cập nhật tiến trình,
+   check-in vé, nhật ký, chi tiêu quyết toán, báo cáo sự cố & thông báo */
 const GUIDE_PERMISSIONS = [
   "guide.dashboard.view",
   "guide.tours.view",
   "guide.tours.run",
   "guide.customers.view",
+  "guide.checkin.manage",
+  "guide.diary.manage",
+  "guide.expenses.manage",
+  "guide.incidents.manage",
+  "guide.announcements.manage",
 ];
 
 const STAFF_PERMISSIONS = [
