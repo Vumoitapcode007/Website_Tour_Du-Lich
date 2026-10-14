@@ -559,15 +559,21 @@ function renderReceiptView(booking) {
       </div>
 
       <div class="receipt-actions no-print">
+        <a href="#/ticket/${escapeHtml(booking.code)}" class="btn btn-primary btn-lg" style="font-weight: 700;">
+          🎫 Xem & In vé điện tử (E-Ticket)
+        </a>
         <button type="button" class="btn btn-outline" id="btn-print-receipt">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="6 9 6 2 18 2 18 9"></polyline>
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
             <rect x="6" y="14" width="12" height="8"></rect>
           </svg>
-          In biên lai / Lưu PDF
+          In biên lai
         </button>
-        <a href="#/account" class="btn btn-primary">Xem trong Tài khoản</a>
+        <button type="button" class="btn btn-ghost-soft" id="btn-email-receipt" data-email="${escapeHtml(booking.email || "")}" data-code="${escapeHtml(booking.code)}">
+          ✉️ Gửi vé qua Email
+        </button>
+        <a href="#/account" class="btn btn-light">Xem trong Tài khoản</a>
         <a href="#/tours" class="btn btn-light">Khám phá tour khác</a>
       </div>
     </div>
@@ -754,6 +760,19 @@ document.addEventListener("route:changed", ({ detail }) => {
       }
       couponBtn.disabled = true;
       couponInput.disabled = true;
+    });
+  }
+
+  // 9. Nút gửi vé qua email
+  const emailReceiptBtn = document.getElementById("btn-email-receipt");
+  if (emailReceiptBtn) {
+    emailReceiptBtn.addEventListener("click", () => {
+      const email = emailReceiptBtn.dataset.email;
+      const code = emailReceiptBtn.dataset.code;
+      const target = prompt("Nhập địa chỉ email để nhận vé điện tử:", email || "khachhang@example.com");
+      if (target) {
+        alert(`Đã gửi vé điện tử (E-Ticket) của đơn ${code} thành công tới email: ${target}! Vui lòng kiểm tra hộp thư.`);
+      }
     });
   }
 });

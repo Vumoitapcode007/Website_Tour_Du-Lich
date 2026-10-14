@@ -170,6 +170,13 @@ export function bookingTracker(booking, { showActions = true } = {}) {
       showActions
         ? `<div class="account-booking-actions">
             ${
+              payment === "paid"
+                ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">🎫 Vé điện tử</a>`
+                : !cancelled
+                  ? `<a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">Thanh toán ngay</a>`
+                  : ""
+            }
+            ${
               bookable
                 ? `<a class="btn btn-sm btn-outline" href="#/tour/${escapeHtml(tour.id)}">Xem tour</a>`
                 : `<span class="account-note track-cancelled">Tour đã ngừng bán</span>`

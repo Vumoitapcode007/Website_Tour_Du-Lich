@@ -56,7 +56,14 @@ export function createRouter(routes, root = "app") {
     const title =
       typeof route.title === "function" ? route.title(path, params, query) : route.title;
 
-    document.title = title ? `${title} - TravelGo` : "TravelGo - Đặt tour du lịch";
+    const pageTitle = title ? `${title} - TravelGo` : "TravelGo - Đặt tour du lịch";
+    document.title = pageTitle;
+
+    // Cập nhật Meta description & OpenGraph cho SEO
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.content = `${pageTitle}. Lịch trình chi tiết, giá tốt nhất và hỗ trợ tư vấn 24/7 tại TravelGo.`;
+    }
 
     app.innerHTML = `${route.layout(path, params, query)}${route.render(path, params, query)}${route.footer(path, params, query)}`;
     window.scrollTo({ top: 0, behavior: "auto" });
