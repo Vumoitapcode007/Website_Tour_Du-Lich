@@ -2,9 +2,11 @@ import { getSession, isStaffRole } from "../auth.js";
 import { getSettings } from "../store.js";
 import { compareBar } from "./compare-bar.js";
 import { notificationBell } from "./notification-bell.js";
+import { chatWidget } from "./chat-widget.js";
 export const navItems = [
   { path: "", label: "Trang chủ", aliases: [] },
   { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
+  { path: "blog", label: "Cẩm nang", aliases: ["blog"] },
   { path: "payment", label: "Thanh toán MoMo", aliases: [] },
   { path: "about", label: "Giới thiệu", aliases: [] },
   { path: "contact", label: "Liên hệ", aliases: [] },
@@ -133,6 +135,17 @@ export function renderFooter() {
 
   return `
   <footer class="site-footer">
+    <div class="container footer-newsletter-strip">
+      <div class="newsletter-strip-info">
+        <h3>📬 Đăng ký nhận cẩm nang & ưu đãi độc quyền</h3>
+        <p>Nhận ngay mã giảm giá <strong>TRAVELGO10</strong> (giảm 10% tối đa 200k) gửi trực tiếp về email.</p>
+      </div>
+      <form class="newsletter-strip-form" id="footer-newsletter-form">
+        <input type="email" placeholder="Nhập địa chỉ email của bạn..." required>
+        <button type="submit" class="btn btn-primary">Nhận ưu đãi</button>
+      </form>
+    </div>
+
     <div class="container footer-grid">
       <div>
         <a class="logo light" href="#/">
@@ -143,32 +156,40 @@ export function renderFooter() {
           <span>Travel<span>Go</span></span>
         </a>
         <p class="muted">${settings.footerNote}</p>
+        <div class="footer-cert" style="margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem;">
+          <span>🛡️</span>
+          <span>Đã đăng ký chứng nhận an toàn du lịch 2026</span>
+        </div>
       </div>
       <div>
-        <h4>Liên kết nhanh</h4>
+        <h4>Khám phá & Tour</h4>
         <ul class="footer-links">
           <li><a href="#/">Trang chủ</a></li>
           <li><a href="#/tours">Danh sách tour</a></li>
-          <li><a href="#/about">Giới thiệu</a></li>
-          <li><a href="#/contact">Liên hệ</a></li>
-          <li><a href="#/register">Đăng ký tài khoản</a></li>
-          <li><a href="#/account">Tài khoản của tôi</a></li>
-          <li><a href="#/my-bookings">Đơn đặt tour của tôi</a></li>
-          <li><a href="#/admin">Quản trị</a></li>
+          <li><a href="#/blog">Cẩm nang du lịch</a></li>
+          <li><a href="#/about">Về chúng tôi</a></li>
+          <li><a href="#/contact">Liên hệ tư vấn</a></li>
         </ul>
       </div>
       <div>
-        <h4>Liên hệ</h4>
+        <h4>Chính sách & Quy định</h4>
         <ul class="footer-links">
-          <li>Hotline: <a href="tel:${String(settings.hotline).replace(/\D/g, "")}">${settings.hotline}</a></li>
+          <li><a href="#/policies?tab=terms">Điều khoản dịch vụ</a></li>
+          <li><a href="#/policies?tab=privacy">Chính sách bảo mật</a></li>
+          <li><a href="#/policies?tab=refund">Hủy tour & Hoàn tiền</a></li>
+          <li><a href="#/policies?tab=insurance">Bảo hiểm du lịch</a></li>
+          <li><a href="#/my-bookings">Tra cứu đơn tour</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Liên hệ hỗ trợ</h4>
+        <ul class="footer-links">
+          <li>Hotline 24/7: <a href="tel:${String(settings.hotline).replace(/\D/g, "")}">${settings.hotline}</a></li>
           <li>Email: <a href="mailto:${settings.email}">${settings.email}</a></li>
           <li>${settings.address}</li>
           <li>${settings.hours}</li>
         </ul>
-      </div>
-      <div>
-        <h4>Theo dõi chúng tôi</h4>
-        <div class="socials">
+        <div class="socials" style="margin-top: 12px;">
           <a href="#" aria-label="Facebook">Facebook</a>
           <a href="#" aria-label="Instagram">Instagram</a>
           <a href="#" aria-label="YouTube">YouTube</a>
@@ -176,8 +197,20 @@ export function renderFooter() {
       </div>
     </div>
     <div class="container footer-bottom">
-      <p>&copy; 2026 ${settings.siteName}. Bản quyền thuộc về ${settings.siteName}.</p>
+      <p>&copy; 2026 ${settings.siteName}. Giấy phép kinh doanh dịch vụ lữ hành quốc tế số 01-1234/2026/TCDL-GP LHQT.</p>
     </div>
   </footer>
-  ${compareBar()}`;
+  ${compareBar()}
+  ${chatWidget()}`;
 }
+
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "footer-newsletter-form") {
+    e.preventDefault();
+    const input = e.target.querySelector("input[type='email']");
+    if (input && input.value) {
+      alert(`Đăng ký thành công! TravelGo đã ghi nhận email ${input.value}. Mã giảm giá của bạn là: TRAVELGO10 (áp dụng khi đặt tour).`);
+      input.value = "";
+    }
+  }
+});

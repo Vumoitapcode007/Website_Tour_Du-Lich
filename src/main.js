@@ -1,15 +1,20 @@
 import "./style.css";
 import { createRouter } from "./router.js";
 import { renderHeader, renderFooter } from "./components/layout.js";
-import { canAccessAdmin, getSession, isStaffRole, logout } from "./auth.js";
+import { canAccessAdmin, getSession, isStaffRole, login, logout, register } from "./auth.js";
 import { Home } from "./pages/home.js";
 import { Tours } from "./pages/tours.js";
 import { Compare } from "./pages/compare.js";
 import { TourDetail } from "./pages/tour-detail.js";
 import { Booking } from "./pages/booking.js";
 import { Payment } from "./pages/payment.js";
+import { Ticket } from "./pages/ticket.js";
 import { About } from "./pages/about.js";
 import { Contact } from "./pages/contact.js";
+import { Blog } from "./pages/blog.js";
+import { BlogDetail } from "./pages/blog-detail.js";
+import { Policies } from "./pages/policies.js";
+import { getArticleById } from "./blog-data.js";
 import { Login } from "./pages/login.js";
 import { Register } from "./pages/register.js";
 import { Account } from "./pages/account.js";
@@ -117,6 +122,13 @@ const routes = [
     footer: renderFooter,
   },
   {
+    path: "ticket/:code",
+    title: (path, params) => `Vé điện tử ${params.code || ""}`,
+    render: Ticket,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
     path: "about",
     title: "Giới thiện",
     render: About,
@@ -127,6 +139,27 @@ const routes = [
     path: "contact",
     title: "Liên hệ",
     render: Contact,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "blog",
+    title: "Cẩm nang du lịch & Khám phá",
+    render: Blog,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "blog/:id",
+    title: (path, params) => getArticleById(params.id)?.title || "Bài viết cẩm nang",
+    render: BlogDetail,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "policies",
+    title: "Chính sách & Quy định hoạt động",
+    render: Policies,
     layout: renderHeader,
     footer: renderFooter,
   },
@@ -207,6 +240,17 @@ const routes = [
 const router = createRouter(routes);
 
 document.addEventListener("app:refresh", () => router.navigate());
+
+function showAuthAlert(message, type = "error") {
+  const alertEl = document.getElementById("auth-alert");
+  if (alertEl) {
+    alertEl.className = `auth-alert ${type}`;
+    alertEl.textContent = message;
+    alertEl.classList.remove("hidden");
+  } else {
+    alert(message);
+  }
+}
 
 function clearAuthAlert() {
   const alertEl = document.getElementById("auth-alert");
