@@ -77,6 +77,7 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
     admin: '<span class="status-pill status-open">Toàn quyền Admin</span>',
     manager: '<span class="status-pill status-confirmed">Trưởng phòng</span>',
     staff: '<span class="status-pill status-pending">Nhân viên</span>',
+    tour_guide: '<span class="status-pill status-paid">Hướng dẫn viên</span>',
     customer: '<span class="status-pill status-deposit">Khách hàng</span>',
   };
 

@@ -129,6 +129,50 @@ export function GuideDashboard() {
     <article class="kpi kpi-violet"><p class="kpi-label">Đã hoàn thành</p><strong class="kpi-value">${completed.length}</strong><span class="kpi-hint">Tổng ${formatMoney(completed.reduce((sum, item) => sum + (Number(item.total) || 0), 0))}</span></article>
   </section>
 
+  <!-- Thanh công cụ nghiệp vụ nhanh -->
+  <section class="panel" style="background: #fff; padding: 16px 20px;">
+    <h3 style="margin: 0 0 12px; font-size: 1.05rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+      <span>⚡ Nghiệp vụ hướng dẫn viên nhanh</span>
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+      <a href="#/guide/checkin" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; text-decoration: none; color: #1e3a8a; transition: all 0.2s;">
+        <span style="font-size: 1.6rem;">🎟️</span>
+        <div>
+          <strong style="display: block; font-size: 0.95rem;">Check-in vé</strong>
+          <small style="color: #64748b; font-size: 0.78rem;">Quét & Điểm danh</small>
+        </div>
+      </a>
+      <a href="#/guide/diary" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; text-decoration: none; color: #14532d; transition: all 0.2s;">
+        <span style="font-size: 1.6rem;">📖</span>
+        <div>
+          <strong style="display: block; font-size: 0.95rem;">Nhật ký tour</strong>
+          <small style="color: #64748b; font-size: 0.78rem;">Ghi mốc & Báo cáo</small>
+        </div>
+      </a>
+      <a href="#/guide/expenses" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; text-decoration: none; color: #581c87; transition: all 0.2s;">
+        <span style="font-size: 1.6rem;">💳</span>
+        <div>
+          <strong style="display: block; font-size: 0.95rem;">Chi tiêu đoàn</strong>
+          <small style="color: #64748b; font-size: 0.78rem;">Quyết toán tạm ứng</small>
+        </div>
+      </a>
+      <a href="#/guide/incidents" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fff5f5; border: 1px solid #fecaca; border-radius: 8px; text-decoration: none; color: #7f1d1d; transition: all 0.2s;">
+        <span style="font-size: 1.6rem;">🚨</span>
+        <div>
+          <strong style="display: block; font-size: 0.95rem;">Báo sự cố (SOS)</strong>
+          <small style="color: #64748b; font-size: 0.78rem;">Hỗ trợ khẩn cấp</small>
+        </div>
+      </a>
+      <a href="#/guide/announcements" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; text-decoration: none; color: #78350f; transition: all 0.2s;">
+        <span style="font-size: 1.6rem;">📢</span>
+        <div>
+          <strong style="display: block; font-size: 0.95rem;">Dặn dò & Checklist</strong>
+          <small style="color: #64748b; font-size: 0.78rem;">Nhắn tin đoàn & Rà soát</small>
+        </div>
+      </a>
+    </div>
+  </section>
+
   ${
     nextDeparture
       ? `<section class="panel guide-next-trip">
