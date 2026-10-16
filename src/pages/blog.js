@@ -44,7 +44,7 @@ export function Blog(path, params = {}, query = new URLSearchParams()) {
   return `
   <section class="page-hero blog-hero">
     <div class="container center">
-      <span class="hero-eyebrow">Cẩm Nang Du Lịch & Khám Phá</span>
+      <span class="hero-eyebrow">📖 Cẩm Nang Du Lịch & Khám Phá</span>
       <h1>Bí Kíp Du Lịch & Trải Nghiệm 2026</h1>
       <p>Tổng hợp kinh nghiệm thực tế, lịch trình vi vu chi tiết, ẩm thực 3 miền và những tọa độ check-in đẹp mê hồn từ các chuyên gia bản địa của TravelGo.</p>
     </div>

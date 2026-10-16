@@ -11,6 +11,57 @@ const destNotes = {
   "Phú Quốc": "Đảo ngọc biển xanh",
 };
 
+/* Tọa độ [vĩ độ, kinh độ] các điểm đến hiển thị trên bản đồ */
+const destCoords = {
+  "Ninh Bình": [20.2506, 105.9745],
+  "Đà Nẵng": [16.0544, 108.2022],
+  "Quảng Ninh": [20.9101, 107.1839],
+  "Đà Lạt": [11.9404, 108.4583],
+  "Sa Pa": [22.3364, 103.8438],
+  "Phú Quốc": [10.2899, 103.984],
+};
+
+/* Khởi tạo bản đồ Leaflet với marker cho từng điểm đến đang mở bán */
+function initDestinationMap() {
+  const el = document.getElementById("dest-map");
+  if (!el || !window.L) return;
+
+  if (el._leafletMap) {
+    el._leafletMap.remove();
+    el._leafletMap = null;
+  }
+
+  const allTours = sellableTours();
+  const points = Object.entries(destCoords)
+    .map(([name, latlng]) => {
+      const tour = allTours.find((item) => item.location === name);
+      return tour ? { name, latlng, id: tour.id } : null;
+    })
+    .filter(Boolean);
+  if (!points.length) return;
+
+  const map = window.L.map(el, { scrollWheelZoom: false });
+  window.L
+    .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap",
+      maxZoom: 19,
+    })
+    .addTo(map);
+
+  const bounds = [];
+  points.forEach(({ name, latlng, id }) => {
+    window.L
+      .marker(latlng)
+      .addTo(map)
+      .bindPopup(
+        `<strong>${name}</strong><br>${destNotes[name]}<br><a class="map-popup-link" href="#/tour/${id}">Xem tour →</a>`
+      );
+    bounds.push(latlng);
+  });
+  map.fitBounds(bounds, { padding: [40, 40] });
+  el._leafletMap = map;
+}
+
 export function Home() {
   /* Trang chủ chỉ giới thiệu tour đang mở bán */
   const allTours = sellableTours();
@@ -85,19 +136,30 @@ export function Home() {
       <h2>Các điểm đến nổi tiếng</h2>
       <p>Ghé thăm những miền đất đẹp nhất Việt Nam</p>
     </div>
-    <div class="dest-grid">
-      ${destinations
-        .map(
-          (dest) => `
-        <a class="dest-card" href="#/tours">
-          <img src="${dest.img}" alt="${dest.name}" loading="lazy" onerror="${imgFallback}">
-          <span class="dest-info">
-            <strong>${dest.name}</strong>
-            <em>${dest.note}</em>
-          </span>
-        </a>`
-        )
-        .join("")}
+      <div class="dest-grid">
+        ${destinations
+          .map(
+            (dest) => `
+          <a class="dest-card" href="#/tours">
+            <img src="${dest.img}" alt="${dest.name}" loading="lazy" onerror="${imgFallback}">
+            <span class="dest-info">
+              <strong>${dest.name}</strong>
+              <em>${dest.note}</em>
+            </span>
+          </a>`
+          )
+          .join("")}
+      </div>
+    </div>
+  </section>
+
+  <section class="section map-section">
+    <div class="container">
+      <div class="section-title center">
+        <h2>Bản đồ điểm đến</h2>
+        <p>Vị trí các điểm đến nổi bật trên bản đồ Việt Nam</p>
+      </div>
+      <div class="dest-map" id="dest-map" aria-label="Bản đồ các điểm đến nổi bật của TravelGo"></div>
     </div>
   </section>
 
@@ -135,6 +197,9 @@ export function Home() {
 
 document.addEventListener("route:changed", ({ detail }) => {
   if (detail.path !== "") return;
+
+  initDestinationMap();
+
   const form = document.getElementById("tour-search");
   if (!form) return;
 
