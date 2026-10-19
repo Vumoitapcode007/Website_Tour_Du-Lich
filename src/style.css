@@ -8802,5 +8802,262 @@ body.modal-open {
   margin: 0 auto 16px;
 }
 
+/* ---------- Giao diện Tour của tôi cho Hướng dẫn viên ---------- */
+.guide-tours-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.guide-trip-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-trip-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+  border-color: #93c5fd;
+}
+
+.guide-trip-card.is-ongoing {
+  border-left: 6px solid #16a34a;
+}
+.guide-trip-card.is-upcoming {
+  border-left: 6px solid #f59e0b;
+}
+.guide-trip-card.is-done {
+  border-left: 6px solid #64748b;
+  opacity: 0.94;
+}
+
+.guide-trip-main {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .guide-trip-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.guide-trip-media {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  height: 180px;
+  background: #0f172a;
+}
+
+.guide-trip-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.guide-trip-card:hover .guide-trip-media img {
+  transform: scale(1.04);
+}
+
+.guide-trip-badge-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+}
+
+.guide-trip-countdown-pill {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.guide-trip-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-trip-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.guide-trip-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+.guide-trip-title:hover {
+  color: #1677ff;
+}
+
+.guide-trip-meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 12px;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.guide-trip-meta-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.guide-trip-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.guide-metric-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.guide-metric-box .m-label {
+  font-size: 0.72rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.guide-metric-box .m-val {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.guide-metric-box .m-sub {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.guide-trip-progress-bar {
+  background: #e2e8f0;
+  border-radius: 999px;
+  height: 6px;
+  overflow: hidden;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.guide-trip-progress-fill {
+  background: linear-gradient(90deg, #10b981, #059669);
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.guide-trip-bottom-bar {
+  background: #fafaf9;
+  border-top: 1px solid #e2e8f0;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.guide-trip-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.guide-trip-quick-actions .btn {
+  font-weight: 600;
+}
+
+/* Quick Filter Tabs */
+.guide-filter-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.guide-filter-tab {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.guide-filter-tab:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.guide-filter-tab.is-active {
+  background: #1677ff;
+  color: #fff;
+  border-color: #1677ff;
+  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.2);
+}
+
+.guide-filter-tab .tab-count {
+  background: rgba(0, 0, 0, 0.1);
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.guide-filter-tab.is-active .tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
 
 
