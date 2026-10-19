@@ -11,6 +11,9 @@ import {
 import { syncNotificationBadge } from "../components/notification-bell.js";
 import { bookingTracker } from "../components/booking-tracker.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
+import { formatDate, formatPrice } from "../data.js";
+import { getTourById } from "../tour-repository.js";
+import { imgFallback } from "../components/tour-card.js";
 
 function Guard() {
   return `
@@ -28,6 +31,45 @@ function Guard() {
 
 function stat(value, label, key = "") {
   return `<div class="admin-stat"${key ? ` data-stat="${escapeHtml(key)}"` : ""}><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
+}
+
+function purchasedTicketCard(booking) {
+  const tour = getTourById(booking.tourId);
+  const image = booking.tourImage || tour?.image || "";
+
+  return `
+  <div class="purchased-ticket-card" data-code="${escapeHtml(booking.code)}">
+    <div class="purchased-ticket-top">
+      <img src="${image}" alt="${escapeHtml(booking.tourName)}" class="purchased-ticket-img" onerror="${imgFallback}">
+      <div class="purchased-ticket-meta">
+        <div class="purchased-ticket-pnr">
+          <span class="purchased-ticket-code">${escapeHtml(booking.code)}</span>
+          <span class="status-pill status-paid">✓ Đã thanh toán</span>
+        </div>
+        <h4 class="purchased-ticket-title">${escapeHtml(booking.tourName)}</h4>
+        <div class="purchased-ticket-specs">
+          <span>📅 Khởi hành: <strong>${formatDate(booking.date)}</strong></span>
+          <span>👥 Số lượng: <strong>${booking.people} khách</strong>${booking.children ? ` (${booking.adults} lớn, ${booking.children} trẻ)` : ""}</span>
+          ${tour?.location ? `<span>📍 Điểm đến: <strong>${escapeHtml(tour.location)}</strong></span>` : ""}
+          <span>💳 Phương thức: <strong>${booking.paymentMethod === "bank" ? "VietQR Ngân hàng" : "Ví MoMo"}</strong></span>
+        </div>
+      </div>
+    </div>
+    <div class="purchased-ticket-bottom">
+      <div class="purchased-ticket-price">
+        <span>Tổng thanh toán:</span>
+        <strong>${formatPrice(booking.total)}</strong>
+      </div>
+      <div class="purchased-ticket-actions">
+        <a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">
+          🎫 Mở vé điện tử
+        </a>
+        <a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">
+          🧾 Biên lai
+        </a>
+      </div>
+    </div>
+  </div>`;
 }
 
 function bookingItem(booking) {
@@ -50,9 +92,11 @@ function bookingItem(booking) {
     <div class="account-booking-actions">
       ${
         isPaid
-          ? `<a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">Xem biên lai MoMo</a>`
+          ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">🎫 Vé điện tử lên xe</a>
+             <a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">Xem biên lai</a>`
           : booking.status !== "cancelled"
-            ? `<a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">⚡ Thanh toán MoMo</a>`
+            ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}?mode=payment">📄 Vé thanh toán QR</a>
+               <a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">⚡ Cổng MoMo</a>`
             : ""
       }
       ${
@@ -96,6 +140,7 @@ export function Account() {
   if (!session) return Guard();
 
   const bookings = myBookings(session);
+  const paidBookings = bookings.filter((item) => item.payment === "paid" && item.status !== "cancelled");
   const pending = bookings.filter((item) =>
     ["pending", "confirmed", "awaiting_payment"].includes(item.status)
   ).length;
@@ -111,17 +156,48 @@ export function Account() {
     <div class="container">
       <span class="hero-eyebrow">Tài khoản của tôi</span>
       <h1>Xin chào ${escapeHtml(session.name)}</h1>
-      <p>Quản lý thông tin cá nhân, mật khẩu và lịch sử đặt tour của bạn.</p>
+      <p>Quản lý thông tin cá nhân, mật khẩu, vé du lịch đã mua và lịch sử đặt tour của bạn.</p>
     </div>
   </section>
 
   <section class="section container">
     <div class="admin-stats">
       ${stat(bookings.length, "Tổng đơn")}
+      ${stat(paidBookings.length, "Vé đã mua")}
       ${stat(pending, "Đang xử lý")}
       ${stat(travelling, "Sắp đi / đang đi")}
       ${stat(`${new Intl.NumberFormat("vi-VN").format(spent)} VNĐ`, "Tổng chi tiêu")}
       ${stat(unread, "Thông báo mới", "notif-unread")}
+    </div>
+
+    <!-- Phần hiển thị vé đã mua -->
+    <div class="account-purchased-tickets" id="purchased-tickets-section">
+      <div class="section-title">
+        <div class="purchased-tickets-head">
+          <div>
+            <h2>🎫 Vé du lịch đã mua (${paidBookings.length})</h2>
+            <p>Danh sách vé điện tử đã thanh toán thành công, sẵn sàng xuất trình khi khởi hành hoặc check-in.</p>
+          </div>
+          ${
+            paidBookings.length
+              ? `<span class="badge-paid" style="padding: 6px 14px; border-radius: 20px; font-weight: 700;">✓ ${paidBookings.length} vé hợp lệ</span>`
+              : ""
+          }
+        </div>
+      </div>
+
+      ${
+        paidBookings.length
+          ? `<div class="purchased-tickets-grid">
+              ${paidBookings.map((b) => purchasedTicketCard(b)).join("")}
+            </div>`
+          : `<div class="purchased-tickets-empty">
+              <span class="empty-icon">🎫</span>
+              <h3>Bạn chưa có vé du lịch nào đã thanh toán</h3>
+              <p>Khi bạn hoàn tất thanh toán tour qua MoMo hoặc VietQR, vé điện tử có mã QR check-in sẽ tự động xuất hiện tại đây.</p>
+              <a class="btn btn-primary" href="#/tours">Khám phá danh sách tour ngay</a>
+            </div>`
+      }
     </div>
 
     <div class="account-notifications">
