@@ -171,9 +171,10 @@ export function bookingTracker(booking, { showActions = true } = {}) {
         ? `<div class="account-booking-actions">
             ${
               payment === "paid"
-                ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">🎫 Vé điện tử</a>`
+                ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">🎫 Vé điện tử lên xe</a>`
                 : !cancelled
-                  ? `<a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">Thanh toán ngay</a>`
+                  ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}?mode=payment">📄 Vé thanh toán QR</a>
+                     <a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">Cổng MoMo</a>`
                   : ""
             }
             ${

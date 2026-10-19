@@ -398,6 +398,9 @@ document.addEventListener("route:changed", ({ detail }) => {
         </ul>
         <p class="form-hint">Chuyên viên sẽ gọi ${escapeHtml(record.phone)} trong 30 phút để xác nhận.</p>
         <div class="success-actions booking-success-momo">
+          <a class="btn btn-primary btn-lg" href="#/ticket/${encodeURIComponent(record.code)}?mode=payment">
+            📄 Xem vé thanh toán trực tiếp (Có mã QR)
+          </a>
           <a class="btn btn-momo btn-lg" href="#/payment?code=${encodeURIComponent(record.code)}">
             <svg width="20" height="20" viewBox="0 0 40 40" fill="none" style="vertical-align:middle;margin-right:6px">
               <rect width="40" height="40" rx="8" fill="#fff"/>
