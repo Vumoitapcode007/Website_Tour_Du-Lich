@@ -45,3 +45,19 @@ export function passengerLabel(booking = {}) {
   const { adults, children } = passengerBreakdown(booking);
   return children ? `${adults} người lớn, ${children} trẻ em` : `${adults} người lớn`;
 }
+
+/* Ngày hôm nay theo múi giờ máy khách - dạng YYYY-MM-DD để so sánh chuỗi */
+export function todayKey(date = new Date()) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/* Khách hàng chỉ được đặt ngày ở tương lai - không nhận hôm nay lẫn quá khứ */
+export function isFutureDeparture(date) {
+  const key = String(date || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) && key > todayKey();
+}
+
+export function futureDepartures(departures = []) {
+  return (Array.isArray(departures) ? departures : []).filter(isFutureDeparture);
+}

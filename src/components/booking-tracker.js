@@ -47,20 +47,24 @@ export function departureCountdown(booking) {
 /* Gợi ý riêng cho từng bước, chỉ hiện khi đơn chưa đi tới bước đó */
 const STEP_NOTE = {
   pending: "Chuyên viên sẽ gọi bạn trong 30 phút",
-  confirmed: "Đã xác nhận - chờ bước thanh toán",
-  awaiting_payment: "Chuyển khoản để giữ chỗ cho bạn",
-  paid: "Đã thanh toán - chờ phân công hướng dẫn viên",
+  confirmed: "Đã xác nhận - chờ khách thanh toán",
   upcoming: "Hướng dẫn viên đã nhận chuyến",
   ongoing: "Chuyến đi đang diễn ra",
   completed: "",
 };
 
-/* Timeline đầy đủ 7 bước nghiệp vụ (bỏ nhánh huỷ - đơn huỷ hiển thị riêng) */
+/* Timeline nghiệp vụ - bước "Chờ thanh toán" và "Hoàn tất thanh toán" ẩn khỏi
+   lịch sử đặt tour (hidden), trạng thái đơn vẫn được xử lý đầy đủ phía sau */
 const FLOW_STEPS = [
   { key: "pending", label: "Đã gửi yêu cầu", stamp: (b) => createdAtLabel(b.createdAt) },
   { key: "confirmed", label: "Chuyên viên xác nhận", stamp: (b) => stampLabel(b.confirmedAt) },
-  { key: "awaiting_payment", label: "Chờ thanh toán", stamp: (b) => stampLabel(b.awaitingPaymentAt) },
-  { key: "paid", label: "Hoàn tất thanh toán", stamp: (b) => stampLabel(b.paidAt) },
+  {
+    key: "awaiting_payment",
+    label: "Chờ thanh toán",
+    stamp: (b) => stampLabel(b.awaitingPaymentAt),
+    hidden: true,
+  },
+  { key: "paid", label: "Hoàn tất thanh toán", stamp: (b) => stampLabel(b.paidAt), hidden: true },
   {
     key: "upcoming",
     label: "Sắp khởi hành",
@@ -88,8 +92,8 @@ export function bookingSteps(booking) {
     }
 
     /* Đơn đã thanh toán nhưng chưa có hướng dẫn viên vẫn dừng ở bước này */
-    return { label: step.label, note, state };
-  });
+    return { label: step.label, note, state, hidden: Boolean(step.hidden) };
+  }).filter((step) => !step.hidden);
 }
 
 function stepsView(booking) {
