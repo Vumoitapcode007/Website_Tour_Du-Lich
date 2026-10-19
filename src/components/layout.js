@@ -33,11 +33,13 @@ export function renderHeader(active = "") {
   const currentAdminItem = isGuide ? { path: "guide", label: "Bảng điều khiển", aliases: [] } : adminItem;
   const currentProfileItem = isGuide ? { path: "guide/profile", label: "Hồ sơ", aliases: [] } : profileItem;
 
+const registerItem = { path: "register", label: "Đăng ký", aliases: [] };
+
   const items = staff
     ? [...navItems, currentAdminItem, currentProfileItem, logoutItem]
     : session
       ? [...navItems, accountItem, logoutItem]
-      : [...navItems, loginItem];
+      : [...navItems, loginItem, registerItem];
 
   const nav = items
     .map((item) => {

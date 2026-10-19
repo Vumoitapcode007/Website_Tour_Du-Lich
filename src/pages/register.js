@@ -1,5 +1,7 @@
 import { register, getSession } from "../auth.js";
 import { isEmail, isName, isPhone } from "../validate.js";
+import { saveNotification } from "../store.js";
+import { syncNotificationBadge } from "../components/notification-bell.js";
 
 function AlreadyLoggedIn(session) {
   return `
@@ -9,7 +11,7 @@ function AlreadyLoggedIn(session) {
       <h2>Bạn đã đăng nhập</h2>
       <p>Xin chào <strong>${session.name}</strong> (${session.role}).</p>
       <div class="success-actions">
-        <a class="btn btn-primary" href="#/">Về trang chủ</a>
+        <a class="btn btn-primary" href="#/account">Tài khoản của tôi</a>
         <a class="btn btn-outline" href="#/tours">Xem danh sách tour</a>
       </div>
     </div>
@@ -24,25 +26,38 @@ export function Register() {
   <section class="page-hero">
     <div class="container">
       <span class="hero-eyebrow">Tài khoản khách hàng</span>
-      <h1>Đăng ký tài khoản</h1>
-      <p>Tạo tài khoản để đặt tour nhanh hơn và theo dõi lịch trình của bạn.</p>
+      <h1>Đăng ký tài khoản TravelGo</h1>
+      <p>Tạo tài khoản để đặt tour nhanh hơn, nhận ngay ưu đãi 10% và quản lý vé điện tử thuận tiện.</p>
     </div>
   </section>
 
-  <section class="section container">
-    <form class="form-card login-card" id="register-form" novalidate>
-      <h2>Thông tin tài khoản</h2>
+  <section class="section container login-layout" style="max-width: 1040px; margin: 0 auto;">
+    <form class="form-card login-card" id="register-form" novalidate style="background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); padding: 2rem;">
+      <!-- Tab chuyển đổi giữa Đăng nhập và Đăng ký -->
+      <div class="auth-mode-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+        <a href="#/login" class="auth-tab" style="padding: 6px 14px; font-weight: 600; color: #64748b; text-decoration: none; font-size: 1rem;">
+          Đăng nhập
+        </a>
+        <a href="#/register" class="auth-tab is-active" style="padding: 6px 14px; font-weight: 700; color: #1677ff; border-bottom: 3px solid #1677ff; margin-bottom: -10px; text-decoration: none; font-size: 1rem;">
+          Đăng ký tài khoản
+        </a>
+      </div>
+
+      <h2 style="margin-top: 0; font-size: 1.35rem;">Tạo tài khoản mới</h2>
+      <p class="form-hint" style="margin-top: -0.5rem; margin-bottom: 1.5rem;">
+        Điền thông tin bên dưới để trở thành thành viên TravelGo.
+      </p>
 
       <div class="field">
         <label for="rg-name">Họ và tên <span class="req">*</span></label>
-        <input id="rg-name" name="name" type="text" placeholder="Nguyễn Văn A" autocomplete="name" required>
+        <input id="rg-name" name="name" type="text" placeholder="Ví dụ: Nguyễn Văn An" autocomplete="name" required>
         <p class="error" data-error="name"></p>
       </div>
 
       <div class="field-row">
         <div class="field">
-          <label for="rg-username">Tài khoản <span class="req">*</span></label>
-          <input id="rg-username" name="username" type="text" placeholder="vd: minhvu" autocomplete="username" required>
+          <label for="rg-username">Tên đăng nhập <span class="req">*</span></label>
+          <input id="rg-username" name="username" type="text" placeholder="vd: vanan2026" autocomplete="username" required>
           <p class="error" data-error="username"></p>
         </div>
         <div class="field">
@@ -53,7 +68,7 @@ export function Register() {
       </div>
 
       <div class="field">
-        <label for="rg-email">Email <span class="req">*</span></label>
+        <label for="rg-email">Địa chỉ Email <span class="req">*</span></label>
         <input id="rg-email" name="email" type="email" placeholder="email@example.com" autocomplete="email" required>
         <p class="error" data-error="email"></p>
       </div>
@@ -74,15 +89,70 @@ export function Register() {
         </div>
       </div>
 
-      <label class="checkbox">
-        <input type="checkbox" name="agree" required>
-        <span>Tôi đồng ý với <a href="#/contact">điều khoản</a> và chính sách bảo mật của TravelGo.</span>
+      <label class="checkbox" style="margin-top: 6px;">
+        <input type="checkbox" name="agree" required checked>
+        <span>Tôi đồng ý với <a href="#/policies?tab=terms" target="_blank">Điều khoản dịch vụ</a> và <a href="#/policies?tab=privacy" target="_blank">Chính sách bảo mật</a> của TravelGo.</span>
       </label>
       <p class="error" data-error="agree"></p>
 
-      <button class="btn btn-primary btn-lg btn-block" type="submit">Tạo tài khoản</button>
-      <p class="form-hint">Đã có tài khoản? <a href="#/login">Đăng nhập ngay</a></p>
+      <button class="btn btn-primary btn-lg btn-block" type="submit" style="margin-top: 1rem; font-weight: 700;">
+        Đăng ký tài khoản ngay
+      </button>
+
+      <div style="margin-top: 14px; text-align: center; font-size: 0.92rem;">
+        Đã có tài khoản? <a href="#/login" style="color: #1677ff; font-weight: 700; text-decoration: underline;">Đăng nhập tại đây</a>
+      </div>
     </form>
+
+    <!-- Cột bên phải: Quyền lợi khi đăng ký -->
+    <aside class="register-benefits" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <h3 style="margin-top: 0; font-size: 1.25rem; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <span>🎉</span> Đặc quyền thành viên TravelGo
+        </h3>
+        <p style="font-size: 0.88rem; color: #64748b; margin-bottom: 1.25rem; line-height: 1.5;">
+          Đăng ký ngay hôm nay để nhận các quyền lợi độc quyền dành riêng cho khách hàng thân thiết:
+        </p>
+
+        <div class="benefit-list" style="display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <span style="font-size: 1.4rem; background: #ecfdf5; border-radius: 8px; padding: 6px;">🎁</span>
+            <div>
+              <strong style="font-size: 0.95rem; color: #0f172a; display: block;">Mã giảm giá 10% (TRAVELGO10)</strong>
+              <small style="color: #64748b; font-size: 0.82rem; line-height: 1.4; display: block;">Tặng ngay voucher giảm 10% tối đa 200.000đ khi đặt tour đầu tiên.</small>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <span style="font-size: 1.4rem; background: #eff6ff; border-radius: 8px; padding: 6px;">🎫</span>
+            <div>
+              <strong style="font-size: 0.95rem; color: #0f172a; display: block;">Vé điện tử & Mã QR Check-in</strong>
+              <small style="color: #64748b; font-size: 0.82rem; line-height: 1.4; display: block;">Quản lý toàn bộ vé đã mua trong tài khoản, quét mã lên xe trong 3 giây.</small>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <span style="font-size: 1.4rem; background: #fdf2f8; border-radius: 8px; padding: 6px;">⚡</span>
+            <div>
+              <strong style="font-size: 0.95rem; color: #0f172a; display: block;">Đặt tour siêu tốc 1-Chạm</strong>
+              <small style="color: #64748b; font-size: 0.82rem; line-height: 1.4; display: block;">Tự động điền họ tên, số điện thoại, không cần nhập lại mỗi chuyến đi.</small>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: flex-start;">
+            <span style="font-size: 1.4rem; background: #fefce8; border-radius: 8px; padding: 6px;">🔔</span>
+            <div>
+              <strong style="font-size: 0.95rem; color: #0f172a; display: block;">Thông báo đón xe & Lịch trình</strong>
+              <small style="color: #64748b; font-size: 0.82rem; line-height: 1.4; display: block;">Cập nhật tức thời thông tin Hướng dẫn viên, xe đón và nhắc nhở khởi hành.</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.5rem; padding: 12px 14px; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 0.82rem; color: #475569;">
+        🛡️ <strong>Cam kết bảo mật 100%:</strong> Thông tin cá nhân của quý khách được mã hoá an toàn theo tiêu chuẩn bảo vệ dữ liệu du lịch 2026.
+      </div>
+    </aside>
   </section>`;
 }
 
@@ -96,19 +166,19 @@ function validate(form) {
   const password = String(data.get("password") || "");
   const confirm = String(data.get("confirm") || "");
 
-  if (!isName(name)) errors.name = "Vui lòng nhập họ và tên.";
+  if (!isName(name)) errors.name = "Vui lòng nhập họ và tên đầy đủ.";
   if (!username) {
-    errors.username = "Vui lòng nhập tài khoản.";
-  } else if (!/^[a-z0-9]{3,20}$/i.test(username)) {
-    errors.username = "Tài khoản cần 3-20 ký tự, không có khoảng trắng.";
+    errors.username = "Vui lòng nhập tên đăng nhập.";
+  } else if (!/^[a-z0-9_]{3,20}$/i.test(username)) {
+    errors.username = "Tên đăng nhập từ 3-20 ký tự (chữ cái, số, không có khoảng trắng).";
   }
-  if (!isPhone(phone)) errors.phone = "Số điện thoại chưa hợp lệ.";
-  if (!isEmail(email)) errors.email = "Email chưa hợp lệ.";
+  if (!isPhone(phone)) errors.phone = "Số điện thoại không hợp lệ (10 số).";
+  if (!isEmail(email)) errors.email = "Địa chỉ email không đúng định dạng.";
   if (!password) errors.password = "Vui lòng nhập mật khẩu.";
   else if (password.length < 6) errors.password = "Mật khẩu cần tối thiểu 6 ký tự.";
   if (!confirm) errors.confirm = "Vui lòng xác nhận mật khẩu.";
-  else if (confirm !== password) errors.confirm = "Xác nhận mật khẩu không khớp.";
-  if (!data.get("agree")) errors.agree = "Bạn cần đồng ý điều khoản để tiếp tục.";
+  else if (confirm !== password) errors.confirm = "Mật khẩu xác nhận không khớp.";
+  if (!data.get("agree")) errors.agree = "Bạn cần đồng ý điều khoản dịch vụ để tiếp tục.";
 
   return { errors, data };
 }
@@ -158,10 +228,27 @@ document.addEventListener("route:changed", ({ detail }) => {
       return;
     }
 
+    // Tự động gửi thông báo chào mừng thành viên mới
+    try {
+      saveNotification({
+        type: "system",
+        title: "Chào mừng thành viên mới của TravelGo!",
+        body: `Chào mừng ${result.session.name}! Tài khoản của bạn đã được kích hoạt thành công. Áp dụng ngay mã ưu đãi TRAVELGO10 khi đặt tour để nhận giảm 10%!`,
+        accountUsername: result.session.username,
+        email: result.session.email,
+        phone: result.session.phone,
+      });
+      syncNotificationBadge();
+    } catch {
+      /* Bỏ qua nếu có lỗi lưu thông báo */
+    }
+
+    alert(`Đăng ký tài khoản thành công! Chào mừng ${result.session.name} đến với TravelGo.`);
+
     const allowed = ["tours", "booking", "about", "contact", "account", "my-bookings"];
     const next = new URLSearchParams(detail.queryString).get("next") || "";
     const [path, ...search] = next.replace(/^#?\/?/, "").split("?");
-    const target = !allowed.includes(path) ? "" : search.length ? `${path}?${search.join("?")}` : path;
+    const target = next && allowed.includes(path) ? (search.length ? `${path}?${search.join("?")}` : path) : "account";
     window.location.hash = `#/${target}`;
   });
 });

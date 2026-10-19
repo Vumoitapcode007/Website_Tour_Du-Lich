@@ -120,7 +120,16 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
 
   <section class="section container login-layout" style="max-width: 1040px; margin: 0 auto;">
     <form class="form-card login-card" id="login-form" novalidate style="background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); padding: 2rem;">
-      <h2 style="margin-top: 0; font-size: 1.4rem;">Đăng nhập hệ thống</h2>
+      <div class="auth-mode-tabs" style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+        <a href="#/login" class="auth-tab is-active" style="padding: 6px 14px; font-weight: 700; color: #1677ff; border-bottom: 3px solid #1677ff; margin-bottom: -10px; text-decoration: none; font-size: 1rem;">
+          Đăng nhập
+        </a>
+        <a href="#/register" class="auth-tab" style="padding: 6px 14px; font-weight: 600; color: #64748b; text-decoration: none; font-size: 1rem;">
+          Đăng ký tài khoản
+        </a>
+      </div>
+
+      <h2 style="margin-top: 0; font-size: 1.35rem;">Đăng nhập hệ thống</h2>
       <p class="form-hint" style="margin-top: -0.5rem; margin-bottom: 1.5rem;">
         Nhập tài khoản hoặc chọn <strong>Đăng nhập 1-Click</strong> ở cột bên phải.
       </p>
@@ -143,6 +152,10 @@ export function Login(path, params = {}, query = new URLSearchParams()) {
       <button class="btn btn-primary btn-lg btn-block" type="submit" style="margin-top: 0.5rem; font-weight: 600;">
         Đăng nhập
       </button>
+
+      <div style="margin-top: 14px; text-align: center; font-size: 0.92rem;">
+        Chưa có tài khoản? <a href="#/register" style="color: #1677ff; font-weight: 700; text-decoration: underline;">Tạo tài khoản mới ngay</a>
+      </div>
 
       <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; font-size: 0.85rem; color: #64748b; line-height: 1.6;">
         <p style="margin: 0;">💡 <strong>Gợi ý:</strong> Bạn có thể sử dụng bất kỳ tài khoản demo nào để trải nghiệm đầy đủ quyền quản lý Tour (Thêm/Sửa/Xoá, Theo dõi tiến độ) và Quản lý Đơn đặt tour.</p>
