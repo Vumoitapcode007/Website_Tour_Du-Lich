@@ -10,6 +10,8 @@ import {
   MAX_PASSENGERS,
   bookingTotal,
   childPrice,
+  futureDepartures,
+  isFutureDeparture,
   normalizePassengers,
   seatLimit,
 } from "../booking-rules.js";
@@ -155,6 +157,7 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
         <div class="field">
           <label for="bk-date">Ngày khởi hành <span class="req">*</span></label>
           <select id="bk-date" name="date" required></select>
+          <p class="error" data-error="date"></p>
         </div>
         <div class="field">
           <label for="bk-tour">Chọn tour <span class="req">*</span></label>
@@ -234,6 +237,7 @@ function validate(form, tour) {
   const email = String(data.get("email") || "").trim();
   const adults = Number(data.get("adults"));
   const children = Number(data.get("children") || 0);
+  const date = String(data.get("date") || "").trim();
   const limit = seatLimit(tour?.seatsLeft);
 
   if (!isName(name)) errors.name = "Vui lòng nhập họ và tên.";
@@ -241,6 +245,8 @@ function validate(form, tour) {
   if (email && !isEmail(email)) errors.email = "Email chưa hợp lệ.";
   if (!data.get("tour")) errors.tour = "Vui lòng chọn tour.";
   else if (!isSellableTour(tour)) errors.tour = "Tour này đã ngừng bán.";
+  if (!date) errors.date = "Vui lòng chọn ngày khởi hành.";
+  else if (!isFutureDeparture(date)) errors.date = "Chỉ được đặt tour cho ngày trong tương lai (sau hôm nay).";
   if (!Number.isInteger(adults) || adults < 1) errors.adults = "Cần ít nhất 1 người lớn.";
   if (!Number.isInteger(children) || children < 0) errors.children = "Số trẻ em không hợp lệ.";
   if (Number.isInteger(adults) && Number.isInteger(children) && adults + children > limit)
@@ -276,11 +282,13 @@ document.addEventListener("route:changed", ({ detail }) => {
   function fillDates() {
     const tour = getTourById(tourSelect.value);
     if (!tour) return;
-    dateSelect.innerHTML = tour.departures
-      .map((date) => `<option value="${date}">${formatDate(date)}</option>`)
-      .join("");
+    /* Chỉ hiển thị ngày khởi hành ở tương lai - quá khứ và hôm nay không đặt được */
+    const available = futureDepartures(tour.departures);
+    dateSelect.innerHTML = available.length
+      ? available.map((date) => `<option value="${date}">${formatDate(date)}</option>`).join("")
+      : `<option value="">Chưa có ngày khởi hành trong tương lai</option>`;
     const preferred = query.get("date");
-    if (tour.departures.includes(preferred)) dateSelect.value = preferred;
+    if (available.includes(preferred)) dateSelect.value = preferred;
     const limit = seatLimit(tour.seatsLeft);
     adultsInput.max = String(limit);
     childrenInput.max = String(limit);
@@ -329,10 +337,14 @@ document.addEventListener("route:changed", ({ detail }) => {
   refreshSummary();
 
   tourSelect.addEventListener("change", () => {
+    setError("date", "");
     fillDates();
     refreshSummary();
   });
-  dateSelect.addEventListener("change", refreshSummary);
+  dateSelect.addEventListener("change", () => {
+    setError("date", "");
+    refreshSummary();
+  });
   adultsInput.addEventListener("input", refreshSummary);
   childrenInput.addEventListener("input", refreshSummary);
 

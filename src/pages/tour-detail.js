@@ -11,6 +11,7 @@ import {
   CHILD_PRICE_RATE,
   MAX_PASSENGERS,
   bookingTotal,
+  futureDepartures,
   normalizePassengers,
   seatLimit,
 } from "../booking-rules.js";
@@ -54,8 +55,10 @@ export function TourDetail(path, params = {}) {
   const sellable = isSellableTour(tour);
   const gallery = tour.gallery.length ? tour.gallery : [tour.image];
   const limit = seatLimit(tour.seatsLeft);
-  const departures = tour.departures.length
-    ? tour.departures
+  /* Đặt nhanh chỉ nhận ngày trong tương lai - ngày quá khứ/hôm nay bỏ khỏi danh sách */
+  const available = futureDepartures(tour.departures);
+  const departures = available.length
+    ? available
         .map(
           (date) =>
             `<option value="${date}">${formatDate(date)} - còn ${tour.seatsLeft} chỗ</option>`
