@@ -7,7 +7,6 @@ export const navItems = [
   { path: "", label: "Trang chủ", aliases: [] },
   { path: "tours", label: "Danh sách tour", aliases: ["tour"] },
   { path: "blog", label: "Cẩm nang", aliases: ["blog"] },
-  { path: "payment", label: "Thanh toán MoMo", aliases: [] },
   { path: "about", label: "Giới thiệu", aliases: [] },
   { path: "contact", label: "Liên hệ", aliases: [] },
 ];
@@ -82,7 +81,7 @@ export function renderHeader(active = "") {
               <rect x="2" y="5" width="20" height="14" rx="2"></rect>
               <line x1="2" y1="10" x2="22" y2="10"></line>
             </svg>
-            Thanh toán đơn tour (MoMo)
+            Thanh toán đơn tour
           </a>
           <button class="dropdown-item text-danger" id="btn-header-logout" type="button">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
