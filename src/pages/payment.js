@@ -463,16 +463,7 @@ function renderCheckoutView(booking, settings) {
         </div>
       </div>
     </aside>
-  </section>
-
-  <!-- Modal xác thực thanh toán đang xử lý -->
-  <div class="momo-modal-backdrop" id="momo-modal" style="display:none;">
-    <div class="momo-modal-content">
-      <div class="momo-spinner"></div>
-      <h3 id="modal-title">Đang xác thực giao dịch MoMo...</h3>
-      <p id="modal-desc">Vui lòng chờ trong giây lát trong khi chúng tôi kiểm tra giao dịch của đơn <strong>${escapeHtml(booking.code)}</strong> từ Ví MoMo.</p>
-    </div>
-  </div>`;
+  </section>`;
 }
 
 // 4. Màn hình Biên lai thanh toán thành công
@@ -604,29 +595,29 @@ function startCountdown(totalSeconds = 900) {
   }, 1000);
 }
 
-// Thực hiện xác thực & hoàn tất thanh toán
-function processPayment(code, isDemo = false) {
-  const modal = document.getElementById("momo-modal");
-  const modalTitle = document.getElementById("modal-title");
-  const modalDesc = document.getElementById("modal-desc");
-  if (modal) modal.style.display = "flex";
-
+// Thực hiện xác thực & hoàn tất thanh toán (chuyển thẳng sang biên lai MoMo thành công, không hiện popup)
+function processPayment(code) {
+  if (!code) return;
   const transId = `MM${Date.now().toString().slice(-8)}${Math.floor(1000 + Math.random() * 9000)}`;
 
-  setTimeout(() => {
-    if (modalTitle) modalTitle.textContent = "MoMo xác nhận thanh toán thành công!";
-    if (modalDesc) modalDesc.textContent = `Mã giao dịch MoMo: ${transId}. Đang tạo biên lai...`;
+  recordBookingPayment(code, {
+    method: "momo",
+    transId,
+  });
+  syncNotificationBadge();
+  if (timerInterval) clearInterval(timerInterval);
 
-    setTimeout(() => {
-      recordBookingPayment(code, {
-        method: "momo",
-        transId,
-      });
-      syncNotificationBadge();
-      if (timerInterval) clearInterval(timerInterval);
-      window.location.hash = `#/payment?code=${encodeURIComponent(code)}`;
-    }, 1000);
-  }, isDemo ? 600 : 1800);
+  // Đóng & gỡ modal nếu có
+  const modal = document.getElementById("momo-modal");
+  if (modal) modal.remove();
+
+  // Chuyển thẳng sang màn hình thanh toán MoMo thành công (Biên lai điện tử)
+  const targetHash = `#/payment?code=${encodeURIComponent(code)}`;
+  if (window.location.hash === targetHash) {
+    document.dispatchEvent(new CustomEvent("app:refresh"));
+  } else {
+    window.location.hash = targetHash;
+  }
 }
 
 // Lắng nghe sự kiện route thay đổi để gắn tương tác cho trang thanh toán
@@ -686,7 +677,7 @@ document.addEventListener("route:changed", ({ detail }) => {
   if (verifyBtn) {
     verifyBtn.addEventListener("click", () => {
       const code = verifyBtn.dataset.code;
-      processPayment(code, false);
+      if (code) processPayment(code);
     });
   }
 
@@ -695,7 +686,7 @@ document.addEventListener("route:changed", ({ detail }) => {
   if (demoBtn) {
     demoBtn.addEventListener("click", () => {
       const code = demoBtn.dataset.code;
-      processPayment(code, true);
+      if (code) processPayment(code);
     });
   }
 
@@ -776,3 +767,12 @@ document.addEventListener("route:changed", ({ detail }) => {
     });
   }
 });
+
+// Tự động xoá modal nếu bị kẹt từ phiên trước và tải lại giao diện biên lai nếu đơn đã thanh toán
+setTimeout(() => {
+  const stuckModal = document.getElementById("momo-modal");
+  if (stuckModal) {
+    stuckModal.remove();
+    document.dispatchEvent(new CustomEvent("app:refresh"));
+  }
+}, 50);
