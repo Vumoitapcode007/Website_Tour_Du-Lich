@@ -56,7 +56,7 @@ const STEP_NOTE = {
 /* Timeline nghiệp vụ - bước "Chờ thanh toán" và "Hoàn tất thanh toán" ẩn khỏi
    lịch sử đặt tour (hidden), trạng thái đơn vẫn được xử lý đầy đủ phía sau */
 const FLOW_STEPS = [
-  { key: "pending", label: "Đã gửi yêu cầu", stamp: (b) => createdAtLabel(b.createdAt) },
+  { key: "pending", label: "Chờ xác nhận", stamp: (b) => createdAtLabel(b.createdAt) },
   { key: "confirmed", label: "Chuyên viên xác nhận", stamp: (b) => stampLabel(b.confirmedAt) },
   {
     key: "awaiting_payment",
