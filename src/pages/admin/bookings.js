@@ -81,7 +81,7 @@ function notifyBooking(booking, status) {
   });
 }
 
-const FILTERS = { q: "", status: "", tour: "", payment: "", from: "", to: "", sort: "new" };
+const FILTERS = { q: "", status: "", tour: "", payment: "", bookingType: "", from: "", to: "", sort: "new" };
 
 let activeCode = "";
 
@@ -91,9 +91,10 @@ function filterBookings(list) {
     if (FILTERS.status && item.status !== FILTERS.status) return false;
     if (FILTERS.tour && String(item.tourId) !== FILTERS.tour) return false;
     if (FILTERS.payment && (item.payment || "unpaid") !== FILTERS.payment) return false;
+    if (FILTERS.bookingType && (item.bookingType || "individual") !== FILTERS.bookingType) return false;
     if (FILTERS.from && item.createdAt < `${FILTERS.from}T00:00:00`) return false;
     if (FILTERS.to && item.createdAt > `${FILTERS.to}T23:59:59`) return false;
-    if (query && !searchKey(`${item.code} ${item.name} ${item.phone} ${item.email} ${item.tourName} ${item.note}`).includes(query))
+    if (query && !searchKey(`${item.code} ${item.name} ${item.phone} ${item.email} ${item.tourName} ${item.groupName || ""} ${item.note}`).includes(query))
       return false;
     return true;
   });
@@ -109,9 +110,10 @@ function filterBookings(list) {
 
 function row(booking) {
   const tour = getTourById(booking.tourId);
-  const { people } = passengerBreakdown(booking);
+  const { adults, children, people } = passengerBreakdown(booking);
   const thumb = booking.tourImage || tour?.image || "";
   const unitPrice = booking.tourPrice || tour?.price || 0;
+  const isGroup = booking.bookingType === "group";
   
   let attendanceHtml = `<small class="soft-chip">Chưa ĐD</small>`;
   if (booking.attendance === "present") attendanceHtml = `<small class="status-pill status-paid">Có mặt</small>`;
@@ -121,13 +123,18 @@ function row(booking) {
 
   return `
   <tr data-code="${escapeHtml(booking.code)}" data-search="${escapeHtml(
-    searchKey(`${booking.code} ${booking.name} ${booking.phone} ${booking.tourName}`)
+    searchKey(`${booking.code} ${booking.name} ${booking.phone} ${booking.tourName} ${booking.groupName || ""}`)
   )}">
     <td class="cell-check">
       ${canManage() ? `<input type="checkbox" data-select value="${escapeHtml(booking.code)}" aria-label="Chọn đơn ${escapeHtml(booking.code)}">` : ""}
     </td>
     <td class="cell-code">
       <span class="code-chip">${escapeHtml(booking.code)}</span>
+      ${
+        isGroup
+          ? `<span class="group-badge" style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10.5px;font-weight:700;background:#ede9fe;color:#5b21b6;margin-top:2px;">👥 ĐOÀN</span>`
+          : ""
+      }
       <small>${formatRelative(booking.createdAt)}</small>
     </td>
     <td>
@@ -135,6 +142,13 @@ function row(booking) {
         <span class="avatar-sm">${escapeHtml(initials(booking.name))}</span>
         <span class="cell-user-info">
           <strong>${escapeHtml(booking.name)}</strong>
+          ${
+            isGroup
+              ? `<small style="display:block;color:#5b21b6;font-weight:600;">Đại diện đoàn${
+                  booking.groupName ? ` · ${escapeHtml(booking.groupName)}` : ""
+                }</small>`
+              : ""
+          }
           <small>${escapeHtml(booking.phone)}${booking.email ? ` · ${escapeHtml(booking.email)}` : ""}</small>
         </span>
       </span>
@@ -154,6 +168,11 @@ function row(booking) {
     </td>
     <td>
       <strong>${people} khách</strong>
+      ${
+        isGroup
+          ? `<div style="font-size:11.5px;color:#6b21a8;font-weight:600;">(${adults} lớn, ${children} trẻ)</div>`
+          : ""
+      }
       <div style="margin-top:2px">${attendanceHtml}</div>
     </td>
     <td>
@@ -193,18 +212,25 @@ function confirmModal(booking) {
   const { adults, children, people } = passengerBreakdown(booking);
   const tour = getTourById(booking.tourId);
   const unitPrice = booking.tourPrice || tour?.price || 0;
+  const isGroup = booking.bookingType === "group";
   activeCode = booking.code;
 
   openModal({
-    title: "Xác nhận đơn đặt tour",
-    subtitle: `Mã đơn ${booking.code}`,
+    title: isGroup ? "Xác nhận đơn đặt tour theo đoàn" : "Xác nhận đơn đặt tour",
+    subtitle: `Mã đơn ${booking.code}${isGroup ? " · Đặt theo đoàn" : ""}`,
     size: "md",
     body: `
       <div class="confirm-box">
         <h4 class="confirm-box-title">Kiểm tra lại thông tin đơn</h4>
         <ul class="summary-list">
           <li><span>Mã đơn</span><strong>${escapeHtml(booking.code)}</strong></li>
-          <li><span>Khách hàng</span><strong>${escapeHtml(booking.name)}</strong></li>
+          <li><span>Hình thức</span><strong style="${isGroup ? "color:#5b21b6;" : ""}">${isGroup ? "👥 Đặt theo đoàn" : "👤 Đặt cá nhân"}</strong></li>
+          <li><span>${isGroup ? "Người đại diện" : "Khách hàng"}</span><strong>${escapeHtml(booking.name)}</strong></li>
+          ${
+            isGroup && booking.groupName
+              ? `<li><span>Tổ chức / Đoàn</span><strong>${escapeHtml(booking.groupName)}</strong></li>`
+              : ""
+          }
           <li><span>Số điện thoại</span><strong>${escapeHtml(booking.phone)}</strong></li>
           <li><span>Tour</span><strong>${escapeHtml(booking.tourName)}</strong></li>
           <li><span>Điểm đến</span><strong>${escapeHtml(booking.tourLocation || tour?.location || "-")}</strong></li>
@@ -212,20 +238,36 @@ function confirmModal(booking) {
           <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
           <li><span>Người lớn</span><strong>${adults} khách</strong></li>
           <li><span>Trẻ em</span><strong>${children} khách</strong></li>
-          <li><span>Tổng khách</span><strong>${people}/${MAX_PASSENGERS}</strong></li>
-          <li><span>Giá/người lớn</span><strong>${formatMoney(unitPrice)}</strong></li>
-          <li><span>Giá/trẻ em</span><strong>${formatMoney(childPrice(unitPrice))}</strong></li>
-          <li><span>Tổng tiền</span><strong class="confirm-box-total">${formatMoney(booking.total)}</strong></li>
+          <li><span>Tổng khách</span><strong>${
+            isGroup ? `${people} khách (Đoàn)` : `${people}/${MAX_PASSENGERS}`
+          }</strong></li>
+          <li><span>Giá niêm yết/lớn</span><strong>${formatMoney(unitPrice)}</strong></li>
+          <li><span>Giá niêm yết/trẻ</span><strong>${formatMoney(childPrice(unitPrice))}</strong></li>
+          <li><span>Tổng tiền tạm tính</span><strong class="confirm-box-total">${formatMoney(booking.total)}</strong></li>
         </ul>
       </div>
+
+      ${
+        isGroup
+          ? `<div class="field" style="margin: 14px 0; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 12px;">
+              <label for="cfm-group-total" style="font-weight: 700; color: #5b21b6; display: block; margin-bottom: 6px;">
+                💰 Tổng tiền chốt cho đoàn (VNĐ)
+              </label>
+              <input type="number" id="cfm-group-total" value="${booking.total}" style="width: 100%; padding: 8px 10px; font-size: 15px; font-weight: 700; color: #5b21b6; border: 1px solid #c4b5fd; border-radius: 6px;">
+              <small class="form-hint" style="color: #6d28d9; margin-top: 4px; display: block;">
+                Nhân viên có thể điều chỉnh giá chốt theo thoả thuận với người đại diện trước khi duyệt đơn.
+              </small>
+            </div>`
+          : ""
+      }
+
       ${
         booking.note
           ? `<h4>Ghi chú của khách</h4><p class="note-box">${escapeHtml(booking.note)}</p>`
           : ""
       }
       <p class="form-hint">
-        Xác nhận đơn sẽ chuyển sang bước <strong>${BOOKING_STATUS.awaiting_payment}</strong> và khách
-        nhận được thông báo yêu cầu thanh toán.
+        Xác nhận đơn sẽ chuyển sang bước <strong>${BOOKING_STATUS.awaiting_payment}</strong> và mở quyền thanh toán cho khách.
       </p>
       ${assignGuideHtml(booking)}`,
     footer: `
@@ -387,7 +429,13 @@ function detailModal(booking) {
       <section>
         <h4>Thông tin khách hàng & Trạng thái</h4>
         <ul class="summary-list">
-          <li><span>Họ tên</span><strong>${escapeHtml(booking.name)}</strong></li>
+          <li><span>Hình thức</span><strong style="${booking.bookingType === "group" ? "color:#5b21b6;" : ""}">${booking.bookingType === "group" ? "👥 Đặt theo đoàn" : "👤 Đặt cá nhân"}</strong></li>
+          <li><span>${booking.bookingType === "group" ? "Người đại diện" : "Họ tên"}</span><strong>${escapeHtml(booking.name)}</strong></li>
+          ${
+            booking.bookingType === "group" && booking.groupName
+              ? `<li><span>Tổ chức / Đoàn</span><strong>${escapeHtml(booking.groupName)}</strong></li>`
+              : ""
+          }
           <li><span>Điện thoại</span><strong><a href="tel:${escapeHtml(booking.phone)}">${escapeHtml(booking.phone)}</a></strong></li>
           <li><span>Email</span><strong>${escapeHtml(booking.email || "Không có")}</strong></li>
           <li><span>Trạng thái đơn</span><strong>${statusBadge(booking.status, BOOKING_STATUS)}</strong></li>
@@ -404,9 +452,13 @@ function detailModal(booking) {
         <ul class="summary-list">
           <li><span>Tour</span><strong>${escapeHtml(booking.tourName)}</strong></li>
           <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
-          <li><span>Tổng khách</span><strong>${people}/${MAX_PASSENGERS} (${adults} lớn, ${children} trẻ)</strong></li>
-          <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
-          <li><span>Hình thức khách chọn</span><strong>${
+          <li><span>Tổng khách</span><strong>${
+            booking.bookingType === "group"
+              ? `${people} khách (${adults} lớn, ${children} trẻ)`
+              : `${people}/${MAX_PASSENGERS} (${adults} lớn, ${children} trẻ)`
+          }</strong></li>
+          <li><span>Tổng tiền</span><strong style="color:var(--primary); font-size:15px;">${formatMoney(booking.total)}</strong></li>
+          <li><span>Hình thức thanh toán</span><strong>${
             isPayToGuide(booking)
               ? "💵 Trả trực tiếp cho HDV trước khởi hành"
               : "Trực tuyến (MoMo / VietQR)"
@@ -482,8 +534,17 @@ function detailModal(booking) {
                      </select>
                    </div>
                  </div>
-                 <button class="btn btn-sm btn-primary" type="button" id="dlg-save-status">
-                   💾 Lưu thay đổi trạng thái
+                 <div class="field" style="margin-top:8px;">
+                   <label for="dlg-total">Tổng giá trị đơn hàng (VNĐ)</label>
+                   <input type="number" id="dlg-total" value="${booking.total}" style="max-width:320px;">
+                   ${
+                     booking.bookingType === "group"
+                       ? `<small class="form-hint">Nhân viên có thể chỉnh sửa tổng tiền sau khi chốt giá ưu đãi với người đại diện đoàn.</small>`
+                       : ""
+                   }
+                 </div>
+                 <button class="btn btn-sm btn-primary" type="button" id="dlg-save-status" style="margin-top:10px;">
+                   💾 Lưu thay đổi trạng thái & giá
                  </button>
                </div>
              </section>`
@@ -532,11 +593,13 @@ function detailModal(booking) {
   document.getElementById("dlg-save-status")?.addEventListener("click", () => {
     const newStatus = document.getElementById("dlg-status")?.value;
     const newPayment = document.getElementById("dlg-payment")?.value;
+    const newTotalInput = document.getElementById("dlg-total");
+    const newTotal = newTotalInput ? Math.max(Number(newTotalInput.value) || 0, 0) : booking.total;
     if (!newStatus || !newPayment) return;
 
-    updateBooking(booking.code, { status: newStatus, payment: newPayment });
+    updateBooking(booking.code, { status: newStatus, payment: newPayment, total: newTotal });
     notifyBooking(booking, newStatus);
-    logActivity("Cập nhật đơn", `Đơn ${booking.code}: Trạng thái -> ${BOOKING_STATUS[newStatus]}, Thanh toán -> ${PAYMENT_STATUS[newPayment]}`);
+    logActivity("Cập nhật đơn", `Đơn ${booking.code}: Trạng thái -> ${BOOKING_STATUS[newStatus]}, Thanh toán -> ${PAYMENT_STATUS[newPayment]}, Tổng tiền -> ${formatMoney(newTotal)}`);
     toast(`Đã cập nhật trạng thái đơn ${booking.code} vào LocalStorage.`);
     closeModal();
     refreshAdmin();
@@ -643,6 +706,14 @@ export function Bookings(path, params = {}, query = new URLSearchParams()) {
         </select>
       </div>
       <div class="filter-field">
+        <label for="bk-booking-type">Hình thức đặt</label>
+        <select id="bk-booking-type">
+          <option value="">Tất cả hình thức</option>
+          <option value="individual">Cá nhân (<= 10)</option>
+          <option value="group">Theo đoàn (> 10)</option>
+        </select>
+      </div>
+      <div class="filter-field">
         <label for="bk-payment">Thanh toán</label>
         <select id="bk-payment">
           <option value="">Tất cả thanh toán</option>
@@ -722,6 +793,7 @@ function syncInputs() {
   };
   set("bk-status", FILTERS.status);
   set("bk-tour", FILTERS.tour);
+  set("bk-booking-type", FILTERS.bookingType);
   set("bk-payment", FILTERS.payment);
   set("bk-from", FILTERS.from);
   set("bk-to", FILTERS.to);
@@ -731,9 +803,11 @@ function syncInputs() {
 function exportBookings(rows) {
   downloadCsv(
     `don-dat-tour-${stamp()}`,
-    ["Mã đơn", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Người lớn", "Trẻ em", "Tổng khách", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
+    ["Mã đơn", "Hình thức", "Đoàn/Tổ chức", "Khách hàng", "SĐT", "Email", "Tour", "Ngày khởi hành", "Người lớn", "Trẻ em", "Tổng khách", "Tổng tiền", "Thanh toán", "Trạng thái", "Ngày tạo", "Ghi chú"],
     rows.map((item) => [
       item.code,
+      item.bookingType === "group" ? "Theo đoàn" : "Cá nhân",
+      item.groupName || "",
       item.name,
       item.phone,
       item.email || "",
@@ -951,6 +1025,13 @@ function handleModalAction(target) {
   if (!booking) return;
 
   if (target.closest("[data-modal-confirm]")) {
+    const cfmGroupTotal = document.getElementById("cfm-group-total");
+    if (cfmGroupTotal) {
+      const parsedTotal = Math.max(Number(cfmGroupTotal.value) || 0, 0);
+      if (parsedTotal > 0 && parsedTotal !== booking.total) {
+        updateBooking(activeCode, { total: parsedTotal });
+      }
+    }
     const next = nextBookingStatus(booking.status);
     if (!next) return toast("Đơn này đã ở trạng thái cuối.", "error");
     const result = advanceBooking(activeCode, next, { by: getSession()?.name || "Admin" });

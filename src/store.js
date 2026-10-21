@@ -403,9 +403,13 @@ export function normalizeBooking(booking = {}) {
   const hasBreakdown = booking.adults !== undefined || booking.children !== undefined;
   const adults = hasBreakdown ? Math.max(Number(booking.adults) || 0, 0) : people;
   const children = hasBreakdown ? Math.max(Number(booking.children) || 0, 0) : 0;
+  const bookingType = booking.bookingType === "group" ? "group" : "individual";
+  const groupName = String(booking.groupName || "");
 
   return {
     ...booking,
+    bookingType,
+    groupName,
     status: BOOKING_STATUS[booking.status] ? booking.status : "pending",
     payment: PAYMENT_STATUS[booking.payment] ? booking.payment : "unpaid",
     /* "cash" = khách chọn trả trực tiếp cho HDV trước khởi hành; đơn cũ để trống */

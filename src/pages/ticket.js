@@ -32,6 +32,36 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
     </section>`;
   }
 
+  /* Đơn đặt theo đoàn đang chờ duyệt chưa phát hành vé hoặc mã thanh toán */
+  if (booking.bookingType === "group" && booking.status === "pending") {
+    return `
+    <section class="page-hero">
+      <div class="container center">
+        <span class="hero-eyebrow">Vé điện tử</span>
+        <h1>Đơn đoàn đang chờ xác nhận</h1>
+        <p>Đơn đặt tour theo đoàn <strong>${escapeHtml(code)}</strong> chưa phát hành vé do đang chờ nhân viên kiểm tra số chỗ và giá.</p>
+      </div>
+    </section>
+
+    <section class="section container container-narrow">
+      <div class="form-card center" style="text-align:center;">
+        <div class="success-icon" style="font-size:42px;margin-bottom:12px;">👥</div>
+        <h2>Yêu cầu đặt tour theo đoàn (${booking.people} khách)</h2>
+        <div class="form-hint" style="text-align: left; background: #eff6ff; border-left: 4px solid #3b82f6; padding: 14px 16px; border-radius: 6px; margin: 16px 0; color:#1e293b; line-height:1.6;">
+          <strong>📞 Thông báo xác nhận đơn đoàn:</strong><br>
+          Chuyên viên phụ trách tour đoàn của TravelGo đang kiểm tra số lượng chỗ thực tế và sẽ liên hệ trực tiếp với người đại diện
+          <strong>${escapeHtml(booking.name)}</strong> qua số điện thoại <strong>${escapeHtml(booking.phone)}</strong> để chốt dịch vụ và áp dụng giá ưu đãi tốt nhất cho đoàn.
+          <br><br>
+          <small style="color:#475569;"><em>* Vé điện tử chính thức và hướng dẫn thanh toán sẽ được kích hoạt ngay sau khi đơn được nhân viên TravelGo xác nhận.</em></small>
+        </div>
+        <div class="success-actions" style="justify-content: center; display:flex; gap:12px; margin-top:20px;">
+          <a class="btn btn-primary" href="#/my-bookings">📋 Quay lại Đơn của tôi</a>
+          <a class="btn btn-outline" href="#/contact">☎️ Hotline hỗ trợ đoàn</a>
+        </div>
+      </div>
+    </section>`;
+  }
+
   const isPaid = booking.payment === "paid";
   const cancelled = booking.status === "cancelled";
   /* Đơn khách chọn trả trực tiếp cho HDV - chưa thanh toán thì hiển thị vé giữ chỗ,

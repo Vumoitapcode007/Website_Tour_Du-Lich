@@ -48,7 +48,80 @@ export function Payment(path, params = {}, query = new URLSearchParams()) {
     return renderReceiptView(booking);
   }
 
+  // Đơn đoàn phải chờ nhân viên xác nhận số chỗ và giá trước khi thanh toán
+  if (booking.bookingType === "group" && booking.status === "pending") {
+    return renderGroupPendingView(booking, session);
+  }
+
   return renderCheckoutView(booking, settings);
+}
+
+// Màn hình thông báo đơn đoàn đang chờ nhân viên xác nhận số chỗ và giá
+function renderGroupPendingView(booking, session) {
+  return `
+  <section class="page-hero payment-hero">
+    <div class="container center">
+      <div class="momo-badge-hero" style="background:#ede9fe;color:#5b21b6;">
+        <span style="font-size:20px;">👥</span>
+        <span>Đơn Đặt Tour Theo Đoàn</span>
+      </div>
+      <h1>Đơn hàng đang chờ xác nhận</h1>
+      <p>Mã đơn <strong>${escapeHtml(booking.code)}</strong> đang trong quy trình kiểm tra số chỗ và báo giá ưu đãi cho đoàn.</p>
+    </div>
+  </section>
+
+  <section class="section container center">
+    <div class="payment-lookup-card group-pending-card" style="max-width: 620px; text-align: left; margin: 0 auto;">
+      <div style="display:flex; align-items:center; gap: 12px; margin-bottom: 16px;">
+        <span style="font-size: 36px;">⏳</span>
+        <div>
+          <h2 style="margin:0; font-size: 20px;">Chờ nhân viên xác nhận số chỗ & giá</h2>
+          <small style="color:var(--muted);">Quy trình đặt tour theo đoàn từ 11 khách trở lên</small>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-soft, #f8fafc); border:1px solid var(--border, #e2e8f0); border-radius:10px; padding:14px 16px; margin-bottom:18px;">
+        <ul class="order-summary" style="margin:0; padding:0; list-style:none;">
+          <li style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>Tour đăng ký:</span><strong>${escapeHtml(booking.tourName)}</strong>
+          </li>
+          <li style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>Ngày khởi hành:</span><strong>${formatDate(booking.date)}</strong>
+          </li>
+          <li style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>Quy mô đoàn:</span><strong>${booking.people} khách</strong> (${booking.adults || booking.people} lớn${booking.children ? `, ${booking.children} trẻ em` : ""})
+          </li>
+          ${
+            booking.groupName
+              ? `<li style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                   <span>Tên đoàn / Công ty:</span><strong>${escapeHtml(booking.groupName)}</strong>
+                 </li>`
+              : ""
+          }
+          <li style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span>Người đại diện:</span><strong>${escapeHtml(booking.name)} (${escapeHtml(booking.phone)})</strong>
+          </li>
+          <li style="display:flex; justify-content:space-between; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
+            <span>Giá tạm tính niêm yết:</span><strong style="color:var(--primary); font-size:16px;">${formatPrice(booking.total)}</strong>
+          </li>
+        </ul>
+      </div>
+
+      <div class="group-pending-notice" style="background:#eff6ff; border-left:4px solid #3b82f6; padding:14px; border-radius:6px; margin-bottom:20px;">
+        <strong style="display:block; color:#1e40af; margin-bottom:6px;">📞 Nhân viên TravelGo sẽ liên hệ trực tiếp:</strong>
+        <p style="margin:0 0 6px; font-size:13.5px; color:#1e293b; line-height:1.5;">
+          Để bảo đảm chất lượng dịch vụ và ưu đãi tốt nhất cho đoàn lớn, chuyên viên TravelGo sẽ gọi đến số <strong>${escapeHtml(booking.phone)}</strong> để xác nhận số chỗ trống thực tế, sắp xếp phương tiện và chốt mức giá ưu đãi đoàn trước khi thanh toán.
+        </p>
+        <small style="color:#475569;">Cổng thanh toán và vé chính thức sẽ mở ngay sau khi chuyên viên hoàn tất xác nhận đơn hàng của quý khách.</small>
+      </div>
+
+      <div class="not-found-actions" style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a href="#/my-bookings" class="btn btn-primary">📋 Theo dõi tại "Đơn của tôi"</a>
+        <a href="#/contact" class="btn btn-outline">☎️ Hỗ trợ khẩn cấp</a>
+        <a href="#/payment" class="btn btn-light">Tra cứu đơn khác</a>
+      </div>
+    </div>
+  </section>`;
 }
 
 // 1. Màn hình Tra cứu đơn hàng khi chưa chọn mã đơn
@@ -57,7 +130,7 @@ function renderLookupView(session) {
   const unpaidUserBookings = userBookings.filter((b) => b.payment !== "paid" && b.status !== "cancelled");
   const allBookings = listBookings();
   const sampleBookings = allBookings
-    .filter((b) => b.payment !== "paid" && b.status !== "cancelled")
+    .filter((b) => b.payment !== "paid" && b.status !== "cancelled" && !(b.bookingType === "group" && b.status === "pending"))
     .slice(0, 4);
 
   return `
@@ -97,14 +170,21 @@ function renderLookupView(session) {
           <div class="quick-order-list">
             ${unpaidUserBookings
               .map(
-                (b) => `
+                (b) => {
+                  const isGroupPending = b.bookingType === "group" && b.status === "pending";
+                  return `
               <div class="quick-order-item">
                 <div class="quick-order-info">
-                  <strong>${escapeHtml(b.code)}</strong> - ${escapeHtml(b.tourName)}
+                  <strong>${escapeHtml(b.code)}</strong>${b.bookingType === "group" ? ` <span style="font-size:11px;padding:2px 6px;border-radius:4px;background:#ede9fe;color:#5b21b6;font-weight:700;">👥 Đoàn</span>` : ""} - ${escapeHtml(b.tourName)}
                   <small>${formatDate(b.date)} · ${b.people} khách · <strong>${formatPrice(b.total)}</strong></small>
                 </div>
-                <a href="#/payment?code=${escapeHtml(b.code)}" class="btn btn-sm btn-momo">Thanh toán MoMo</a>
-              </div>`
+                ${
+                  isGroupPending
+                    ? `<a href="#/payment?code=${escapeHtml(b.code)}" class="btn btn-sm btn-ghost-soft">Chờ duyệt giá</a>`
+                    : `<a href="#/payment?code=${escapeHtml(b.code)}" class="btn btn-sm btn-momo">Thanh toán MoMo</a>`
+                }
+              </div>`;
+                }
               )
               .join("")}
           </div>

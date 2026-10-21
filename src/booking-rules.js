@@ -1,7 +1,10 @@
 /* Quy tắc đặt tour dùng chung cho form, widget đặt nhanh và trang quản trị */
 
-/* Mỗi chuyến chỉ nhận tối đa 10 khách */
+/* Mỗi chuyến chỉ nhận tối đa 10 khách đối với đặt cá nhân */
 export const MAX_PASSENGERS = 10;
+
+/* Đặt theo đoàn yêu cầu từ 11 khách trở lên */
+export const GROUP_MIN_PASSENGERS = 11;
 
 /* Trẻ em tính một nửa giá người lớn */
 export const CHILD_PRICE_RATE = 0.5;
@@ -11,14 +14,24 @@ const toCount = (value) => {
   return Number.isFinite(number) ? number : 0;
 };
 
-/* Số khách tối đa còn nhận được: nhỏ hơn giới hạn chung và số chỗ còn lại của tour */
-export function seatLimit(seatsLeft) {
+/* Số khách tối đa còn nhận được:
+   - Cá nhân: nhỏ hơn giới hạn MAX_PASSENGERS và số chỗ còn lại của tour
+   - Theo đoàn: cho phép số khách lớn hơn 10 để công ty điều phối xe và dịch vụ riêng */
+export function seatLimit(seatsLeft, bookingType = "individual") {
+  if (bookingType === "group") return 999;
   return Math.min(MAX_PASSENGERS, Math.max(toCount(seatsLeft), 1));
 }
 
-/* Chuẩn hoá số lượng khách nhập vào: luôn có ít nhất 1 người lớn và tổng không vượt giới hạn */
-export function normalizePassengers(adults, children, seatsLeft) {
-  const limit = seatLimit(seatsLeft);
+/* Chuẩn hoá số lượng khách nhập vào:
+   - Cá nhân: luôn có ít nhất 1 người lớn và tổng không vượt giới hạn
+   - Theo đoàn: cho phép số khách lớn hơn 10 mà không bị ép trần */
+export function normalizePassengers(adults, children, seatsLeft, bookingType = "individual") {
+  if (bookingType === "group") {
+    const adultsCount = Math.max(toCount(adults), 0);
+    const childrenCount = Math.max(toCount(children), 0);
+    return { adults: adultsCount, children: childrenCount, people: adultsCount + childrenCount };
+  }
+  const limit = seatLimit(seatsLeft, "individual");
   const adultsCount = Math.min(Math.max(toCount(adults), 1), limit);
   const childrenCount = Math.min(Math.max(toCount(children), 0), limit - adultsCount);
   return { adults: adultsCount, children: childrenCount, people: adultsCount + childrenCount };
