@@ -1,4 +1,4 @@
-import { getBooking, getSettings, recordBookingPayment } from "../store.js";
+import { getBooking, getSettings, recordBookingPayment, isPayToGuide, bookingCashDue, PAYMENT_METHOD } from "../store.js";
 import { getTourById } from "../tour-repository.js";
 import { formatDate, formatPrice } from "../data.js";
 import { escapeHtml } from "../validate.js";
@@ -33,9 +33,18 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
   }
 
   const isPaid = booking.payment === "paid";
+  const cancelled = booking.status === "cancelled";
+  /* Đơn khách chọn trả trực tiếp cho HDV - chưa thanh toán thì hiển thị vé giữ chỗ,
+     không hiện mã QR chuyển khoản để tránh nhầm lẫn với thanh toán trực tuyến */
+  const cashIntent = isPayToGuide(booking);
+  const payToGuide = cashIntent && !isPaid;
+  const cashDue = bookingCashDue(booking);
+  const cashCollected = Number(booking.cashCollected) || 0;
   // Nếu chưa thanh toán, mặc định hiển thị Vé thanh toán trực tiếp (QR chuyển tiền)
   const mode = query.get("mode") || (isPaid ? "boarding" : "payment");
   const isPaymentMode = mode === "payment";
+  /* Vé lên xe chỉ phát hành khi đã thanh toán đủ - chưa đủ tiền chỉ xem được vé giữ chỗ */
+  const boardingLocked = !isPaymentMode && !isPaid;
 
   const tour = getTourById(booking.tourId);
   const { adults, children, people } = passengerBreakdown(booking);
@@ -76,7 +85,7 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
         <!-- Thanh chuyển đổi loại vé -->
         <div class="ticket-type-tabs">
           <a href="#/ticket/${escapeHtml(booking.code)}?mode=payment" class="ticket-type-tab ${isPaymentMode ? "active" : ""}">
-            📄 Vé thanh toán trực tiếp (Mã QR)
+            ${payToGuide ? "💵 Vé giữ chỗ - Thanh toán cho HDV" : "📄 Vé thanh toán trực tiếp (Mã QR)"}
           </a>
           <a href="#/ticket/${escapeHtml(booking.code)}?mode=boarding" class="ticket-type-tab ${!isPaymentMode ? "active" : ""}">
             🎫 Vé điện tử lên xe (Check-in)
@@ -103,18 +112,53 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
               <path fill="#0d47a1" d="M24 44 9 12c8 0 15 8 15 14 0-6 7-14 15-14z"/>
             </svg>
             <div>
-              <h2>${isPaymentMode ? "TravelGo PAYMENT PASS" : "TravelGo E-TICKET"}</h2>
-              <span>${isPaymentMode ? "VÉ ĐẶT CHỖ & THANH TOÁN TRỰC TIẾP BẰNG MÃ QR" : "VÉ DU LỊCH & BẢO HIỂM HÀNH TRÌNH ĐIỆN TỬ"}</span>
+              <h2>${
+                isPaymentMode
+                  ? payToGuide
+                    ? "TravelGo HOLD TICKET"
+                    : "TravelGo PAYMENT PASS"
+                  : boardingLocked
+                    ? "TravelGo HOLD TICKET"
+                    : "TravelGo E-TICKET"
+              }</h2>
+              <span>${
+                isPaymentMode
+                  ? payToGuide
+                    ? "VÉ GIỮ CHỖ - THANH TOÁN TRỰC TIẾP CHO HƯỚNG DẪN VIÊN"
+                    : "VÉ ĐẶT CHỖ & THANH TOÁN TRỰC TIẾP BẰNG MÃ QR"
+                  : boardingLocked
+                    ? "VÉ GIỮ CHỖ - CHƯA PHÁT HÀNH VÉ LÊN XE"
+                    : "VÉ DU LỊCH & BẢO HIỂM HÀNH TRÌNH ĐIỆN TỬ"
+              }</span>
             </div>
           </div>
           <div class="eticket-pnr">
             <span class="pnr-label">MÃ ĐƠN / VÉ (PNR)</span>
             <strong class="pnr-code">${escapeHtml(booking.code)}</strong>
             <span class="eticket-status-badge ${isPaid ? "badge-paid" : "badge-pending"}">
-              ${isPaid ? "✓ ĐÃ THANH TOÁN" : isPaymentMode ? "⏳ CHỜ THANH TOÁN TRỰC TIẾP" : "⏳ CHỜ THANH TOÁN"}
+              ${
+                cancelled
+                  ? "✕ ĐÃ HUỶ ĐƠN"
+                  : isPaid
+                    ? "✓ ĐÃ THANH TOÁN"
+                    : isPaymentMode
+                      ? payToGuide
+                        ? "⏳ CHƯA THANH TOÁN - TRẢ CHO HDV"
+                        : "⏳ CHỜ THANH TOÁN TRỰC TIẾP"
+                      : "⏳ CHƯA THANH TOÁN - CHỜ LÊN XE"
+              }
             </span>
           </div>
         </div>
+
+        ${
+          cancelled
+            ? `<div class="ticket-bank-box" style="border-color:#fecaca; background:#fef2f2;">
+                 <strong style="color:#b91c1c;">Đơn tour này đã được huỷ.</strong>
+                 <p style="margin:6px 0 0; color:#7f1d1d;">Mã vé <strong>${escapeHtml(booking.code)}</strong> không còn hiệu lực. Vui lòng liên hệ hotline ${escapeHtml(settings.hotline || "1900 6868")} nếu bạn cần hỗ trợ.</p>
+               </div>`
+            : ""
+        }
 
         <div class="eticket-body">
           <div class="eticket-main-info">
@@ -156,7 +200,55 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
 
             ${
               isPaymentMode
-                ? `
+                ? cashIntent
+                  ? `
+            <!-- Khung hướng dẫn thanh toán trực tiếp cho Hướng dẫn viên -->
+            <div class="ticket-bank-box">
+              <div class="bank-box-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                  <line x1="2" y1="10" x2="22" y2="10"></line>
+                </svg>
+                <strong>Thanh toán trực tiếp cho Hướng dẫn viên trước giờ khởi hành:</strong>
+              </div>
+              <div class="bank-grid-compact">
+                <div>
+                  <span>Số tiền cần trả:</span>
+                  <strong class="ticket-price-val">${isPaid ? "Đã thu đủ" : formatPrice(cashDue)}</strong>
+                </div>
+                ${
+                  cashCollected > 0
+                    ? `<div>
+                        <span>Đã thu trước đó:</span>
+                        <strong>${formatPrice(cashCollected)}</strong>
+                      </div>`
+                    : ""
+                }
+                <div class="full-w">
+                  <span>Hướng dẫn viên phụ trách:</span>
+                  <strong>${escapeHtml(booking.guideName || "Đang phân công")}</strong>
+                  ${
+                    booking.guidePhone
+                      ? `<small style="display:block;">Hotline HDV: ${escapeHtml(booking.guidePhone)}</small>`
+                      : `<small style="display:block;">TravelGo sẽ thông báo HDV và SĐT trước ngày khởi hành</small>`
+                  }
+                </div>
+                <div>
+                  <span>Mã đơn (nêu khi thanh toán):</span>
+                  <strong class="code highlight-code">${escapeHtml(booking.code)}</strong>
+                  <button type="button" class="btn-copy-xs" data-copy="${escapeHtml(booking.code)}">Sao chép mã</button>
+                </div>
+                <div>
+                  <span>Ngày khởi hành:</span>
+                  <strong>${formatDate(booking.date)}</strong>
+                </div>
+              </div>
+              <p style="margin:10px 0 0; font-size:0.85rem; color:#92400e;">
+                Quý khách trả <strong>${formatPrice(cashDue)}</strong> tiền mặt cho hướng dẫn viên ngay tại điểm tập trung
+                trước giờ khởi hành. Sau khi HDV xác nhận đã thu đủ tiền, vé điện tử lên xe sẽ được kích hoạt.
+              </p>
+            </div>`
+                  : `
             <!-- Khung thông tin thanh toán trực tiếp -->
             <div class="ticket-bank-box">
               <div class="bank-box-title">
@@ -204,7 +296,57 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
           <div class="eticket-stub">
             ${
               isPaymentMode
-                ? `
+                ? payToGuide
+                  ? `
+              <div class="stub-qr" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:#fffbeb; border:1px dashed #f59e0b; border-radius:12px; padding:16px;">
+                <span style="font-size:2.4rem;">💵</span>
+                <strong style="color:#92400e; text-align:center;">Trả trực tiếp cho HDV<br>trước giờ khởi hành</strong>
+              </div>
+
+              <div class="stub-details">
+                <div class="stub-row">
+                  <span>Còn phải trả:</span>
+                  <strong class="ticket-price-val">${formatPrice(cashDue)}</strong>
+                </div>
+                ${
+                  cashCollected > 0
+                    ? `<div class="stub-row">
+                        <span>Đã thu:</span>
+                        <strong>${formatPrice(cashCollected)}</strong>
+                      </div>`
+                    : ""
+                }
+                <div class="stub-row">
+                  <span>Mã đơn:</span>
+                  <strong class="code">${escapeHtml(booking.code)}</strong>
+                </div>
+                <div class="stub-row">
+                  <span>Người thu:</span>
+                  <span>${escapeHtml(booking.guideName || "HDV phụ trách")}</span>
+                </div>
+                <div class="stub-row">
+                  <span>Trạng thái:</span>
+                  <span class="text-danger">⏳ Chưa thanh toán</span>
+                </div>
+              </div>
+
+              <div class="stub-actions no-print" style="width: 100%;">
+                ${
+                  isPaid
+                    ? `<span class="badge-paid" style="padding: 6px 12px; border-radius: 6px; display: block; font-size: 0.82rem; font-weight: 700;">
+                        ✓ ĐÃ THANH TOÁN XONG
+                       </span>
+                       <a href="#/ticket/${escapeHtml(booking.code)}?mode=boarding" class="btn btn-sm btn-outline btn-block" style="margin-top: 6px;">
+                         Xem mã QR lên xe
+                       </a>`
+                    : `<a href="#/ticket/${escapeHtml(booking.code)}?mode=payment" class="btn btn-sm btn-outline btn-block" style="pointer-events:none;">
+                         Hướng dẫn viên sẽ thu tiền mặt tại điểm hẹn
+                       </a>
+                       <small class="ticket-instant-note">Vé lên xe được kích hoạt ngay sau khi HDV xác nhận thu đủ tiền.</small>
+                `}
+              </div>
+            `
+                  : `
               <div class="stub-qr ticket-qr-frame">
                 <img src="${vietQrUrl}" alt="Mã QR Chuyển tiền ${escapeHtml(booking.code)}" class="qr-payment-img" onerror="this.onerror=null;this.src='${momoQrUrl}';">
                 <span class="qr-pill-hint">⚡ Quét bằng App Ngân hàng hoặc MoMo</span>
@@ -250,7 +392,48 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
                 </div>`
               }
             `
-                : `
+                : boardingLocked
+                  ? `
+              <div class="stub-qr" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:#fef2f2; border:1px dashed #ef4444; border-radius:12px; padding:16px;">
+                <span style="font-size:2.4rem;">🔒</span>
+                <strong style="color:#b91c1c; text-align:center;">Vé lên xe chưa được kích hoạt</strong>
+              </div>
+
+              <div class="stub-details">
+                <div class="stub-row">
+                  <span>Tổng chi phí:</span>
+                  <strong>${formatPrice(booking.total)}</strong>
+                </div>
+                ${
+                  cashCollected > 0
+                    ? `<div class="stub-row">
+                        <span>Đã thu:</span>
+                        <strong>${formatPrice(cashCollected)}</strong>
+                      </div>`
+                    : ""
+                }
+                <div class="stub-row">
+                  <span>Còn phải trả:</span>
+                  <strong class="ticket-price-val">${formatPrice(cashDue)}</strong>
+                </div>
+                <div class="stub-row">
+                  <span>Trạng thái:</span>
+                  <span class="text-danger">⏳ Chưa thanh toán</span>
+                </div>
+              </div>
+
+              <div class="stub-actions no-print" style="width: 100%;">
+                <a href="#/ticket/${escapeHtml(booking.code)}?mode=payment" class="btn btn-sm btn-primary btn-block">
+                  ${
+                    isPayToGuide(booking)
+                      ? "Xem hướng dẫn trả cho HDV"
+                      : "Xem hướng dẫn thanh toán"
+                  }
+                </a>
+                <small class="ticket-instant-note">Mã QR lên xe chỉ phát hành sau khi đã thanh toán đủ tiền.</small>
+              </div>
+            `
+                  : `
               <div class="stub-qr">
                 <img src="${checkinQrUrl}" alt="QR Check-in ${escapeHtml(booking.code)}" class="qr-img">
                 <span class="qr-note">Quét mã QR khi lên xe / Check-in</span>
@@ -263,7 +446,7 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
                 </div>
                 <div class="stub-row">
                   <span>Phương thức:</span>
-                  <span>${booking.paymentMethod === "bank" ? "VietQR Ngân hàng" : "Ví MoMo"}</span>
+                  <span>${PAYMENT_METHOD[booking.paymentMethod] || (booking.paymentMethod === "bank" ? "VietQR Ngân hàng" : "Ví MoMo")}</span>
                 </div>
                 <div class="stub-row">
                   <span>Ngày xuất vé:</span>
@@ -284,16 +467,20 @@ export function Ticket(path, params = {}, query = new URLSearchParams()) {
           <div class="eticket-rules">
             <small>
               <strong>Lưu ý quan trọng:</strong> ${
-                isPaymentMode && !isPaid
-                  ? `Vé thanh toán trực tiếp này có hiệu lực giữ chỗ trong 24 giờ. Quý khách vui lòng quét mã QR chuyển khoản đúng số tiền <strong>${formatPrice(booking.total)}</strong> và nội dung <strong>${escapeHtml(booking.code)}</strong> để được gạch nợ tự động.`
-                  : `Quý khách vui lòng xuất trình vé điện tử này trên điện thoại hoặc bản in cùng CCCD/Hộ chiếu gốc khi tập trung lên xe. Mọi hỗ trợ khẩn cấp 24/7 vui lòng gọi <strong>${escapeHtml(settings.hotline || "1900 6868")}</strong>.`
+                cancelled
+                  ? `Đơn đã huỷ, mã vé này không còn hiệu lực giữ chỗ.`
+                  : isPaymentMode && payToGuide && !isPaid
+                    ? `Vé giữ chỗ này có hiệu lực đến giờ khởi hành. Quý khách vui lòng thanh toán <strong>${formatPrice(cashDue)}</strong> tiền mặt cho hướng dẫn viên phụ trách <strong>${escapeHtml(booking.guideName || "sẽ được phân công")}</strong> trước khi lên xe. Vé lên xe chỉ được kích hoạt sau khi hướng dẫn viên xác nhận đã thu đủ tiền.`
+                    : isPaymentMode && !isPaid
+                      ? `Vé thanh toán trực tiếp này có hiệu lực giữ chỗ trong 24 giờ. Quý khách vui lòng quét mã QR chuyển khoản đúng số tiền <strong>${formatPrice(booking.total)}</strong> và nội dung <strong>${escapeHtml(booking.code)}</strong> để được gạch nợ tự động.`
+                      : `Quý khách vui lòng xuất trình vé điện tử này trên điện thoại hoặc bản in cùng CCCD/Hộ chiếu gốc khi tập trung lên xe. Mọi hỗ trợ khẩn cấp 24/7 vui lòng gọi <strong>${escapeHtml(settings.hotline || "1900 6868")}</strong>.`
               }
             </small>
           </div>
           <div class="eticket-sign">
             <span>Đại diện TravelGo Tourist</span>
             <div class="eticket-stamp ${isPaid ? "" : "stamp-pending"}">
-              ${isPaid ? "✓ VERIFIED TICKET" : "⏳ WAITING FOR PAYMENT"}
+              ${isPaid ? "✓ VERIFIED TICKET" : cancelled ? "✕ CANCELLED" : "⏳ WAITING FOR PAYMENT"}
             </div>
           </div>
         </div>

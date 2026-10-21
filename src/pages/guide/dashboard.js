@@ -112,7 +112,7 @@ export function GuideDashboard() {
   const mine = guideBookings(session.username);
   const groups = assignedTours(session.username);
 
-  const upcoming = mine.filter((item) => ["paid", "upcoming"].includes(item.status));
+  const upcoming = mine.filter((item) => ["confirmed", "awaiting_payment", "paid", "upcoming"].includes(item.status));
   const ongoing = mine.filter((item) => item.status === "ongoing");
   const completed = mine.filter((item) => item.status === "completed");
   const nextDeparture = upcoming

@@ -5,6 +5,7 @@ import {
   markAttendance,
   quickCheckIn,
   addCashPayment,
+  bookingCashDue,
 } from "../../store.js";
 import { getTourById } from "../../tour-repository.js";
 import { getSession } from "../../auth.js";
@@ -33,7 +34,7 @@ export function GuideCheckIn() {
 
   const session = getSession();
   const mine = guideBookings(session.username).filter((item) =>
-    ["paid", "upcoming", "ongoing", "completed"].includes(item.status)
+    ["confirmed", "awaiting_payment", "paid", "upcoming", "ongoing", "completed"].includes(item.status)
   );
   const groups = assignedTours(session.username);
 
@@ -155,7 +156,7 @@ export function GuideCheckIn() {
 function checkinRow(booking) {
   const isPresent = booking.attendance === "present";
   const isAbsent = booking.attendance === "absent";
-  const remain = booking.total - (booking.cashCollected || 0);
+  const remain = bookingCashDue(booking);
 
   return `
   <tr data-code="${escapeHtml(booking.code)}">
@@ -177,7 +178,13 @@ function checkinRow(booking) {
     </td>
     <td>
       ${statusBadge(booking.payment || "unpaid", PAYMENT_STATUS)}
-      ${remain > 0 ? `<br><small class="text-danger" style="color:#ef4444; font-weight:600;">Thiếu: ${formatMoney(remain)}</small>` : ""}
+      ${
+        remain > 0
+          ? `<br><small class="text-danger" style="color:#ef4444; font-weight:600;">Cần thu: ${formatMoney(remain)}</small>`
+          : booking.cashCollected > 0
+            ? `<br><small class="text-success" style="color:#16a34a; font-weight:600;">Đã thu: ${formatMoney(booking.cashCollected)}</small>`
+            : ""
+      }
     </td>
     <td>
       ${
@@ -214,7 +221,7 @@ document.addEventListener("route:changed", ({ detail }) => {
 
   function paint() {
     const all = guideBookings(session.username).filter((item) =>
-      ["paid", "upcoming", "ongoing", "completed"].includes(item.status)
+      ["confirmed", "awaiting_payment", "paid", "upcoming", "ongoing", "completed"].includes(item.status)
     );
     const q = searchKey(FILTERS.q);
 
@@ -272,7 +279,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     }
 
     const b = res.booking;
-    const remain = b.total - (b.cashCollected || 0);
+    const remain = bookingCashDue(b);
 
     if (slot) {
       slot.innerHTML = `
@@ -375,7 +382,7 @@ document.addEventListener("click", (e) => {
     const booking = all.find((b) => b.code === code);
     if (!booking) return;
 
-    const remain = booking.total - (booking.cashCollected || 0);
+    const remain = bookingCashDue(booking);
     const amountStr = prompt(`Thu tiền mặt từ khách ${booking.name}.\nSố tiền còn thiếu: ${formatMoney(remain)}\nNhập số tiền thu:`, String(remain));
     if (!amountStr) return;
     const amount = Number(amountStr);

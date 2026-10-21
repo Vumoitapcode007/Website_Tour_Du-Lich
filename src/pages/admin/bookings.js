@@ -6,6 +6,7 @@ import {
   cancelBooking,
   getBooking,
   isCancelledBooking,
+  isPayToGuide,
   isProtectedBooking,
   listBookings,
   logActivity,
@@ -158,6 +159,11 @@ function row(booking) {
     <td>
       <strong>${formatMoney(booking.total)}</strong>
       ${cashHtml}
+      ${
+        isPayToGuide(booking) && booking.payment !== "paid"
+          ? `<br><small style="color:#b45309;">💵 Thu qua HDV</small>`
+          : ""
+      }
     </td>
     <td><span class="status-pill status-${escapeHtml(booking.payment || "unpaid")}">${
       PAYMENT_STATUS[booking.payment || "unpaid"] || booking.payment
@@ -369,7 +375,8 @@ function detailModal(booking) {
     .slice(0, 5);
   const { adults, children, people } = passengerBreakdown(booking);
   activeCode = booking.code;
-  const remain = booking.total - (booking.cashCollected || 0);
+  /* Đơn đã thanh toán trực tuyến/Admin xác nhận thì không còn khoản phải thu */
+  const remain = booking.payment === "paid" ? 0 : Math.max(booking.total - (booking.cashCollected || 0), 0);
 
   openModal({
     title: `📋 Chi tiết đơn: ${booking.code}`,
@@ -399,6 +406,11 @@ function detailModal(booking) {
           <li><span>Ngày khởi hành</span><strong>${formatDate(booking.date)}</strong></li>
           <li><span>Tổng khách</span><strong>${people}/${MAX_PASSENGERS} (${adults} lớn, ${children} trẻ)</strong></li>
           <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
+          <li><span>Hình thức khách chọn</span><strong>${
+            isPayToGuide(booking)
+              ? "💵 Trả trực tiếp cho HDV trước khởi hành"
+              : "Trực tuyến (MoMo / VietQR)"
+          }</strong></li>
           <li><span>Đã thu tiền mặt</span><strong>${formatMoney(booking.cashCollected || 0)}</strong></li>
           <li><span>Còn lại cần thu</span><strong>${remain > 0 ? formatMoney(remain) : "0 đ"}</strong></li>
         </ul>

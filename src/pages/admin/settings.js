@@ -116,6 +116,7 @@ function panelPayment(settings) {
   <form class="settings-form" data-settings="payment" novalidate>
     <h3>Thanh toán trực tuyến</h3>
     ${toggle({ id: "allowOnlinePayment", label: "Cho phép thanh toán trực tuyến", checked: settings.allowOnlinePayment, hint: "Hiển thị tùy chọn thanh toán MoMo và trực tuyến cho khách" })}
+    ${toggle({ id: "allowCashToGuide", label: "Cho phép thanh toán trực tiếp cho HDV", checked: settings.allowCashToGuide !== false, hint: "Khách có thể chọn trả tiền mặt cho hướng dẫn viên trước giờ khởi hành; vé giữ chỗ được cấp ngay" })}
     <h3>Cấu hình Ví điện tử MoMo</h3>
     ${field({ id: "momoPhone", label: "Số điện thoại / Ví MoMo", value: settings.momoPhone, hint: "Số điện thoại đăng ký MoMo nhận tiền từ khách hàng" })}
     ${field({ id: "momoHolder", label: "Chủ tài khoản MoMo", value: settings.momoHolder, hint: "Tên người nhận tiền hiển thị trên mã QR MoMo" })}

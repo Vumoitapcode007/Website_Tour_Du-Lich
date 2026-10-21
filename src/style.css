@@ -2828,6 +2828,64 @@ body.has-compare-bar {
   font-weight: 600;
 }
 
+/* Lựa chọn phương thức thanh toán khi đặt tour */
+.pay-method-box {
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 10px;
+  padding: 12px 14px 6px;
+  margin: 4px 0 14px;
+}
+
+.pay-method-box legend {
+  padding: 0 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+
+.pay-method-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pay-method-option:hover {
+  border-color: var(--primary);
+  background: rgba(22, 119, 255, 0.04);
+}
+
+.pay-method-option input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-top: 2px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.pay-method-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pay-method-option strong {
+  font-size: 14px;
+  color: var(--text, #0f172a);
+}
+
+.pay-method-option small {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .form-hint {
   margin-top: 12px;
   font-size: 13px;
@@ -9061,3 +9119,264 @@ body.modal-open {
 
 
 
+
+
+/* ========================================================
+   HORIZONTAL STEPPER & CONTEXTUAL TRACKER CARDS
+   ======================================================== */
+.stepper-track-wrap {
+  margin: 18px 0 14px;
+  background: var(--surface, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 18px 14px 14px;
+}
+
+.stepper-track-wrap.is-cancelled {
+  background: #fff5f5;
+  border-color: #fed7d7;
+}
+
+.stepper-track {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+}
+
+.stepper-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.stepper-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--border, #cbd5e1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #64748b;
+  transition: all 0.25s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.stepper-step.is-done .stepper-circle {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);
+}
+
+.stepper-step.is-current .stepper-circle {
+  background: #1677ff;
+  border-color: #1677ff;
+  color: #fff;
+  box-shadow: 0 0 0 5px rgba(22, 119, 255, 0.18);
+}
+
+.stepper-step.is-cancelled .stepper-circle {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.stepper-step.is-todo .stepper-circle {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+}
+
+.stepper-line {
+  position: absolute;
+  top: 19px;
+  left: 50%;
+  width: 100%;
+  height: 3px;
+  background: var(--border, #cbd5e1);
+  z-index: 1;
+  transform: translateY(-50%);
+}
+
+.stepper-line.is-filled {
+  background: #16a34a;
+}
+
+.stepper-content {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 110px;
+}
+
+.stepper-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+.stepper-step.is-current .stepper-title {
+  color: #1677ff;
+}
+
+.stepper-step.is-todo .stepper-title {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.stepper-sub {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+  .stepper-track-wrap {
+    padding: 12px 6px 10px;
+  }
+  .stepper-circle {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+  .stepper-line {
+    top: 16px;
+  }
+  .stepper-title {
+    font-size: 11px;
+  }
+  .stepper-sub {
+    display: none;
+  }
+  .stepper-step.is-current .stepper-sub {
+    display: block;
+    font-size: 9.5px;
+  }
+}
+
+.tracker-context-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin: 12px 0 16px;
+  flex-wrap: wrap;
+}
+
+.tracker-context-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tracker-context-content {
+  flex: 1;
+  min-width: 240px;
+}
+
+.tracker-context-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.tracker-context-head strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.tracker-context-content p {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  color: #334155;
+}
+
+.tracker-context-content small {
+  font-size: 12px;
+  color: #64748b;
+  display: block;
+  line-height: 1.4;
+}
+
+.tracker-context-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  width: 100%;
+}
+
+.tracker-context-card.is-cash {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+.tracker-context-card.is-cash .tracker-context-head strong {
+  color: #92400e;
+}
+
+.tracker-context-card.is-paid {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.tracker-context-card.is-paid .tracker-context-head strong {
+  color: #166534;
+}
+
+.tracker-context-card.is-ongoing {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+.tracker-context-card.is-ongoing .tracker-context-head strong {
+  color: #0369a1;
+}
+
+.tracker-context-card.is-pending {
+  background: #faf5ff;
+  border: 1px solid #e9d5ff;
+}
+.tracker-context-card.is-pending .tracker-context-head strong {
+  color: #6b21a8;
+}
+
+.tracker-context-card.is-cancelled {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+.tracker-context-card.is-cancelled .tracker-context-head strong {
+  color: #991b1b;
+}
+
+.account-booking-pnr-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pnr-badge {
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
