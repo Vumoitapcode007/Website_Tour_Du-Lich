@@ -1,4 +1,5 @@
-import { BOOKING_STATUS, markAttendance, getBooking } from "../../store.js";
+import { BOOKING_STATUS, markAttendance, getBooking, advanceTripStatus, addCashPayment, bookingCashDue } from "../../store.js";
+import { updateTourProgress, TOUR_PROGRESS_STAGES } from "../../tour-repository.js";
 import { getSession } from "../../auth.js";
 import { guideGuard, refreshAdmin } from "../../components/admin-shell.js";
 import {
@@ -30,6 +31,9 @@ const TRIP_STATUS = {
 /* Trạng thái của cả chuyến, dựa trên các đơn được phân công */
 function tripStatus(bookings) {
   if (bookings.some((item) => item.status === "ongoing")) return "ongoing";
+  /* Còn khách chưa trả đủ tiền (trả trực tiếp cho HDV) thì chuyến đang chờ thu tiền */
+  const active = bookings.filter((item) => !["cancelled", "completed"].includes(item.status));
+  if (active.some((item) => bookingCashDue(item) > 0)) return "preparing";
   if (bookings.some((item) => item.status === "upcoming")) return "upcoming";
   if (bookings.some((item) => item.status === "paid")) return "preparing";
   if (bookings.some((item) => item.status === "completed")) return "done";
@@ -137,6 +141,8 @@ function tripCard(group) {
   const attendanceRate = people > 0 ? Math.round((presentCount / people) * 100) : 0;
   const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.total) || 0), 0);
   const collectedCash = bookings.reduce((sum, b) => sum + (Number(b.cashCollected) || 0), 0);
+  const cashDue = bookings.reduce((sum, b) => sum + bookingCashDue(b), 0);
+  const unpaidCount = bookings.filter((b) => bookingCashDue(b) > 0).length;
 
   const countdownText =
     days > 0
@@ -201,6 +207,12 @@ function tripCard(group) {
             <span class="m-label">Tiền mặt đã thu</span>
             <strong class="m-val ${collectedCash > 0 ? "text-success" : ""}">${formatMoney(collectedCash)}</strong>
             <span class="m-sub">Thu trực tiếp</span>
+          </div>
+
+          <div class="guide-metric-box">
+            <span class="m-label">Còn phải thu</span>
+            <strong class="m-val ${cashDue > 0 ? "text-amber" : "text-success"}">${formatMoney(cashDue)}</strong>
+            <span class="m-sub">${unpaidCount > 0 ? `${unpaidCount} đơn chưa đủ tiền` : "Đã thu đủ"}</span>
           </div>
         </div>
 
@@ -305,9 +317,10 @@ function openGuests(group) {
                 </td>
                 <td>
                   <span class="status-pill ${item.payment === "paid" ? "status-paid" : "status-unpaid"}">
-                    ${item.payment === "paid" ? "✓ Đã thanh toán" : "Chưa thanh toán"}
+                    ${item.payment === "paid" ? "✓ Đã thanh toán" : item.payment === "deposit" ? "Thu một phần" : "Chưa thanh toán"}
                   </span>
                   ${item.cashCollected > 0 ? `<br><small class="text-success" style="font-weight:600;">Đã thu: ${formatMoney(item.cashCollected)}</small>` : ""}
+                  ${bookingCashDue(item) > 0 ? `<br><small class="text-danger" style="color:#dc2626; font-weight:600;">Còn thiếu: ${formatMoney(bookingCashDue(item))}</small>` : ""}
                 </td>
                 <td>
                   ${
@@ -329,6 +342,13 @@ function openGuests(group) {
                     <button class="btn btn-xs btn-ghost-soft" type="button" data-guide-view="${escapeHtml(item.code)}">
                       Chi tiết
                     </button>
+                    ${
+                      bookingCashDue(item) > 0 && !["pending", "cancelled", "completed"].includes(item.status)
+                        ? `<button class="btn btn-xs btn-primary" type="button" data-trip-cash="${escapeHtml(item.code)}">
+                             💵 Thu tiền
+                           </button>`
+                        : ""
+                    }
                   </div>
                 </td>
               </tr>`
@@ -382,6 +402,63 @@ function openPlan(group) {
           : ""
       }`,
     footer: `<button class="btn btn-light" type="button" data-modal-close>Đóng</button>`,
+  });
+}
+
+function openCashCollect(code) {
+  const booking = getBooking(code);
+  if (!booking) return;
+  const remain = bookingCashDue(booking);
+  if (remain <= 0) return toast("Đơn này đã thu đủ tiền.", "error");
+
+  openModal({
+    title: `💵 Thu tiền mặt - ${booking.code}`,
+    subtitle: `${booking.name} · ${booking.tourName} · Khởi hành ${formatDate(booking.date)}`,
+    size: "sm",
+    body: `
+      <ul class="summary-list" style="margin-bottom:14px;">
+        <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
+        <li><span>Đã thu</span><strong>${formatMoney(booking.cashCollected || 0)}</strong></li>
+        <li><span>Còn phải thu</span><strong>${formatMoney(remain)}</strong></li>
+      </ul>
+      <div class="field">
+        <label for="trip-cash-amount">Số tiền thu lần này</label>
+        <input id="trip-cash-amount" type="number" min="1" max="${remain}" value="${remain}" class="form-input">
+        <p class="form-hint">Có thể thu một phần. Đơn chỉ chuyển sang Đã thanh toán khi thu đủ ${formatMoney(remain)}.</p>
+      </div>
+      <div class="field">
+        <label for="trip-cash-note">Ghi chú (không bắt buộc)</label>
+        <input id="trip-cash-note" type="text" class="form-input" placeholder="Ví dụ: khách trả trước một nửa">
+      </div>
+      <input type="hidden" id="trip-cash-code" value="${escapeHtml(booking.code)}">
+    `,
+    footer: `
+      <button class="btn btn-light" type="button" data-modal-close>Đóng</button>
+      <button class="btn btn-primary" type="button" id="trip-cash-submit">Xác nhận đã thu</button>`,
+  });
+
+  document.getElementById("trip-cash-submit")?.addEventListener("click", () => {
+    const session = getSession();
+    const amount = Number(document.getElementById("trip-cash-amount")?.value);
+    const note = document.getElementById("trip-cash-note")?.value || "";
+    const targetCode = document.getElementById("trip-cash-code")?.value || code;
+
+    const res = addCashPayment(targetCode, amount, {
+      guideId: session.username,
+      by: session.name || "Hướng dẫn viên",
+      note,
+    });
+    if (res.error) return toast(res.error, "error");
+
+    const updated = res.booking;
+    toast(
+      bookingCashDue(updated) > 0
+        ? `Đã ghi nhận thu ${formatMoney(amount)}. Còn thiếu ${formatMoney(bookingCashDue(updated))}.`
+        : `Đã thu đủ tiền - đơn ${targetCode} chuyển sang Đã thanh toán.`
+    );
+    closeModal();
+    refreshAdmin();
+    return undefined;
   });
 }
 
@@ -460,7 +537,112 @@ document.addEventListener("route:changed", ({ detail }) => {
   });
 });
 
+
+function openProgressModal(group) {
+  const tour = group.tour;
+  const p = tour?.progress || {};
+  const currentStage = p.stage || "not_started";
+  const stages = Object.entries(TOUR_PROGRESS_STAGES).map(([key, item]) => {
+    return `<option value="${key}" ${key === currentStage ? "selected" : ""}>${item.icon} ${item.label} (${item.desc || ""})</option>`;
+  }).join("");
+
+  openModal({
+    title: "📍 Cập nhật tiến độ hành trình cho đoàn khách",
+    subtitle: `${tour?.name || group.tourId} · Cập nhật theo thời gian thực`,
+    size: "md",
+    body: `
+      <form id="form-update-progress" style="display: grid; gap: 14px;">
+        <div class="field">
+          <label for="prog-stage">Giai đoạn hiện tại của đoàn</label>
+          <select id="prog-stage" name="stage" class="form-input">
+            ${stages}
+          </select>
+        </div>
+        <div class="field">
+          <label for="prog-day">Ngày thứ mấy của tour</label>
+          <input id="prog-day" name="currentDay" type="number" min="1" max="${tour?.days || 10}" value="${p.currentDay || 1}" class="form-input">
+        </div>
+        <div class="field">
+          <label for="prog-loc">Vị trí / Địa điểm hiện tại</label>
+          <input id="prog-loc" name="currentLocation" type="text" placeholder="Ví dụ: Đang dừng chân tại Đèo Mã Pí Lèng" value="${escapeHtml(p.currentLocation || "")}" class="form-input">
+        </div>
+        <div class="field">
+          <label for="prog-note">Lời nhắn / Dặn dò nhanh cho khách</label>
+          <textarea id="prog-note" name="note" rows="3" class="form-input" placeholder="Ví dụ: Thời tiết mát mẻ, đoàn dừng chụp ảnh 30 phút rồi về khách sạn...">${escapeHtml(p.note || "")}</textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;">
+          <button type="button" class="btn btn-ghost-soft" onclick="document.querySelector('.admin-modal-close')?.click()">Đóng</button>
+          <button type="submit" class="btn btn-primary">Lưu & Hiển thị cho khách</button>
+        </div>
+      </form>
+    `
+  });
+
+  const form = document.getElementById("form-update-progress");
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const stage = document.getElementById("prog-stage")?.value;
+    const currentDay = Number(document.getElementById("prog-day")?.value) || 1;
+    const currentLocation = document.getElementById("prog-loc")?.value;
+    const note = document.getElementById("prog-note")?.value;
+
+    updateTourProgress(group.tourId, { stage, currentDay, currentLocation, note });
+    toast("✓ Đã cập nhật tiến độ hành trình thành công! Khách hàng sẽ thấy ngay trên hệ thống.");
+    closeModal();
+    refreshAdmin();
+  });
+}
+
 document.addEventListener("click", (event) => {
+  // 1. Khởi hành cả chuyến
+  const startBtn = event.target.closest("[data-trip-start]");
+  if (startBtn) {
+    const tourId = startBtn.dataset.tripStart;
+    if (!window.confirm("Xác nhận BẮT ĐẦU KHỞI HÀNH chuyến đi này? Toàn bộ khách hợp lệ trong chuyến sẽ được chuyển sang trạng thái ĐANG DIỄN RA.")) return;
+    const session = getSession();
+    const res = advanceTripStatus(tourId, "ongoing", {
+      guideId: session.username,
+      by: session.name || "Hướng dẫn viên",
+      note: "Hướng dẫn viên xác nhận xuất phát tour"
+    });
+    if (res.error) return toast(res.error, "error");
+    toast(`🚀 Chuyến đi đã bắt đầu! Đã cập nhật ${res.count} đơn khách hàng.${res.skipped ? ` ${res.skipped} đơn chưa thu đủ tiền được giữ lại để thu tiếp.` : ""}`);
+    refreshAdmin();
+    return;
+  }
+
+  // 2. Kết thúc cả chuyến
+  const finishBtn = event.target.closest("[data-trip-finish]");
+  if (finishBtn) {
+    const tourId = finishBtn.dataset.tripFinish;
+    if (!window.confirm("Xác nhận KẾT THÚC chuyến đi an toàn cho toàn đoàn? Tất cả đơn sẽ được chuyển sang HOÀN THÀNH.")) return;
+    const session = getSession();
+    const res = advanceTripStatus(tourId, "completed", {
+      guideId: session.username,
+      by: session.name || "Hướng dẫn viên",
+      note: "Hoàn tất chuyến đi an toàn"
+    });
+    if (res.error) return toast(res.error, "error");
+    toast(`🏁 Tour kết thúc thành công! Đã hoàn tất ${res.count} đơn.`);
+    refreshAdmin();
+    return;
+  }
+
+  // 3. Mở popup cập nhật tiến độ
+  const progBtn = event.target.closest("[data-trip-progress-btn]");
+  if (progBtn) {
+    const tourId = progBtn.dataset.tripProgressBtn;
+    const session = getSession();
+    const group = assignedTours(session.username).find((g) => g.tourId === tourId);
+    if (group) openProgressModal(group);
+    return;
+  }
+
+  const cashBtn = event.target.closest("[data-trip-cash]");
+  if (cashBtn) {
+    return openCashCollect(cashBtn.dataset.tripCash);
+  }
+
   const guests = event.target.closest("[data-trip-guests]");
   if (guests) {
     const session = getSession();

@@ -20,7 +20,8 @@ const POLICIES = {
       <h3>3. Giá cả & Phương thức thanh toán</h3>
       <ul>
         <li>Mọi mức giá niêm yết trên website đều là Việt Nam Đồng (VNĐ) và đã bao gồm các dịch vụ cơ bản nêu trong mục "Bao gồm" của từng tour.</li>
-        <li>Khách hàng có thể thanh toán qua Ví điện tử MoMo, chuyển khoản ngân hàng VietQR hoặc thanh toán trực tiếp tại văn phòng.</li>
+        <li>Khách hàng có thể thanh toán qua Ví điện tử MoMo, chuyển khoản ngân hàng VietQR, thanh toán trực tiếp tại văn phòng hoặc thanh toán trực tiếp cho hướng dẫn viên phụ trách trước giờ khởi hành.</li>
+        <li>Với hình thức trả trực tiếp cho hướng dẫn viên, hệ thống vẫn cấp vé giữ chỗ ngay khi đặt. Vé ghi rõ số tiền cần trả và chỉ được kích hoạt cho việc lên xe sau khi hướng dẫn viên xác nhận đã thu đủ tiền.</li>
       </ul>
 
       <h3>4. Quyền và nghĩa vụ của khách hàng</h3>

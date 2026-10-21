@@ -1,4 +1,4 @@
-import { BOOKING_STATUS, PAYMENT_STATUS, guideBookings, nextBookingStatus, updateBooking, markAttendance, addCashPayment, removeCashPayment } from "../../store.js";
+import { BOOKING_STATUS, PAYMENT_STATUS, PAYMENT_METHOD, guideBookings, nextBookingStatus, updateBooking, markAttendance, addCashPayment, removeCashPayment, bookingCashDue, isPayToGuide } from "../../store.js";
 import { getTourById } from "../../tour-repository.js";
 import { getSession, hasPermission } from "../../auth.js";
 import { guideGuard, refreshAdmin } from "../../components/admin-shell.js";
@@ -26,7 +26,7 @@ function tourName(booking) {
 function operationalBookings() {
   const session = getSession();
   return guideBookings(session.username).filter((item) =>
-    ["paid", "upcoming", "ongoing", "completed"].includes(item.status)
+    ["confirmed", "awaiting_payment", "paid", "upcoming", "ongoing", "completed"].includes(item.status)
   );
 }
 
@@ -55,9 +55,8 @@ function row(booking) {
   if (booking.attendance === "present") attendanceHtml = `<span class="status-pill status-paid">Có mặt</span>`;
   if (booking.attendance === "absent") attendanceHtml = `<span class="status-pill status-cancelled">Vắng mặt</span>`;
 
-  // Trạng thái thanh toán & Tiền mặt
-  const remain = booking.total - (booking.cashCollected || 0);
-  let paymentHtml = statusBadge(booking.payment || "unpaid", BOOKING_STATUS); // using statusBadge but for payment, wait, let's use PAYMENT_STATUS if imported or just badge. We don't import PAYMENT_STATUS here yet.
+  // Trạng thái thanh toán & Tiền mặt cần thu
+  const remain = bookingCashDue(booking);
   
   return `
   <tr data-code="${escapeHtml(booking.code)}" data-search="${escapeHtml(
@@ -77,11 +76,23 @@ function row(booking) {
     <td>${escapeHtml(tourName(booking))}<br><small>${escapeHtml(booking.tourLocation || "-")}</small></td>
     <td>${booking.people} khách<br>${attendanceHtml}</td>
     <td>
-       <span class="status-pill status-${escapeHtml(booking.payment || "unpaid")}">${booking.payment === 'paid' ? 'Đã thanh toán' : booking.payment === 'deposit' ? 'Đã cọc' : 'Chưa thanh toán'}</span>
-       ${booking.cashCollected > 0 ? `<br><small>Đã thu: ${formatMoney(booking.cashCollected)}</small>` : ""}
+       <span class="status-pill status-${escapeHtml(booking.payment || "unpaid")}">${booking.payment === 'paid' ? (booking.paymentMethod === "cash" ? 'Đã thu đủ (HDV)' : 'Đã thanh toán') : booking.payment === 'deposit' ? 'Thu một phần' : 'Chưa thanh toán'}</span>
+       ${
+         remain > 0
+           ? `<br><small style="color:#dc2626; font-weight:600;">Còn thiếu: ${formatMoney(remain)}</small>`
+           : booking.cashCollected > 0
+             ? `<br><small class="text-success">Đã thu: ${formatMoney(booking.cashCollected)}</small>`
+             : ""
+       }
+       ${isPayToGuide(booking) && booking.payment !== "paid" ? `<br><small>💵 Trả trực tiếp cho HDV</small>` : ""}
     </td>
     <td class="row-actions">
       <button class="btn btn-sm btn-ghost-soft" type="button" data-guide-view="${escapeHtml(booking.code)}">Chi tiết & Cập nhật</button>
+      ${
+        remain > 0 && !["cancelled", "pending", "completed"].includes(booking.status)
+          ? `<button class="btn btn-sm btn-primary" type="button" data-guide-view="${escapeHtml(booking.code)}">💵 Thu tiền (${formatMoney(remain)})</button>`
+          : ""
+      }
       ${
         canRun
           ? `<button class="btn btn-sm btn-primary" type="button" data-guide-advance="${escapeHtml(
@@ -99,16 +110,16 @@ export function GuideBookings() {
 
   const rows = operationalBookings();
   const tours = [...new Map(rows.map((item) => [String(item.tourId), item])).values()];
+  const totalCashDue = rows.reduce((sum, item) => sum + bookingCashDue(item), 0);
+  const unpaidCashCount = rows.filter((item) => bookingCashDue(item) > 0).length;
 
   return `
   <section class="kpi-grid kpi-grid-4">
-    <article class="kpi kpi-blue"><p class="kpi-label">Đơn được giao</p><strong class="kpi-value">${rows.length}</strong><span class="kpi-hint">Đã thanh toán trở đi</span></article>
+    <article class="kpi kpi-blue"><p class="kpi-label">Đơn được giao</p><strong class="kpi-value">${rows.length}</strong><span class="kpi-hint">Đã xác nhận trở đi</span></article>
+    <article class="kpi kpi-amber"><p class="kpi-label">Cần thu tiền mặt</p><strong class="kpi-value">${formatMoney(totalCashDue)}</strong><span class="kpi-hint">${unpaidCashCount} đơn còn thiếu tiền</span></article>
     <article class="kpi kpi-green"><p class="kpi-label">Sắp khởi hành</p><strong class="kpi-value">${
       rows.filter((item) => item.status === "upcoming").length
     }</strong><span class="kpi-hint">Cần đón khách</span></article>
-    <article class="kpi kpi-amber"><p class="kpi-label">Đang diễn ra</p><strong class="kpi-value">${
-      rows.filter((item) => item.status === "ongoing").length
-    }</strong><span class="kpi-hint">Đang phụ trách</span></article>
     <article class="kpi kpi-violet"><p class="kpi-label">Tổng khách</p><strong class="kpi-value">${rows.reduce(
       (sum, item) => sum + (Number(item.people) || 0),
       0
@@ -138,7 +149,7 @@ export function GuideBookings() {
         <select id="gb-status">
           <option value="">Tất cả</option>
           ${Object.entries(BOOKING_STATUS)
-            .filter(([key]) => ["paid", "upcoming", "ongoing", "completed"].includes(key))
+            .filter(([key]) => ["confirmed", "awaiting_payment", "paid", "upcoming", "ongoing", "completed"].includes(key))
             .map(([value, label]) => `<option value="${value}">${label}</option>`)
             .join("")}
         </select>
@@ -234,7 +245,7 @@ document.addEventListener("click", (event) => {
   const booking = guideBookings(session.username).find((item) => item.code === button.dataset.guideView);
   if (!booking) return;
 
-  const remain = booking.total - (booking.cashCollected || 0);
+  const remain = bookingCashDue(booking);
 
   openModal({
       title: `Khách ${booking.name}`,
@@ -277,19 +288,29 @@ document.addEventListener("click", (event) => {
             <ul class="summary-list">
               <li><span>Tổng tiền</span><strong>${formatMoney(booking.total)}</strong></li>
               <li><span>Trạng thái TT</span><strong>${statusBadge(booking.payment || "unpaid", PAYMENT_STATUS)}</strong></li>
+              <li><span>Phương thức</span><strong>${
+                booking.payment === "paid" && booking.paymentMethod
+                  ? escapeHtml(PAYMENT_METHOD[booking.paymentMethod] || booking.paymentMethod)
+                  : isPayToGuide(booking)
+                    ? "💵 Trả trực tiếp cho HDV trước khởi hành"
+                    : "Trực tuyến (MoMo / VietQR)"
+              }</strong></li>
               <li><span>Đã thu tiền mặt</span><strong>${formatMoney(booking.cashCollected || 0)}</strong></li>
               <li><span>Còn lại cần thu</span><strong>${remain > 0 ? formatMoney(remain) : "0 đ"}</strong></li>
             </ul>
             ${
-              remain > 0 && ["upcoming", "ongoing", "awaiting_payment"].includes(booking.status)
+              remain > 0 && !["pending", "cancelled", "completed"].includes(booking.status)
                 ? `<div class="payment-action-box" style="margin-top:16px; background:var(--bg-soft); padding:12px; border-radius:8px;">
-                     <h5 style="margin-bottom:8px">Ghi nhận thu thêm tiền mặt</h5>
+                     <h5 style="margin-bottom:8px">Ghi nhận thu tiền mặt (toàn bộ hoặc một phần)</h5>
                      <div style="display:flex; gap:8px;">
                         <input type="number" id="guide-cash-amount" class="input-field" placeholder="Nhập số tiền..." max="${remain}" style="flex:1">
                         <button class="btn btn-primary" type="button" data-add-cash="${escapeHtml(booking.code)}">Xác nhận thu</button>
-                     </div>
-                     <p class="form-hint" style="margin-top:4px">Khách thanh toán trực tiếp cho HDV</p>
-                   </div>`
+                      </div>
+                      <div style="display:flex; gap:8px; margin-top:8px;">
+                        <button class="btn btn-sm btn-outline" type="button" data-add-cash-full="${escapeHtml(booking.code)}">Thu đủ ${formatMoney(remain)}</button>
+                      </div>
+                      <p class="form-hint" style="margin-top:4px">Khách thanh toán trực tiếp cho HDV. Đơn chỉ chuyển sang "Đã thanh toán" khi thu đủ tiền.</p>
+                    </div>`
                 : ""
             }
           </section>
@@ -304,9 +325,10 @@ document.addEventListener("click", (event) => {
                      <li>
                         <strong>${formatMoney(p.amount)}</strong>
                         <ul class="it-list">
-                          <li>Thu lúc ${formatDateTime(p.at)} · Bời ${escapeHtml(p.by)}</li>
+                          <li>Thu lúc ${formatDateTime(p.at)} · Bởi ${escapeHtml(p.by)}</li>
+                          ${p.note ? `<li>Ghi chú: ${escapeHtml(p.note)}</li>` : ""}
                         </ul>
-                     </li>`).join("")}
+                      </li>`).join("")}
                  </ul>
                </div>`
             : ""
@@ -359,6 +381,25 @@ document.addEventListener("click", (event) => {
   }
 
   // 3. Thu tiền mặt
+  const btnCashFull = event.target.closest("[data-add-cash-full]");
+  if (btnCashFull) {
+    const code = btnCashFull.dataset.addCashFull;
+    const booking = guideBookings(session.username).find((item) => item.code === code);
+    if (!booking) return;
+    const remain = bookingCashDue(booking);
+    if (remain <= 0) return toast("Đơn này đã thu đủ tiền.", "error");
+
+    if (!confirm(`Xác nhận đã thu đủ ${formatMoney(remain)} tiền mặt từ khách?`)) return;
+
+    const res = addCashPayment(code, remain, { guideId: session.username, by: session.name, note: "Thu đủ tiền mặt trước khởi hành" });
+    if (res.error) return toast(res.error, "error");
+
+    toast(`Đã ghi nhận thu đủ ${formatMoney(remain)} - đơn chuyển sang Đã thanh toán`);
+    closeModal();
+    refreshAdmin();
+    return;
+  }
+
   const btnCash = event.target.closest("[data-add-cash]");
   if (btnCash) {
     const code = btnCash.dataset.addCash;

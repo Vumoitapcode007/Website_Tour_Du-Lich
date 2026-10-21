@@ -57,9 +57,11 @@ export const BOOKING_FLOW = {
   cancelled: [],
 };
 
-/* Trạng thái vận hành do Tour Guide cập nhật - chỉ đi tiếp từ "đã thanh toán" trở đi */
+/* Trạng thái vận hành do Tour Guide cập nhật */
 export const GUIDE_FLOW = {
-  paid: ["upcoming"],
+  confirmed: ["upcoming", "ongoing"],
+  awaiting_payment: ["upcoming", "ongoing"],
+  paid: ["upcoming", "ongoing"],
   upcoming: ["ongoing"],
   ongoing: ["completed"],
 };
@@ -134,6 +136,31 @@ export const PAYMENT_STATUS = {
   refunded: "Đã hoàn tiền",
 };
 
+export const PAYMENT_METHOD = {
+  bank: "VietQR ngân hàng",
+  momo: "Ví MoMo",
+  cash: "Tiền mặt cho hướng dẫn viên",
+};
+
+/* Đơn khách chọn trả tiền mặt trực tiếp cho HDV trước giờ khởi hành.
+   Đơn cũ (trước khi có tính năng) không có paymentIntent nên vẫn đi luồng QR như cũ.
+   Nếu khách đã thanh toán trực tuyến hoặc Admin xác nhận paid thì không còn là đơn "trả cho HDV". */
+export function isPayToGuide(booking) {
+  if (booking?.paymentIntent !== "cash") return false;
+  if (booking.payment === "paid" && booking.paymentMethod && booking.paymentMethod !== "cash") {
+    return false;
+  }
+  return true;
+}
+
+/* Số tiền còn phải thu của một đơn: đã thanh toán/hoàn tiền thì 0 */
+export function bookingCashDue(booking) {
+  if (!booking || ["paid", "refunded"].includes(booking.payment)) return 0;
+  const total = Number(booking.total) || 0;
+  const collected = Number(booking.cashCollected) || 0;
+  return Math.max(total - collected, 0);
+}
+
 export const DEFAULT_SETTINGS = {
   siteName: "TravelGo",
   tagline: "Đồng hành cùng mọi chuyến đi của bạn",
@@ -147,6 +174,7 @@ export const DEFAULT_SETTINGS = {
   minPeople: 1,
   maxPeople: 20,
   allowOnlinePayment: true,
+  allowCashToGuide: true,
   bankName: "Ngân hàng TMCP Ngoại thương Việt Nam (Vietcombank)",
   bankAccount: "0123 4567 8901",
   bankHolder: "Công ty TNHH Du lịch TravelGo",
@@ -380,6 +408,9 @@ export function normalizeBooking(booking = {}) {
     ...booking,
     status: BOOKING_STATUS[booking.status] ? booking.status : "pending",
     payment: PAYMENT_STATUS[booking.payment] ? booking.payment : "unpaid",
+    /* "cash" = khách chọn trả trực tiếp cho HDV trước khởi hành; đơn cũ để trống */
+    paymentIntent: booking.paymentIntent === "cash" ? "cash" : String(booking.paymentIntent || ""),
+    paymentMethod: String(booking.paymentMethod || ""),
     tourId: booking.tourId ?? "",
     tourName: String(booking.tourName || "Tour không còn trong danh mục"),
     /* giá tham chiếu tại thời điểm đặt - không bị thay đổi khi Admin sửa giá tour */
@@ -499,6 +530,14 @@ export function advanceBooking(code, to, { guide = false, by = "Hệ thống", n
       error: `Không thể chuyển đơn từ "${BOOKING_STATUS[current.status]}" sang "${
         BOOKING_STATUS[to] || to
       }".`,
+    };
+  }
+
+  /* HDV chỉ được cho khách lên xe / xuất phát khi đơn đã thu đủ tiền.
+     Đơn chưa thanh toán phải dừng lại để HDV ghi nhận thu tiền mặt trước. */
+  if (guide && ["upcoming", "ongoing"].includes(to) && bookingCashDue(current) > 0) {
+    return {
+      error: `Khách chưa thanh toán đủ (còn thiếu ${bookingCashDue(current).toLocaleString("vi-VN")}đ). Hãy thu đủ tiền trước khi chuyển đơn sang "${BOOKING_STATUS[to]}".`,
     };
   }
 
@@ -641,7 +680,7 @@ export function addCashPayment(code, amount, { guideId = "", by = "Hướng dẫ
   const current = getBooking(code);
   if (!current) return { error: "Không tìm thấy đơn." };
 
-  const validStatuses = ["upcoming", "ongoing", "completed", "paid", "awaiting_payment"];
+  const validStatuses = ["upcoming", "ongoing", "completed", "paid", "awaiting_payment", "confirmed"];
   if (!validStatuses.includes(current.status)) {
     return { error: `Đơn ở trạng thái "${BOOKING_STATUS[current.status]}" không thể ghi nhận tiền mặt.` };
   }
@@ -655,9 +694,21 @@ export function addCashPayment(code, amount, { guideId = "", by = "Hướng dẫ
   const parsedAmount = Math.round(Number(amount) || 0);
   if (parsedAmount <= 0) return { error: "Số tiền thu phải lớn hơn 0." };
 
+  /* Đơn đã thanh toán trực tuyến (MoMo/QR) hoặc Admin đã ghi nhận paid mà chưa thu tiền mặt
+     thì không được ghi nhận thu tiền mặt nữa - tránh trùng lặp hai luồng thanh toán */
+  if (current.payment === "paid" && (current.cashCollected || 0) === 0) {
+    return { error: "Đơn này đã ở trạng thái Đã thanh toán (trực tuyến hoặc Admin xác nhận), không thu tiền mặt thêm." };
+  }
+
   const already = current.cashCollected || 0;
   if (already >= current.total && current.total > 0) {
     return { error: "Đơn này đã thu đủ tiền rồi, không cần ghi nhận thêm." };
+  }
+  const remain = Math.max(current.total - already, 0);
+  if (current.total > 0 && parsedAmount > remain) {
+    return {
+      error: `Số tiền thu vượt quá số còn phải thu (${remain.toLocaleString("vi-VN")}đ). Vui lòng kiểm tra lại.`,
+    };
   }
 
   const now = new Date().toISOString();
@@ -670,9 +721,10 @@ export function addCashPayment(code, amount, { guideId = "", by = "Hướng dẫ
   /* Tự động cập nhật payment khi đã thu đủ hoặc vượt */
   if (newCollected >= current.total && current.total > 0 && current.payment !== "paid") {
     patch.payment = "paid";
+    patch.paymentMethod = "cash";
     patch.paidAt = now;
     /* Nếu đơn ở awaiting_payment thì chuyển sang paid */
-    if (current.status === "awaiting_payment") {
+    if (current.status === "awaiting_payment" || current.status === "confirmed") {
       patch.status = "paid";
       patch.statusHistory = [
         ...current.statusHistory,
@@ -705,9 +757,13 @@ export function removeCashPayment(code, index, { guideId = "" } = {}) {
 
   const patch = { cashPayments };
   /* Đồng bộ lại trạng thái thanh toán */
-  if (newCollected === 0) patch.payment = "unpaid";
-  else if (newCollected < current.total) patch.payment = "deposit";
-  else patch.payment = "paid";
+  if (newCollected === 0) {
+    patch.payment = "unpaid";
+    if (current.paymentMethod === "cash") patch.paymentMethod = "";
+  } else if (newCollected < current.total) {
+    patch.payment = "deposit";
+    if (current.paymentMethod === "cash") patch.paymentMethod = "";
+  } else patch.payment = "paid";
 
   updateBooking(code, patch);
   return { booking: getBooking(code) };
@@ -1014,6 +1070,13 @@ export function quickCheckIn(inputCode = "", { guideId = "", by = "Hướng dẫ
     return { error: `Đơn "${cleanCode}" đang ở trạng thái "${BOOKING_STATUS[booking.status]}", không thể check-in.` };
   }
 
+  /* Vé lên xe chỉ có hiệu lực khi đã thu đủ tiền - đơn còn thiếu phải ghi nhận thu trước */
+  if (booking.status !== "completed" && bookingCashDue(booking) > 0) {
+    return {
+      error: `Khách của đơn "${cleanCode}" chưa thanh toán đủ (còn thiếu ${bookingCashDue(booking).toLocaleString("vi-VN")}đ). Vui lòng thu đủ tiền trước khi cho khách lên xe.`,
+    };
+  }
+
   const alreadyChecked = booking.attendance === "present";
   const now = new Date().toISOString();
 
@@ -1044,6 +1107,50 @@ export function attendanceStats(bookingList) {
     .reduce((sum, b) => sum + (Number(b.people) || 0), 0);
   const unchecked = total - present - absent;
   return { total, present, absent, unchecked };
+}
+
+/* Chuyển trạng thái đồng loạt cho CẢ CHUYẾN ĐI (toàn bộ khách trong chuyến) */
+export function advanceTripStatus(tourId, to, { guideId = "", by = "Hướng dẫn viên", note = "" } = {}) {
+  const guideKey = String(guideId || "").trim().toLowerCase();
+  const allRows = listBookings();
+  const tripRows = allRows.filter((b) => {
+    if (String(b.tourId) !== String(tourId)) return false;
+    if (guideKey && b.guideId.toLowerCase() !== guideKey) return false;
+    if (["cancelled", "completed"].includes(b.status)) return false;
+    return true;
+  });
+
+  if (!tripRows.length) {
+    return { error: "Không tìm thấy đơn hợp lệ nào trong chuyến để cập nhật." };
+  }
+
+  const now = new Date().toISOString();
+  let updatedCount = 0;
+  let skipped = 0;
+
+  for (const b of tripRows) {
+    /* Bỏ qua đơn chưa thu đủ tiền: chỉ chuyển cả chuyến khi khách đã thanh toán.
+       Đơn thiếu tiền nằm lại để HDV ghi nhận thu trước khi xuất phát. */
+    if (to !== "completed" && bookingCashDue(b) > 0) {
+      skipped++;
+      continue;
+    }
+    const allowed = GUIDE_FLOW[b.status] || [];
+    if (allowed.includes(to) || (to === "ongoing" && ["confirmed", "paid", "upcoming"].includes(b.status)) || (to === "completed" && b.status === "ongoing")) {
+      const patch = { status: to };
+      const stampField = BOOKING_STAMP_FIELD[to];
+      if (stampField) patch[stampField] = now;
+      if (BOOKING_STATUS_FIELD[to]) patch[BOOKING_STATUS_FIELD[to]] = by;
+      patch.statusHistory = [
+        ...(b.statusHistory || []),
+        { status: to, at: now, by, note: note || `Cập nhật cả chuyến sang ${BOOKING_STATUS[to] || to}` }
+      ];
+      updateBooking(b.code, patch);
+      updatedCount++;
+    }
+  }
+
+  return { ok: true, count: updatedCount, skipped };
 }
 
 export function bookingTourStats(tourId) {

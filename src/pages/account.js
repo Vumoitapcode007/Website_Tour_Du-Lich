@@ -1,8 +1,12 @@
 import { changePassword, getSession, updateProfile } from "../auth.js";
 import {
+  BOOKING_STATUS,
   NOTIFICATION_TYPE,
   cancelBooking,
   isCancelledBooking,
+  isPayToGuide,
+  bookingCashDue,
+  PAYMENT_METHOD,
   markNotificationRead,
   myBookings,
   myNotifications,
@@ -51,7 +55,10 @@ function purchasedTicketCard(booking) {
           <span>📅 Khởi hành: <strong>${formatDate(booking.date)}</strong></span>
           <span>👥 Số lượng: <strong>${booking.people} khách</strong>${booking.children ? ` (${booking.adults} lớn, ${booking.children} trẻ)` : ""}</span>
           ${tour?.location ? `<span>📍 Điểm đến: <strong>${escapeHtml(tour.location)}</strong></span>` : ""}
-          <span>💳 Phương thức: <strong>${booking.paymentMethod === "bank" ? "VietQR Ngân hàng" : "Ví MoMo"}</strong></span>
+          <span>💳 Phương thức: <strong>${escapeHtml(
+            PAYMENT_METHOD[booking.paymentMethod] ||
+              (booking.paymentMethod === "bank" ? "VietQR Ngân hàng" : "Ví MoMo")
+          )}</strong></span>
         </div>
       </div>
     </div>
@@ -64,9 +71,15 @@ function purchasedTicketCard(booking) {
         <a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">
           🎫 Mở vé điện tử
         </a>
-        <a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">
-          🧾 Biên lai
-        </a>
+        ${
+          booking.paymentMethod === "cash"
+            ? `<a class="btn btn-sm btn-outline" href="#/ticket/${escapeHtml(booking.code)}?mode=payment">
+                 🧾 Biên lai thu tiền HDV
+               </a>`
+            : `<a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">
+                 🧾 Biên lai
+               </a>`
+        }
       </div>
     </div>
   </div>`;
@@ -74,13 +87,23 @@ function purchasedTicketCard(booking) {
 
 function bookingItem(booking) {
   const isPaid = booking.payment === "paid";
+  const payGuide = isPayToGuide(booking);
+  const due = bookingCashDue(booking);
   return `
   <li class="account-booking" data-code="${escapeHtml(booking.code)}">
     <div class="account-booking-head">
       <strong>${escapeHtml(booking.code)}</strong>
       <div class="account-booking-tags">
         <span class="status-pill status-${escapeHtml(booking.status)}">${BOOKING_STATUS[booking.status]}</span>
-        <span class="status-pill status-${isPaid ? "paid" : "unpaid"}">${isPaid ? "Đã thanh toán MoMo" : "Chưa thanh toán"}</span>
+        <span class="status-pill status-${isPaid ? "paid" : "unpaid"}">${
+          isPaid
+            ? payGuide || booking.paymentMethod === "cash"
+              ? "Đã thanh toán cho HDV"
+              : "Đã thanh toán"
+            : payGuide
+              ? "Chưa thanh toán - trả cho HDV"
+              : "Chưa thanh toán"
+        }</span>
       </div>
     </div>
     <a class="account-booking-tour" href="#/tour/${booking.tourId}">${escapeHtml(booking.tourName)}</a>
@@ -88,22 +111,41 @@ function bookingItem(booking) {
       <li>Ngày khởi hành: <strong>${formatDate(booking.date)}</strong></li>
       <li>Số khách: <strong>${booking.people}</strong></li>
       <li>Tổng tiền: <strong>${formatPrice(booking.total)}</strong></li>
+      ${
+        payGuide && !isPaid && booking.status !== "cancelled"
+          ? `<li>Còn phải trả cho HDV: <strong>${formatPrice(due)}</strong></li>
+             <li>Hướng dẫn viên: <strong>${escapeHtml(booking.guideName || "Đang phân công")}</strong>${
+               booking.guidePhone ? ` · <a href="tel:${escapeHtml(booking.guidePhone)}">${escapeHtml(booking.guidePhone)}</a>` : ""
+             }</li>`
+          : ""
+      }
     </ul>
     <div class="account-booking-actions">
       ${
         isPaid
           ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">🎫 Vé điện tử lên xe</a>
-             <a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">Xem biên lai</a>`
+             ${
+               booking.paymentMethod === "cash"
+                 ? ""
+                 : `<a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">Xem biên lai</a>`
+             }`
           : booking.status !== "cancelled"
-            ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}?mode=payment">📄 Vé thanh toán QR</a>
-               <a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">⚡ Cổng MoMo</a>`
+            ? payGuide
+              ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">📄 Vé giữ chỗ (Trả cho HDV)</a>
+                 <a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">Chuyển sang thanh toán online</a>`
+              : `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}?mode=payment">📄 Vé thanh toán QR</a>
+                 <a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">⚡ Cổng MoMo</a>`
             : ""
       }
       ${
         booking.status === "pending"
           ? `<button class="btn btn-sm btn-outline" data-cancel-booking="${escapeHtml(booking.code)}">Huỷ đơn</button>`
           : booking.status === "confirmed" && !isPaid
-            ? `<p class="account-note">Đơn đã xác nhận. Vui lòng thanh toán trước ngày đi.</p>`
+            ? `<p class="account-note">${
+                payGuide
+                  ? "Đơn đã xác nhận. Bạn thanh toán tiền mặt cho hướng dẫn viên trước ngày khởi hành."
+                  : "Đơn đã xác nhận. Vui lòng thanh toán trước ngày đi."
+              }</p>`
             : ""
       }
     </div>

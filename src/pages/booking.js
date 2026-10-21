@@ -1,6 +1,6 @@
 import { formatPrice, formatDate } from "../data.js";
 import { listTours, getTourById, isSellableTour } from "../tour-repository.js";
-import { saveBooking, saveNotification } from "../store.js";
+import { saveBooking, saveNotification, getSettings } from "../store.js";
 import { syncNotificationBadge } from "../components/notification-bell.js";
 import { imgFallback } from "../components/tour-card.js";
 import { escapeHtml, isEmail, isName, isPhone } from "../validate.js";
@@ -103,6 +103,8 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
   const session = getSession();
   if (!session) return LoginRequired(query);
 
+  const settings = getSettings();
+
   const requested = query.get("tour");
   if (requested) {
     const wanted = getTourById(requested);
@@ -192,6 +194,28 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
         <textarea id="bk-note" name="note" rows="4" placeholder="Yêu cầu đặc biệt về phòng, bữa ăn, hành lý..."></textarea>
       </div>
 
+      <fieldset class="field pay-method-box">
+        <legend>Hình thức thanh toán <span class="req">*</span></legend>
+        <label class="pay-method-option">
+          <input type="radio" name="payMethod" value="online" checked>
+          <span>
+            <strong>💳 Thanh toán trực tuyến ngay (MoMo / VietQR)</strong>
+            <small>Quét mã QR hoặc thanh toán qua MoMo sau khi đặt để nhận vé lên xe ngay.</small>
+          </span>
+        </label>
+        ${
+          settings.allowCashToGuide
+            ? `<label class="pay-method-option">
+                <input type="radio" name="payMethod" value="cash">
+                <span>
+                  <strong>💵 Thanh toán trực tiếp cho Hướng dẫn viên trước giờ khởi hành</strong>
+                  <small>Hệ thống giữ chỗ và cấp vé ngay, bạn không cần cọc. Bạn trả tiền mặt cho hướng dẫn viên phụ trách trước khi xe khởi hành; vé lên xe được kích hoạt sau khi đã thu đủ tiền.</small>
+                </span>
+              </label>`
+            : ""
+        }
+      </fieldset>
+
       <label class="checkbox">
         <input type="checkbox" name="agree" required>
         <span>Tôi đồng ý với <a href="#/contact">điều khoản</a> và chính sách bảo mật của TravelGo.</span>
@@ -203,7 +227,11 @@ export function Booking(path, params = {}, query = new URLSearchParams()) {
         Đơn sẽ được lưu vào tài khoản <strong>${escapeHtml(session.username)}</strong>.
         Bạn theo dõi được trạng thái tại <a href="#/my-bookings">Đơn của tôi</a>.
       </p>
-      <p class="form-hint">Bạn không cần thanh toán ngay. Chúng tôi sẽ liên hệ để xác nhận.</p>
+      <p class="form-hint">${
+        settings.allowCashToGuide
+          ? "Bạn chọn trả cho hướng dẫn viên thì không cần thanh toán ngay — chúng tôi sẽ liên hệ để xác nhận và sắp xếp HDV."
+          : "Bạn không cần thanh toán ngay. Chúng tôi sẽ liên hệ để xác nhận."
+      }</p>
     </form>
 
     <aside class="summary-card" id="booking-summary">
@@ -378,6 +406,8 @@ document.addEventListener("route:changed", ({ detail }) => {
       people: counts.people,
       note: String(data.get("note") || "").trim(),
       total: bookingTotal(tour.price, counts),
+      /* "cash" = khách chọn trả trực tiếp cho HDV trước khởi hành */
+      paymentIntent: data.get("payMethod") === "cash" ? "cash" : "",
     });
 
     saveNotification({
@@ -385,12 +415,18 @@ document.addEventListener("route:changed", ({ detail }) => {
       title: `Đã nhận đơn ${record.code}`,
       body: `Yêu cầu đặt ${record.tourName} ngày ${formatDate(record.date)} cho ${record.adults} người lớn${
         record.children ? ` và ${record.children} trẻ em` : ""
-      }. Chuyên viên sẽ gọi ${record.phone} để xác nhận.`,
+      }.${
+        record.paymentIntent === "cash"
+          ? ` Khách chọn thanh toán trực tiếp ${formatPrice(record.total)} cho hướng dẫn viên trước giờ khởi hành.`
+          : ""
+      } Chuyên viên sẽ gọi ${record.phone} để xác nhận.`,
       phone: record.phone,
       email: record.email,
       accountUsername: session.username,
     });
     syncNotificationBadge();
+
+    const payGuideSuccess = record.paymentIntent === "cash";
 
     form.innerHTML = `
       <div class="form-success">
@@ -408,22 +444,41 @@ document.addEventListener("route:changed", ({ detail }) => {
           <li>Tổng khách: ${record.people}/${MAX_PASSENGERS}</li>
           <li>Tổng tiền tạm tính: ${formatPrice(record.total)}</li>
         </ul>
-        <p class="form-hint">Chuyên viên sẽ gọi ${escapeHtml(record.phone)} trong 30 phút để xác nhận.</p>
+        ${
+          payGuideSuccess
+            ? `<p class="form-hint">
+                 Bạn chọn <strong>thanh toán trực tiếp cho hướng dẫn viên</strong>. Vé giữ chỗ đã được cấp ngay với mã
+                 <strong class="code">${escapeHtml(record.code)}</strong>. Vui lòng trả
+                 <strong>${formatPrice(record.total)}</strong> tiền mặt cho hướng dẫn viên phụ trách trước giờ khởi hành.
+                 Hướng dẫn viên sẽ được phân công và hiển thị trên vé trước ngày đi.
+               </p>`
+            : `<p class="form-hint">Chuyên viên sẽ gọi ${escapeHtml(record.phone)} trong 30 phút để xác nhận.</p>`
+        }
         <div class="success-actions booking-success-momo">
-          <a class="btn btn-primary btn-lg" href="#/ticket/${encodeURIComponent(record.code)}?mode=payment">
-            📄 Xem vé thanh toán trực tiếp (Có mã QR)
-          </a>
-          <a class="btn btn-momo btn-lg" href="#/payment?code=${encodeURIComponent(record.code)}">
-            <svg width="20" height="20" viewBox="0 0 40 40" fill="none" style="vertical-align:middle;margin-right:6px">
-              <rect width="40" height="40" rx="8" fill="#fff"/>
-              <path d="M12.5 14C10.567 14 9 15.567 9 17.5V26.5C9 28.433 10.567 30 12.5 30C14.433 30 16 28.433 16 26.5V17.5C16 15.567 14.433 14 12.5 14ZM12.5 26.5C11.6716 26.5 11 25.8284 11 25V19C11 18.1716 11.6716 17.5 12.5 17.5C13.3284 17.5 14 18.1716 14 19V25C14 25.8284 13.3284 26.5 12.5 26.5Z" fill="#A50064"/>
-              <path d="M27.5 14C25.567 14 24 15.567 24 17.5V26.5C24 28.433 25.567 30 27.5 30C29.433 30 31 28.433 31 26.5V17.5C31 15.567 29.433 14 27.5 14ZM27.5 26.5C26.6716 26.5 26 25.8284 26 25V19C26 18.1716 26.6716 17.5 27.5 17.5C28.3284 17.5 29 18.1716 29 19V25C29 25.8284 28.3284 26.5 27.5 26.5Z" fill="#A50064"/>
-              <circle cx="20" cy="19.5" r="3.5" fill="#A50064"/>
-            </svg>
-            Thanh toán online qua MoMo ngay
-          </a>
-          <a class="btn btn-outline" href="#/account">Để thanh toán sau</a>
-          <a class="btn btn-light" href="#/tours">Xem thêm tour</a>
+          ${
+            payGuideSuccess
+              ? `<a class="btn btn-primary btn-lg" href="#/ticket/${encodeURIComponent(record.code)}">
+                   📄 Xem vé giữ chỗ (Thanh toán cho HDV)
+                 </a>
+                 <a class="btn btn-outline" href="#/payment?code=${encodeURIComponent(record.code)}">
+                   Chuyển sang thanh toán online ngay
+                 </a>
+                 <a class="btn btn-light" href="#/tours">Xem thêm tour</a>`
+              : `<a class="btn btn-primary btn-lg" href="#/ticket/${encodeURIComponent(record.code)}?mode=payment">
+                   📄 Xem vé thanh toán trực tiếp (Có mã QR)
+                 </a>
+                 <a class="btn btn-momo btn-lg" href="#/payment?code=${encodeURIComponent(record.code)}">
+                   <svg width="20" height="20" viewBox="0 0 40 40" fill="none" style="vertical-align:middle;margin-right:6px">
+                     <rect width="40" height="40" rx="8" fill="#fff"/>
+                     <path d="M12.5 14C10.567 14 9 15.567 9 17.5V26.5C9 28.433 10.567 30 12.5 30C14.433 30 16 28.433 16 26.5V17.5C16 15.567 14.433 14 12.5 14ZM12.5 26.5C11.6716 26.5 11 25.8284 11 25V19C11 18.1716 11.6716 17.5 12.5 17.5C13.3284 17.5 14 18.1716 14 19V25C14 25.8284 13.3284 26.5 12.5 26.5Z" fill="#A50064"/>
+                     <path d="M27.5 14C25.567 14 24 15.567 24 17.5V26.5C24 28.433 25.567 30 27.5 30C29.433 30 31 28.433 31 26.5V17.5C31 15.567 29.433 14 27.5 14ZM27.5 26.5C26.6716 26.5 26 25.8284 26 25V19C26 18.1716 26.6716 17.5 27.5 17.5C28.3284 17.5 29 18.1716 29 19V25C29 25.8284 28.3284 26.5 27.5 26.5Z" fill="#A50064"/>
+                     <circle cx="20" cy="19.5" r="3.5" fill="#A50064"/>
+                   </svg>
+                   Thanh toán online qua MoMo ngay
+                 </a>
+                 <a class="btn btn-outline" href="#/account">Để thanh toán sau</a>
+                 <a class="btn btn-light" href="#/tours">Xem thêm tour</a>`
+          }
         </div>
       </div>`;
   });
