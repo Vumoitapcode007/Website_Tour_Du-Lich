@@ -82,7 +82,7 @@ export function horizontalSteps(booking) {
     step2Sub = booking.cancelledAt ? createdAtLabel(booking.cancelledAt) : "Đã dừng xử lý";
   } else if (status === "pending") {
     step2State = "current";
-    step2Sub = "Chuyên viên đang gọi";
+    step2Sub = booking.bookingType === "group" ? "Chờ duyệt chỗ & giá đoàn" : "Chuyên viên đang gọi";
   } else {
     // Đã được xác nhận (confirmed, awaiting_payment, paid, upcoming, ongoing, completed)
     step2State = "done";
@@ -305,7 +305,23 @@ function contextualInfoView(booking, tour) {
     </div>`;
   }
 
-  // KIỂU ĐƠN CHỜ XỬ LÝ (PENDING)
+  // KIỂU ĐƠN THEO ĐOÀN ĐANG CHỜ DUYỆT CHỖ VÀ GIÁ
+  if (booking.bookingType === "group" && status === "pending") {
+    return `
+    <div class="tracker-context-card is-group-pending" style="background:#eef2ff; border-left:4px solid #4f46e5;">
+      <div class="tracker-context-icon">👥</div>
+      <div class="tracker-context-content">
+        <div class="tracker-context-head">
+          <strong>Yêu cầu đặt tour theo đoàn đang chờ duyệt</strong>
+          <span class="status-pill status-pending">Chờ xác nhận</span>
+        </div>
+        <p>Quy mô đoàn: <strong>${booking.people} khách</strong>${booking.groupName ? ` · Tổ chức: <strong>${escapeHtml(booking.groupName)}</strong>` : ""} · Tạm tính: <strong>${formatPrice(booking.total)}</strong></p>
+        <small>Chuyên viên tư vấn đoàn TravelGo đang kiểm tra số lượng chỗ và sẽ liên hệ trực tiếp với người đại diện (<strong>${escapeHtml(booking.phone)}</strong>) để tư vấn lịch trình và áp dụng chính sách giá đoàn ưu đãi trước khi thanh toán.</small>
+      </div>
+    </div>`;
+  }
+
+  // KIỂU ĐƠN CHỜ XỬ LÝ (PENDING) CÁ NHÂN
   return `
   <div class="tracker-context-card is-pending">
     <div class="tracker-context-icon">⏳</div>
@@ -344,6 +360,11 @@ export function bookingTracker(booking, { showActions = true } = {}) {
         <strong>${escapeHtml(booking.code)}</strong>
       </div>
       <span class="account-booking-pills">
+        ${
+          booking.bookingType === "group"
+            ? `<span class="status-pill status-group" style="background:#ede9fe;color:#5b21b6;font-weight:700;">👥 Đặt theo đoàn</span>`
+            : ""
+        }
         <span class="status-pill status-${escapeHtml(status)}">${escapeHtml(
           BOOKING_STATUS[status] || status
         )}</span>
@@ -361,8 +382,12 @@ export function bookingTracker(booking, { showActions = true } = {}) {
       <li>Khởi hành: <strong>${formatDate(booking.date)}</strong></li>
       <li>Khách: <strong>${people} người</strong> (${escapeHtml(
         passengerLabel({ adults, children, people })
-      )})</li>
-      <li>Tổng chi phí: <strong>${formatPrice(booking.total)}</strong></li>
+      )})${
+        booking.bookingType === "group"
+          ? ` <strong style="color:#5b21b6;">[Đoàn${booking.groupName ? `: ${escapeHtml(booking.groupName)}` : ""}]</strong>`
+          : ""
+      }</li>
+      <li>Tổng chi phí: <strong>${formatPrice(booking.total)}</strong>${booking.bookingType === "group" && status === "pending" ? " <small style='color:var(--muted);'>(Tạm tính)</small>" : ""}</li>
       ${
         booking.guideName
           ? `<li>Hướng dẫn viên: <strong>${escapeHtml(booking.guideName)}</strong>${
@@ -401,7 +426,9 @@ export function bookingTracker(booking, { showActions = true } = {}) {
               payment === "paid"
                 ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">🎫 Vé điện tử lên xe</a>`
                 : !cancelled
-                  ? payGuide
+                  ? booking.bookingType === "group" && status === "pending"
+                    ? `<span class="soft-chip" style="color:#5b21b6;background:#ede9fe;font-weight:600;padding:5px 10px;border-radius:6px;">⏳ Chờ chuyên viên duyệt số chỗ & giá</span>`
+                    : payGuide
                     ? `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}">📄 Vé giữ chỗ (Trả cho HDV)</a>
                        <a class="btn btn-sm btn-outline" href="#/payment?code=${escapeHtml(booking.code)}">Chuyển sang thanh toán online</a>`
                     : `<a class="btn btn-sm btn-primary" href="#/ticket/${escapeHtml(booking.code)}?mode=payment">📄 Vé thanh toán QR</a>
