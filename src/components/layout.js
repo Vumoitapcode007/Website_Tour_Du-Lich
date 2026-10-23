@@ -1,4 +1,4 @@
-import { getSession, isStaffRole } from "../auth.js";
+  import { getSession, isStaffRole } from "../auth.js";
 import { getSettings } from "../store.js";
 import { compareBar } from "./compare-bar.js";
 import { notificationBell } from "./notification-bell.js";
