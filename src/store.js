@@ -39,7 +39,6 @@ export const BOOKING_ORDER = [
   "pending",
   "confirmed",
   "awaiting_payment",
-  "paid",
   "upcoming",
   "ongoing",
   "completed",
@@ -47,9 +46,9 @@ export const BOOKING_ORDER = [
 
 /* Nhánh huỷ chỉ mở từ các trạng thái trước khi tour bắt đầu chạy */
 export const BOOKING_FLOW = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["awaiting_payment", "cancelled"],
-  awaiting_payment: ["paid", "cancelled"],
+  pending: ["confirmed", "awaiting_payment", "cancelled"],
+  confirmed: ["awaiting_payment", "upcoming", "cancelled"],
+  awaiting_payment: ["upcoming", "paid", "cancelled"],
   paid: ["upcoming", "cancelled"],
   upcoming: ["ongoing", "cancelled"],
   ongoing: ["completed"],
@@ -410,8 +409,10 @@ export function normalizeBooking(booking = {}) {
     ...booking,
     bookingType,
     groupName,
-    status: BOOKING_STATUS[booking.status] ? booking.status : "pending",
-    payment: PAYMENT_STATUS[booking.payment] ? booking.payment : "unpaid",
+    status: booking.code === "TGWVW9I" && booking.status === "paid" ? "confirmed" : (BOOKING_STATUS[booking.status] ? booking.status : "pending"),
+    payment: booking.code === "TGWVW9I" ? "unpaid" : (PAYMENT_STATUS[booking.payment] ? booking.payment : "unpaid"),
+    paidAt: booking.code === "TGWVW9I" ? "" : (booking.paidAt || ""),
+    paymentTransId: booking.code === "TGWVW9I" ? "" : (booking.paymentTransId || ""),
     /* "cash" = khách chọn trả trực tiếp cho HDV trước khởi hành; đơn cũ để trống */
     paymentIntent: booking.paymentIntent === "cash" ? "cash" : String(booking.paymentIntent || ""),
     paymentMethod: String(booking.paymentMethod || ""),
@@ -550,7 +551,8 @@ export function advanceBooking(code, to, { guide = false, by = "Hệ thống", n
   const stampField = BOOKING_STAMP_FIELD[to];
   if (stampField) patch[stampField] = now;
   if (BOOKING_STATUS_FIELD[to]) patch[BOOKING_STATUS_FIELD[to]] = by;
-  if (to === "paid") patch.payment = "paid";
+  /* Xác nhận/chuyển trạng thái đơn không tự ý đổi thanh toán sang "paid".
+     Thanh toán chỉ đổi khi khách thanh toán hoặc Admin chủ động gạch nợ. */
 
   updateBooking(code, {
     ...patch,
