@@ -279,6 +279,7 @@ function confirmModal(booking) {
 }
 
 function confirmActionLabel(booking) {
+  if (booking.status === "pending") return "Xác nhận & Mở thanh toán";
   const next = nextBookingStatus(booking.status);
   if (!next) return "Xác nhận đơn";
   return `Chuyển sang ${BOOKING_STATUS[next]}`;
@@ -974,10 +975,15 @@ document.addEventListener("route:changed", ({ detail }) => {
     let failed = 0;
     codes.forEach((code) => {
       const current = getBooking(code);
-      const result =
-        action === "cancelled"
-          ? cancelBooking(code, { by: getSession()?.name || "Admin", reason: "Xử lý hàng loạt" })
-          : advanceBooking(code, action, { by: getSession()?.name || "Admin" });
+      let result;
+      if (action === "cancelled") {
+        result = cancelBooking(code, { by: getSession()?.name || "Admin", reason: "Xử lý hàng loạt" });
+      } else if (action === "paid") {
+        updateBooking(code, { payment: "paid", paidAt: new Date().toISOString() });
+        result = { booking: getBooking(code) };
+      } else {
+        result = advanceBooking(code, action, { by: getSession()?.name || "Admin" });
+      }
       if (result?.error) {
         failed += 1;
         return;

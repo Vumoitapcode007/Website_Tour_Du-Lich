@@ -53,11 +53,11 @@ export function horizontalSteps(booking) {
   const isPaid = booking.payment === "paid";
   const isCancelled = isCancelledBooking(booking);
 
-  // Nhận diện kiểu thanh toán: Khách trả tiền mặt cho HDV hay Khách thanh toán Online
+  // Nhận diện kiểu thanh toán: Khách chọn trả tiền mặt cho HDV hay có tiền mặt đã thu
   const isCashType =
+    isPayToGuide(booking) ||
     booking.paymentMethod === "cash" ||
     booking.paymentMethod === "direct" ||
-    (!isPaid && (status === "confirmed" || status === "upcoming" || status === "ongoing")) ||
     (booking.cashCollected || 0) > 0;
 
   // Bước 1: Gửi yêu cầu
@@ -69,7 +69,7 @@ export function horizontalSteps(booking) {
     state: isCancelled ? (status === "pending" ? "cancelled" : "done") : "done",
   };
 
-  // Bước 2: Xác nhận giữ chỗ (Phân biệt 2 kiểu người dùng)
+  // Bước 2: Xác nhận giữ chỗ (Phân biệt rõ Đã thanh toán, Tiền mặt và Chờ thanh toán)
   let step2Title = "Xác nhận chỗ";
   let step2Sub = "Chờ nhà tour duyệt";
   let step2State = "todo";
@@ -85,22 +85,24 @@ export function horizontalSteps(booking) {
     step2Sub = booking.bookingType === "group" ? "Chờ duyệt chỗ & giá đoàn" : "Chuyên viên đang gọi";
   } else {
     // Đã được xác nhận (confirmed, awaiting_payment, paid, upcoming, ongoing, completed)
-    step2State = "done";
     if (isPaid) {
+      step2State = "done";
       step2Title = "Đã thanh toán";
       step2Sub = booking.paidAt ? createdAtLabel(booking.paidAt) : "Đã thanh toán online";
     } else if (isCashType) {
+      step2State = "done";
       step2Title = "Đã giữ chỗ";
       step2Sub = "Tiền mặt khi đón xe";
     } else {
-      step2Title = "Đã xác nhận";
-      step2Sub = "Chờ thanh toán";
+      step2State = "current";
+      step2Title = "Chờ thanh toán";
+      step2Sub = "Cần chuyển khoản / MoMo";
     }
   }
 
   const step2 = {
     id: 2,
-    icon: isPaid ? "💳" : "📋",
+    icon: isPaid ? "💳" : isCashType ? "📋" : "⏳",
     title: step2Title,
     sub: step2Sub,
     state: step2State,
@@ -112,7 +114,8 @@ export function horizontalSteps(booking) {
 
   if (!isCancelled) {
     if (status === "upcoming" || (status === "confirmed" && booking.guideName)) {
-      step3State = "current";
+      // Chỉ thành bước đang diễn ra nếu đã thanh toán hoặc là trả tiền mặt
+      step3State = (isPaid || isCashType) ? "current" : "todo";
       step3Sub = booking.guideName ? `HDV: ${booking.guideName}` : step3Sub;
     } else if (["ongoing", "completed"].includes(status)) {
       step3State = "done";
@@ -277,8 +280,8 @@ function contextualInfoView(booking, tour) {
     </div>`;
   }
 
-  // KIỂU 2: THANH TOÁN TIỀN MẶT TRỰC TIẾP CHO HDV (Đang confirmed, upcoming hoặc có tiền mặt)
-  if (status === "confirmed" || status === "upcoming" || status === "ongoing" || collected > 0) {
+  // KIỂU 2: THANH TOÁN TIỀN MẶT TRỰC TIẾP CHO HDV (Khách chọn trả cho HDV hoặc đã thu một phần)
+  if (isPayToGuide(booking) || collected > 0) {
     return `
     <div class="tracker-context-card is-cash">
       <div class="tracker-context-icon">💵</div>
@@ -305,7 +308,7 @@ function contextualInfoView(booking, tour) {
     </div>`;
   }
 
-  // KIỂU ĐƠN THEO ĐOÀN ĐANG CHỜ DUYỆT CHỖ VÀ GIÁ
+  // KIỂU 3: ĐƠN THEO ĐOÀN ĐANG CHỜ DUYỆT CHỖ VÀ GIÁ
   if (booking.bookingType === "group" && status === "pending") {
     return `
     <div class="tracker-context-card is-group-pending" style="background:#eef2ff; border-left:4px solid #4f46e5;">
@@ -321,7 +324,31 @@ function contextualInfoView(booking, tour) {
     </div>`;
   }
 
-  // KIỂU ĐƠN CHỜ XỬ LÝ (PENDING) CÁ NHÂN
+  // KIỂU 4: ĐƠN ĐÃ ĐƯỢC DUYỆT NHƯNG CHƯA THANH TOÁN (Trực tuyến qua MoMo / VietQR)
+  if (status !== "pending") {
+    return `
+    <div class="tracker-context-card is-unpaid" style="background:#fffbeb; border-left:4px solid #f59e0b;">
+      <div class="tracker-context-icon">💳</div>
+      <div class="tracker-context-content">
+        <div class="tracker-context-head">
+          <strong>Đơn hàng đang chờ thanh toán</strong>
+          <span class="status-pill status-awaiting_payment" style="background:#fef3c7; color:#b45309; font-weight:700;">Chưa thanh toán</span>
+        </div>
+        <p>Tổng tiền cần thanh toán: <strong class="text-danger" style="font-size: 1.05rem;">${formatPrice(booking.total)}</strong></p>
+        <small>Đơn hàng đã được TravelGo xác nhận. Quý khách vui lòng thanh toán trực tuyến qua Ví MoMo hoặc Chuyển khoản VietQR để nhận vé điện tử lên xe.</small>
+      </div>
+      <div class="tracker-context-actions">
+        <a class="btn btn-sm btn-outline" href="#/ticket/${escapeHtml(booking.code)}?mode=payment">
+          📄 Xem mã QR VietQR
+        </a>
+        <a class="btn btn-sm btn-momo" href="#/payment?code=${escapeHtml(booking.code)}">
+          Thanh toán MoMo
+        </a>
+      </div>
+    </div>`;
+  }
+
+  // KIỂU 5: ĐƠN CHỜ XỬ LÝ (PENDING) CÁ NHÂN
   return `
   <div class="tracker-context-card is-pending">
     <div class="tracker-context-icon">⏳</div>
@@ -368,9 +395,13 @@ export function bookingTracker(booking, { showActions = true } = {}) {
         <span class="status-pill status-${escapeHtml(status)}">${escapeHtml(
           BOOKING_STATUS[status] || status
         )}</span>
-        <span class="status-pill status-${escapeHtml(payment)}">${escapeHtml(
-          PAYMENT_STATUS[payment] || (payment === "paid" ? "Đã thanh toán" : "Thu tiền mặt khi đón")
-        )}</span>
+        ${
+          status === "paid" && payment === "paid"
+            ? ""
+            : `<span class="status-pill status-${escapeHtml(payment)}">${escapeHtml(
+                PAYMENT_STATUS[payment] || (payment === "paid" ? "Đã thanh toán" : "Thu tiền mặt khi đón")
+              )}</span>`
+        }
       </span>
     </div>
 
