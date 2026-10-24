@@ -1,65 +1,219 @@
-import { sellableTours } from "../tour-repository.js";
+import { sellableTours, listTours } from "../tour-repository.js";
 import { tourCard, imgFallback } from "../components/tour-card.js";
 import { searchKey } from "../validate.js";
+import { formatPrice } from "../data.js";
 
 const destNotes = {
-  "Ninh Bình": "Tràng An - Hang Múa",
-  "Đà Nẵng": "Bà Nà Hills - biển Mỹ Khê",
-  "Quảng Ninh": "Vịnh Hạ Long",
-  "Đà Lạt": "Thành phố ngàn hoa",
-  "Sa Pa": "Ruộng bậc thang Tây Bắc",
-  "Phú Quốc": "Đảo ngọc biển xanh",
+  "Ninh Bình": "Tràng An - Tam Cốc & Hang Múa",
+  "Đà Nẵng": "Bà Nà Hills - Biển Mỹ Khê & Cầu Vàng",
+  "Quảng Ninh": "Kỳ quan Vịnh Hạ Long & Du thuyền",
+  "Đà Lạt": "Thành phố ngàn hoa & Thung lũng tình yêu",
+  "Sa Pa": "Chinh phục Fansipan - Mùa lúa chín",
+  "Phú Quốc": "Đảo ngọc Bãi Sao & Sunset Sanato",
+  "Hà Giang": "Cột cờ Lũng Cú & Đèo Mã Pí Lèng",
+  "Yên Bái": "Mù Cang Chải mùa nước đổ - ruộng bậc thang",
+  "Nha Trang": "Vịnh ngọc - Lặn ngắm san hô Hòn Mun",
+  "Huế": "Kinh thành Đại Nội & Ca Huế sông Hương",
+  "Cần Thơ": "Chợ nổi Cái Răng - Miệt vườn sông nước",
+  "Quy Nhơn": "Kỳ Co - Eo Gió thiên đường biển đảo",
 };
 
-/* Tọa độ [vĩ độ, kinh độ] các điểm đến hiển thị trên bản đồ */
+/* Tọa độ [vĩ độ, kinh độ] các điểm đến nổi tiếng trên bản đồ Việt Nam */
 const destCoords = {
-  "Ninh Bình": [20.2506, 105.9745],
-  "Đà Nẵng": [16.0544, 108.2022],
-  "Quảng Ninh": [20.9101, 107.1839],
-  "Đà Lạt": [11.9404, 108.4583],
   "Sa Pa": [22.3364, 103.8438],
+  "Hà Giang": [22.8233, 104.9839],
+  "Yên Bái": [21.8500, 104.3000],
+  "Quảng Ninh": [20.9500, 107.0734],
+  "Ninh Bình": [20.2506, 105.9745],
+  "Huế": [16.4637, 107.5909],
+  "Đà Nẵng": [16.0544, 108.2022],
+  "Quy Nhơn": [13.7820, 109.2194],
+  "Nha Trang": [12.2388, 109.1967],
+  "Đà Lạt": [11.9404, 108.4583],
+  "Cần Thơ": [10.0452, 105.7469],
   "Phú Quốc": [10.2899, 103.984],
 };
 
-/* Khởi tạo bản đồ Leaflet với marker cho từng điểm đến đang mở bán */
-function initDestinationMap() {
-  const el = document.getElementById("dest-map");
-  if (!el || !window.L) return;
-
-  if (el._leafletMap) {
-    el._leafletMap.remove();
-    el._leafletMap = null;
+function ensureLeaflet(callback, retries = 25) {
+  if (window.L) {
+    callback();
+    return;
   }
+  if (retries <= 0) return;
+  setTimeout(() => ensureLeaflet(callback, retries - 1), 120);
+}
 
-  const allTours = sellableTours();
-  const points = Object.entries(destCoords)
-    .map(([name, latlng]) => {
-      const tour = allTours.find((item) => item.location === name);
-      return tour ? { name, latlng, id: tour.id } : null;
-    })
-    .filter(Boolean);
-  if (!points.length) return;
+/* Khởi tạo bản đồ với nguồn tile CartoDB Voyager tốc độ cao và marker tương tác */
+function initDestinationMap() {
+  ensureLeaflet(() => {
+    const el = document.getElementById("dest-map");
+    if (!el || !window.L) return;
 
-  const map = window.L.map(el, { scrollWheelZoom: false });
-  window.L
-    .tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap",
-      maxZoom: 19,
-    })
-    .addTo(map);
+    if (el._leafletMap) {
+      el._leafletMap.remove();
+      el._leafletMap = null;
+    }
 
-  const bounds = [];
-  points.forEach(({ name, latlng, id }) => {
-    window.L
-      .marker(latlng)
-      .addTo(map)
-      .bindPopup(
-        `<strong>${name}</strong><br>${destNotes[name]}<br><a class="map-popup-link" href="#/tour/${id}">Xem tour →</a>`
-      );
-    bounds.push(latlng);
+    const allTours = listTours();
+    const points = Object.entries(destCoords)
+      .map(([name, latlng]) => {
+        const tour =
+          allTours.find(
+            (item) =>
+              item.location === name ||
+              (item.name && item.name.toLowerCase().includes(name.toLowerCase()))
+          ) ||
+          allTours[0] ||
+          {};
+        return {
+          name,
+          latlng,
+          tourId: tour.id || 1,
+          tourName: tour.name || `Tour du lịch ${name}`,
+          tourPrice: tour.price || 1990000,
+          tourTime: tour.time || "3 ngày 2 đêm",
+          tourImg: tour.image || "",
+          note: destNotes[name] || tour.description || "",
+        };
+      });
+
+    if (!points.length) return;
+
+    /* Khởi tạo bản đồ mặc định tại trung tâm dải đất Việt Nam */
+    const map = window.L.map(el, {
+      center: [16.0544, 107.5],
+      zoom: 6,
+      scrollWheelZoom: false,
+      zoomControl: true,
+    });
+
+    /* Tile server CartoDB Voyager: Tốc độ cao, đường nét tinh tế, chuẩn định dạng du lịch */
+    const tileLayer = window.L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      {
+        attribution:
+          '&copy; <a href="https://carto.com/" target="_blank" rel="noopener">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+        subdomains: "abcd",
+        maxZoom: 19,
+      }
+    );
+
+    /* Dự phòng tự động nếu tile CartoDB gặp trục trặc mạng thì chuyển sang Esri World Map */
+    tileLayer.on("tileerror", (e) => {
+      if (e.tile && !e.tile._hasFallback) {
+        e.tile._hasFallback = true;
+        e.tile.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${e.coords.z}/${e.coords.y}/${e.coords.x}`;
+      }
+    });
+    tileLayer.addTo(map);
+
+    const bounds = [];
+    const markersMap = new Map();
+
+    points.forEach((point) => {
+      const { name, latlng, tourId, tourName, tourPrice, tourTime, tourImg, note } = point;
+
+      const pinIcon = window.L.divIcon({
+        className: "custom-map-pin-container",
+        html: `
+          <div class="travel-map-pin" data-marker-dest="${name}">
+            <div class="pin-halo"></div>
+            <div class="pin-pill">
+              <span class="pin-dot"></span>
+              <span class="pin-title">${name}</span>
+            </div>
+            <div class="pin-arrow"></div>
+          </div>
+        `,
+        iconSize: [110, 36],
+        iconAnchor: [55, 34],
+        popupAnchor: [0, -32],
+      });
+
+      const popupHtml = `
+        <div class="dest-popup-card">
+          ${tourImg ? `
+            <div class="dest-popup-img">
+              <img src="${tourImg}" alt="${name}" onerror="${imgFallback}">
+              <span class="dest-popup-badge">${tourTime}</span>
+            </div>
+          ` : ""}
+          <div class="dest-popup-body">
+            <h4 class="dest-popup-title">${tourName}</h4>
+            <p class="dest-popup-note">${note}</p>
+            <div class="dest-popup-action">
+              <div class="dest-popup-price">
+                <span>Giá từ</span>
+                <strong>${formatPrice(tourPrice)}</strong>
+              </div>
+              <a class="btn btn-primary btn-sm dest-popup-btn" href="#/tour/${tourId}">
+                Xem tour →
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const marker = window.L.marker(latlng, { icon: pinIcon })
+        .addTo(map)
+        .bindPopup(popupHtml, {
+          maxWidth: 290,
+          minWidth: 260,
+          className: "custom-leaflet-popup",
+        });
+
+      marker.on("click", () => {
+        updateActiveChip(name);
+      });
+
+      markersMap.set(name, { marker, latlng });
+      bounds.push(latlng);
+    });
+
+    if (bounds.length) {
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 });
+    }
+
+    /* Đảm bảo map tính toán lại kích thước hiển thị đầy đủ không bị xám góc */
+    setTimeout(() => map.invalidateSize(), 150);
+    setTimeout(() => map.invalidateSize(), 500);
+
+    const onResize = () => map.invalidateSize();
+    window.addEventListener("resize", onResize);
+
+    /* Cập nhật trạng thái nút chọn nhanh điểm đến */
+    function updateActiveChip(activeDest) {
+      const chips = document.querySelectorAll("#map-quick-chips .map-chip");
+      chips.forEach((c) => {
+        c.classList.toggle("active", c.dataset.dest === activeDest);
+      });
+    }
+
+    /* Gắn tương tác cho các nút chọn nhanh điểm đến phía trên bản đồ */
+    const chipContainer = document.getElementById("map-quick-chips");
+    if (chipContainer) {
+      chipContainer.onclick = (e) => {
+        const btn = e.target.closest(".map-chip");
+        if (!btn) return;
+        const targetDest = btn.dataset.dest;
+
+        if (targetDest === "all") {
+          updateActiveChip("all");
+          map.fitBounds(bounds, { padding: [40, 40], maxZoom: 8 });
+          map.closePopup();
+        } else if (markersMap.has(targetDest)) {
+          updateActiveChip(targetDest);
+          const { marker, latlng } = markersMap.get(targetDest);
+          map.flyTo(latlng, 10, { duration: 0.9 });
+          setTimeout(() => {
+            marker.openPopup();
+          }, 600);
+        }
+      };
+    }
+
+    el._leafletMap = map;
   });
-  map.fitBounds(bounds, { padding: [40, 40] });
-  el._leafletMap = map;
 }
 
 export function Home() {
@@ -156,10 +310,31 @@ export function Home() {
   <section class="section map-section">
     <div class="container">
       <div class="section-title center">
+        <span class="hero-eyebrow" style="display:inline-block; margin-bottom:8px;">Bản đồ du lịch</span>
         <h2>Bản đồ điểm đến</h2>
-        <p>Vị trí các điểm đến nổi bật trên bản đồ Việt Nam</p>
+        <p>Khám phá vị trí các hành trình tour trải dài khắp đất nước Việt Nam</p>
       </div>
-      <div class="dest-map" id="dest-map" aria-label="Bản đồ các điểm đến nổi bật của TravelGo"></div>
+      <div class="map-quick-bar">
+        <div class="map-chip-list" id="map-quick-chips">
+          <button type="button" class="map-chip active" data-dest="all">
+            🇻🇳 Toàn cảnh Việt Nam
+          </button>
+          ${Object.keys(destCoords)
+            .map(
+              (name) => `
+            <button type="button" class="map-chip" data-dest="${name}">
+              📍 ${name}
+            </button>`
+            )
+            .join("")}
+        </div>
+      </div>
+      <div class="dest-map-wrapper">
+        <div class="dest-map" id="dest-map" aria-label="Bản đồ các điểm đến nổi bật của TravelGo"></div>
+        <div class="map-overlay-badge">
+          <span>✨ Nhấn vào tên địa điểm hoặc điểm ghim trên bản đồ để xem tour</span>
+        </div>
+      </div>
     </div>
   </section>
 
