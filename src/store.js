@@ -1428,6 +1428,7 @@ export function saveNotification(payload = {}) {
     phone: digits(payload.phone),
     email: String(payload.email || "").trim().toLowerCase(),
     accountUsername: String(payload.accountUsername || "").trim(),
+    bookingCode: String(payload.bookingCode || "").trim().toUpperCase(),
     read: false,
     createdAt: new Date().toISOString(),
   };

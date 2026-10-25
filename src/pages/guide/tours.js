@@ -15,7 +15,7 @@ import {
 } from "../../components/admin-ui.js";
 import { formatPrice, formatDate } from "../../data.js";
 import { daysToDeparture } from "../../components/booking-tracker.js";
-import { assignedTours, guideActionButton } from "./dashboard.js";
+import { assignedTours } from "./dashboard.js";
 import { escapeHtml, searchKey } from "../../validate.js";
 import { imgFallback } from "../../components/tour-card.js";
 
@@ -63,26 +63,16 @@ export function GuideTours() {
   const doneCount = groups.filter((g) => tripStatus(g.bookings) === "done").length;
 
   return `
-  <section class="kpi-grid kpi-grid-4">
+  <section class="kpi-grid kpi-grid-2 guide-tours-summary">
     <article class="kpi kpi-blue">
       <p class="kpi-label">Tổng tour phụ trách</p>
       <strong class="kpi-value">${groups.length}</strong>
       <span class="kpi-hint">Được phân công cho bạn</span>
     </article>
     <article class="kpi kpi-amber">
-      <p class="kpi-label">Sắp khởi hành</p>
-      <strong class="kpi-value">${upcomingCount}</strong>
-      <span class="kpi-hint">Cần chuẩn bị & liên hệ khách</span>
-    </article>
-    <article class="kpi kpi-green">
-      <p class="kpi-label">Đang diễn ra</p>
-      <strong class="kpi-value">${ongoingCount}</strong>
-      <span class="kpi-hint">Đang điều hành trên tuyến</span>
-    </article>
-    <article class="kpi kpi-violet">
-      <p class="kpi-label">Đã hoàn thành</p>
-      <strong class="kpi-value">${doneCount}</strong>
-      <span class="kpi-hint">Đã quyết toán & bàn giao</span>
+      <p class="kpi-label">Cần xử lý</p>
+      <strong class="kpi-value">${groups.filter((g) => g.bookings.some((b) => bookingCashDue(b) > 0)).length}</strong>
+      <span class="kpi-hint">Chuyến còn khoản cần thu</span>
     </article>
   </section>
 
@@ -139,8 +129,6 @@ function tripCard(group) {
   const people = bookings.reduce((sum, item) => sum + (Number(item.people) || 0), 0);
   const presentCount = bookings.filter((b) => b.attendance === "present").length;
   const attendanceRate = people > 0 ? Math.round((presentCount / people) * 100) : 0;
-  const totalRevenue = bookings.reduce((sum, b) => sum + (Number(b.total) || 0), 0);
-  const collectedCash = bookings.reduce((sum, b) => sum + (Number(b.cashCollected) || 0), 0);
   const cashDue = bookings.reduce((sum, b) => sum + bookingCashDue(b), 0);
   const unpaidCount = bookings.filter((b) => bookingCashDue(b) > 0).length;
 
@@ -198,18 +186,6 @@ function tripCard(group) {
           </div>
 
           <div class="guide-metric-box">
-            <span class="m-label">Tổng doanh thu</span>
-            <strong class="m-val">${formatMoney(totalRevenue)}</strong>
-            <span class="m-sub">Giá trị hợp đồng</span>
-          </div>
-
-          <div class="guide-metric-box">
-            <span class="m-label">Tiền mặt đã thu</span>
-            <strong class="m-val ${collectedCash > 0 ? "text-success" : ""}">${formatMoney(collectedCash)}</strong>
-            <span class="m-sub">Thu trực tiếp</span>
-          </div>
-
-          <div class="guide-metric-box">
             <span class="m-label">Còn phải thu</span>
             <strong class="m-val ${cashDue > 0 ? "text-amber" : "text-success"}">${formatMoney(cashDue)}</strong>
             <span class="m-sub">${unpaidCount > 0 ? `${unpaidCount} đơn chưa đủ tiền` : "Đã thu đủ"}</span>
@@ -237,27 +213,12 @@ function tripCard(group) {
     <div class="guide-trip-bottom-bar">
       <div class="guide-trip-quick-actions">
         <button class="btn btn-sm btn-primary" type="button" data-trip-guests="${escapeHtml(group.tourId)}">
-          👥 Danh sách khách (${bookings.length})
+          👥 Khách · Điểm danh ${presentCount}/${people}
         </button>
-        <a class="btn btn-sm btn-outline" href="#/guide/checkin">
-          🎟️ Điểm danh vé (QR)
-        </a>
-        <a class="btn btn-sm btn-ghost-soft" href="#/guide/diary">
-          📖 Nhật ký tour
-        </a>
-        <a class="btn btn-sm btn-ghost-soft" href="#/guide/expenses">
-          💳 Chi tiêu & Quyết toán
-        </a>
-        <a class="btn btn-sm btn-ghost-soft" href="#/guide/announcements">
-          📢 Gửi thông báo đoàn
-        </a>
-        ${
-          tour?.itinerary?.length
-            ? `<button class="btn btn-sm btn-ghost-soft" type="button" data-trip-plan="${escapeHtml(group.tourId)}">
-                🗺️ Lịch trình chi tiết
-              </button>`
-            : ""
-        }
+        ${unpaidCount ? `<button class="btn btn-sm btn-outline guide-trip-collect" type="button" data-trip-guests="${escapeHtml(group.tourId)}">💵 Thu còn thiếu · ${formatMoney(cashDue)}</button>` : ""}
+        ${status !== "ongoing" && status !== "done" ? `<button class="btn btn-sm btn-outline" type="button" data-trip-start="${escapeHtml(group.tourId)}">▶ Bắt đầu chuyến</button>` : ""}
+        ${status === "ongoing" ? `<button class="btn btn-sm btn-outline" type="button" data-trip-progress-btn="${escapeHtml(group.tourId)}">Cập nhật trạng thái</button><button class="btn btn-sm btn-outline" type="button" data-trip-finish="${escapeHtml(group.tourId)}">✓ Kết thúc chuyến</button>` : ""}
+        ${tour?.itinerary?.length ? `<button class="btn btn-sm btn-ghost-soft" type="button" data-trip-plan="${escapeHtml(group.tourId)}">🗺️ Lịch trình</button>` : ""}
       </div>
 
       <div class="guide-trip-status-action">
@@ -273,7 +234,7 @@ function openGuests(group) {
   const presentCount = bookings.filter((b) => b.attendance === "present").length;
 
   openModal({
-    title: `Danh sách hành khách (${bookings.length} đơn · ${people} khách)`,
+    title: `Khách, thanh toán & điểm danh (${people} khách)`,
     subtitle: `${group.tour?.name || bookings[0].tourName} · Khởi hành: ${formatDate(bookings[0].date)}`,
     size: "lg",
     body: `
@@ -284,6 +245,15 @@ function openGuests(group) {
         <div style="font-size: 0.85rem; color: #64748b;">
           Bấm <strong>"Có mặt"</strong> hoặc <strong>"Vắng mặt"</strong> để cập nhật điểm danh nhanh.
         </div>
+      </div>
+
+      <div class="guide-trip-checkin" style="display:flex; gap:8px; align-items:end; flex-wrap:wrap; margin-bottom:16px; padding:14px; border:1px solid #dbeafe; border-radius:10px; background:#eff6ff;">
+        <div class="field" style="flex:1; min-width:220px; margin:0;">
+          <label for="trip-checkin-code">Điểm danh nhanh bằng mã vé / mã đơn</label>
+          <input id="trip-checkin-code" class="form-input" type="search" placeholder="Nhập mã của khách thuộc chuyến này">
+        </div>
+        <button class="btn btn-primary" type="button" data-trip-checkin="${escapeHtml(group.tourId)}">Xác nhận có mặt</button>
+        <button class="btn btn-outline" type="button" data-trip-mock-scan="${escapeHtml(group.tourId)}">Quét QR</button>
       </div>
 
       <div class="table-wrap">
@@ -339,9 +309,6 @@ function openGuests(group) {
                     <button class="btn btn-xs ${item.attendance === "absent" ? "btn-danger" : "btn-outline"}" type="button" data-attendance="absent" data-code="${escapeHtml(item.code)}" title="Báo vắng mặt">
                       ✗
                     </button>
-                    <button class="btn btn-xs btn-ghost-soft" type="button" data-guide-view="${escapeHtml(item.code)}">
-                      Chi tiết
-                    </button>
                     ${
                       bookingCashDue(item) > 0 && !["pending", "cancelled", "completed"].includes(item.status)
                         ? `<button class="btn btn-xs btn-primary" type="button" data-trip-cash="${escapeHtml(item.code)}">
@@ -358,7 +325,7 @@ function openGuests(group) {
           </tbody>
         </table>
       </div>`,
-    footer: `<button class="btn btn-light" type="button" data-modal-close>Đóng danh sách</button>`,
+    footer: `<button class="btn btn-light" type="button" data-modal-close>Đóng</button>`,
   });
 }
 
@@ -643,6 +610,34 @@ document.addEventListener("click", (event) => {
     return openCashCollect(cashBtn.dataset.tripCash);
   }
 
+  const checkinBtn = event.target.closest("[data-trip-checkin]");
+  const scanBtn = event.target.closest("[data-trip-mock-scan]");
+  if (checkinBtn || scanBtn) {
+    const session = getSession();
+    const tourId = (checkinBtn || scanBtn).dataset.tripCheckin || (checkinBtn || scanBtn).dataset.tripMockScan;
+    const group = assignedTours(session.username).find((item) => item.tourId === tourId);
+    if (!group) return;
+    const input = document.getElementById("trip-checkin-code");
+    const booking = scanBtn
+      ? group.bookings[Math.floor(Math.random() * group.bookings.length)]
+      : group.bookings.find((item) => item.code.toLowerCase() === String(input?.value || "").trim().toLowerCase() || item.phone === String(input?.value || "").trim());
+    if (scanBtn && booking && input) {
+      input.value = booking.code;
+      return toast(`Đã nhận mã QR ${booking.code}. Xác nhận để điểm danh khách ${booking.name}.`);
+    }
+    if (!booking) return toast("Không tìm thấy mã vé trong chuyến này.", "error");
+    const result = markAttendance(booking.code, "present", { guideId: session.username, by: session.name });
+    if (result.error) return toast(result.error, "error");
+    toast(`Đã điểm danh ${booking.name} có mặt.`);
+    closeModal();
+    refreshAdmin();
+    setTimeout(() => {
+      const updatedGroup = assignedTours(session.username).find((item) => item.tourId === tourId);
+      if (updatedGroup) openGuests(updatedGroup);
+    }, 120);
+    return;
+  }
+
   const guests = event.target.closest("[data-trip-guests]");
   if (guests) {
     const session = getSession();
@@ -657,15 +652,6 @@ document.addEventListener("click", (event) => {
     const session = getSession();
     const group = assignedTours(session.username).find((item) => item.tourId === plan.dataset.tripPlan);
     return group ? openPlan(group) : undefined;
-  }
-
-  // Chuyển hướng khi bấm "Chi tiết" ở danh sách khách trong 1 tour
-  const viewBtn = event.target.closest("[data-guide-view]");
-  if (viewBtn) {
-    const code = viewBtn.dataset.guideView;
-    closeModal();
-    window.location.hash = `#/guide/bookings?q=${code}`;
-    return;
   }
 
   // Điểm danh nhanh từ popup danh sách khách

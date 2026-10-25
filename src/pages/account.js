@@ -37,7 +37,7 @@ function stat(value, label, key = "") {
   return `<div class="admin-stat"${key ? ` data-stat="${escapeHtml(key)}"` : ""}><strong>${escapeHtml(value)}</strong><span>${label}</span></div>`;
 }
 
-function purchasedTicketCard(booking) {
+export function purchasedTicketCard(booking) {
   const tour = getTourById(booking.tourId);
   const image = booking.tourImage || tour?.image || "";
 
@@ -154,35 +154,47 @@ function bookingItem(booking) {
 
 function notificationItem(item) {
   const type = NOTIFICATION_TYPE[item.type] || NOTIFICATION_TYPE.system;
-  const time = new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(item.createdAt));
-
-  return `
-  <li class="account-notif${item.read ? "" : " is-unread"}" data-notif-row="${escapeHtml(item.id)}">
+  const time = new Intl.DateTimeFormat("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(item.createdAt));
+  const ids = item.notifications?.map((notification) => notification.id) || [item.id];
+  const code = item.bookingCode || "";
+  return `<li class="account-notif${item.read ? "" : " is-unread"}" data-notif-row="${escapeHtml(ids.join(","))}">
     <span class="account-notif-icon" aria-hidden="true">${type.icon}</span>
-    <div class="account-notif-body">
-      <div class="account-notif-head">
-        <strong>${escapeHtml(item.title)}</strong>
-        <span class="account-notif-type">${escapeHtml(type.label)}</span>
-      </div>
-      <p>${escapeHtml(item.body)}</p>
-      <small>${escapeHtml(time)}</small>
-    </div>
-    <button class="btn btn-sm btn-ghost-soft" type="button" data-remove-notif="${escapeHtml(item.id)}">Xoá</button>
+    <div class="account-notif-body"><div class="account-notif-head"><strong>${escapeHtml(item.title)}</strong><span class="account-notif-type">${escapeHtml(type.label)}</span></div>
+    <p>${escapeHtml(item.body)}</p><small>${escapeHtml(time)}</small>
+    ${code ? `<a class="account-notif-link" href="#/ticket/${encodeURIComponent(code)}">Xem đơn ${escapeHtml(code)}</a>` : ""}</div>
+    ${item.read ? "" : `<button class="btn btn-sm btn-ghost-soft" type="button" data-read-notif="${escapeHtml(ids.join(","))}">Đánh dấu đã đọc</button>`}
+    <button class="btn btn-sm btn-ghost-soft" type="button" data-remove-notif="${escapeHtml(ids.join(","))}">Xóa</button>
   </li>`;
 }
 
+function groupNotifications(notifications) {
+  const groups = new Map();
+  notifications.forEach((item) => {
+    const code = item.bookingCode || item.title?.match(/(?:đơn|vé)\s+([A-Z0-9-]{4,})/i)?.[1] || "";
+    const key = item.type === "booking" && code ? `booking:${code.toUpperCase()}` : `notification:${item.id}`;
+    if (!groups.has(key)) groups.set(key, { ...item, bookingCode: code.toUpperCase(), notifications: [] });
+    const group = groups.get(key);
+    group.notifications.push(item);
+    group.read = group.read && item.read;
+    if (group.notifications.length > 1) {
+      group.title = `Cập nhật đơn ${group.bookingCode}`;
+      group.body = `${group.notifications.length} thông báo liên quan đến đơn đặt vé này. ${item.body}`;
+    }
+  });
+  return [...groups.values()];
+}
 export function Account() {
   const session = getSession();
   if (!session) return Guard();
 
   const bookings = myBookings(session);
+  const latestBooking = [...bookings].sort((a, b) =>
+    String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+  )[0];
   const paidBookings = bookings.filter((item) => item.payment === "paid" && item.status !== "cancelled");
+  const upcomingTickets = paidBookings
+    .filter((item) => !["completed", "cancelled"].includes(item.status) && new Date(`${item.date}T23:59:59`) >= new Date())
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const pending = bookings.filter((item) =>
     ["pending", "confirmed", "awaiting_payment"].includes(item.status)
   ).length;
@@ -191,6 +203,7 @@ export function Account() {
     .filter((item) => !isCancelledBooking(item))
     .reduce((sum, item) => sum + item.total, 0);
   const notifications = myNotifications(session);
+  const groupedNotifications = groupNotifications(notifications);
   const unread = notifications.filter((item) => !item.read).length;
 
   return `
@@ -212,6 +225,18 @@ export function Account() {
       ${stat(unread, "Thông báo mới", "notif-unread")}
     </div>
 
+    <div class="account-bookings account-latest-booking">
+      <div class="section-title">
+        <h2>Đơn đặt tour mới nhất</h2>
+        <p>Theo dõi nhanh trạng thái chuyến đi gần đây của bạn.</p>
+      </div>
+      ${latestBooking
+        ? `<ul class="account-booking-list">${bookingTracker(latestBooking)}</ul>`
+        : `<p class="search-empty">Bạn chưa có đơn đặt tour nào. <a href="#/tours">Khám phá các tour</a></p>`}
+      <a class="btn btn-outline track-all-link" href="#/my-bookings">Xem tất cả vé và đơn (${bookings.length})</a>
+    </div>
+
+
     <!-- Phần hiển thị vé đã mua -->
     <div class="account-purchased-tickets" id="purchased-tickets-section">
       <div class="section-title">
@@ -229,9 +254,9 @@ export function Account() {
       </div>
 
       ${
-        paidBookings.length
+        upcomingTickets.length
           ? `<div class="purchased-tickets-grid">
-              ${paidBookings.map((b) => purchasedTicketCard(b)).join("")}
+              ${upcomingTickets.slice(0, 3).map((b) => purchasedTicketCard(b)).join("")}
             </div>`
           : `<div class="purchased-tickets-empty">
               <span class="empty-icon">🎫</span>
@@ -242,14 +267,17 @@ export function Account() {
       }
     </div>
 
+    <a class="btn btn-outline track-all-link" href="#/my-tickets">Xem tất cả vé (${paidBookings.length})</a>
+
     <div class="account-notifications">
       <div class="section-title">
         <h2>Thông báo</h2>
         <p>${unread ? `Bạn có ${unread} thông báo chưa đọc.` : "Bạn đã đọc hết thông báo."}</p>
       </div>
       ${
-        notifications.length
-          ? `<ul class="account-notif-list">${notifications.map(notificationItem).join("")}</ul>`
+        groupedNotifications.length
+          ? `<ul class="account-notif-list">${groupedNotifications.slice(0, 3).map(notificationItem).join("")}</ul>
+             <a class="btn btn-outline track-all-link" href="#/notifications">Xem tất cả thông báo (${groupedNotifications.length})</a>`
           : `<p class="search-empty">Chưa có thông báo nào cho tài khoản này.</p>`
       }
     </div>
@@ -306,22 +334,6 @@ export function Account() {
         <button class="btn btn-outline" type="submit">Đổi mật khẩu</button>
         <p class="form-success-msg" id="password-success" hidden>Đã đổi mật khẩu thành công.</p>
       </form>
-    </div>
-
-    <div class="account-bookings">
-      <div class="section-title">
-        <h2>Lịch sử đặt tour</h2>
-        <p>Các đơn được nhận diện theo tài khoản, số điện thoại hoặc email trong hồ sơ của bạn.</p>
-      </div>
-
-      ${
-        bookings.length
-          ? `<ul class="account-booking-list">${bookings
-              .map((item) => bookingTracker(item, { showActions: false }))
-              .join("")}</ul>
-             <a class="btn btn-primary track-all-link" href="#/my-bookings">Theo dõi đầy đủ trạng thái đơn</a>`
-          : `<p class="search-empty">Bạn chưa có đơn đặt tour nào. <a href="#/tours">Xem danh sách tour</a></p>`
-      }
     </div>
 
     <div class="account-danger">
@@ -433,15 +445,19 @@ document.addEventListener("route:changed", ({ detail }) => {
     const remove = event.target.closest("[data-remove-notif]");
     if (remove) {
       event.stopPropagation();
-      removeNotification(remove.dataset.removeNotif);
+      remove.dataset.removeNotif.split(",").forEach(removeNotification);
       document.dispatchEvent(new CustomEvent("app:refresh"));
       return;
     }
 
     const row = event.target.closest(".account-notif.is-unread");
     if (!row) return;
-    markNotificationRead(row.dataset.notifRow);
+    row.dataset.notifRow.split(",").forEach(markNotificationRead);
     row.classList.remove("is-unread");
     syncNotificationBadge();
+    if (event.target.closest("[data-read-notif]")) {
+      document.dispatchEvent(new CustomEvent("app:refresh"));
+    }
   });
 });
+

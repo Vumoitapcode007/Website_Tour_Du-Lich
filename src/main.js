@@ -19,6 +19,8 @@ import { Login } from "./pages/login.js";
 import { Register } from "./pages/register.js";
 import { Account } from "./pages/account.js";
 import { MyBookings } from "./pages/my-bookings.js";
+import { MyTickets } from "./pages/my-tickets.js";
+import { Notifications } from "./pages/notifications.js";
 import { closeAdminShell, renderAdminShell } from "./components/admin-shell.js";
 import "./components/tour-tools.js";
 import { Dashboard } from "./pages/admin/dashboard.js";
@@ -36,8 +38,6 @@ import { Profile } from "./pages/admin/profile.js";
 import { AdminNotFound } from "./pages/admin/not-found.js";
 import { GuideDashboard } from "./pages/guide/dashboard.js";
 import { GuideTours } from "./pages/guide/tours.js";
-import { GuideBookings } from "./pages/guide/bookings.js";
-import { GuideCheckIn } from "./pages/guide/checkin.js";
 import { GuideDiary } from "./pages/guide/diary.js";
 import { GuideExpenses } from "./pages/guide/expenses.js";
 import { GuideIncidents } from "./pages/guide/incidents.js";
@@ -72,8 +72,6 @@ const ADMIN_PAGES = {
 const GUIDE_PAGES = {
   dashboard: { render: GuideDashboard, title: "Bảng điều khiển hướng dẫn viên" },
   tours: { render: GuideTours, title: "Tour của tôi" },
-  bookings: { render: GuideBookings, title: "Danh sách khách được phân công" },
-  checkin: { render: GuideCheckIn, title: "Check-in & Điểm danh vé" },
   diary: { render: GuideDiary, title: "Nhật ký hành trình" },
   expenses: { render: GuideExpenses, title: "Chi tiêu & Quyết toán" },
   incidents: { render: GuideIncidents, title: "Báo cáo sự cố" },
@@ -202,6 +200,20 @@ const routes = [
     footer: renderFooter,
   },
   {
+    path: "my-tickets",
+    title: "Vé của tôi",
+    render: MyTickets,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
+    path: "notifications",
+    title: "Thông báo của tôi",
+    render: Notifications,
+    layout: renderHeader,
+    footer: renderFooter,
+  },
+  {
     path: "admin",
     title: "Bảng điều khiển",
     render: (path, params, query) => canAccessAdmin() ? Dashboard(path, params, query) : "",
@@ -250,6 +262,11 @@ const routes = [
 const router = createRouter(routes);
 
 document.addEventListener("app:refresh", () => router.navigate());
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== "travelgo.bookings") return;
+  document.dispatchEvent(new CustomEvent("app:refresh"));
+});
 
 function showAuthAlert(message, type = "error") {
   const alertEl = document.getElementById("auth-alert");
@@ -324,7 +341,7 @@ document.addEventListener("click", (event) => {
   }
 
   // Kiểm tra quyền Account khi click link
-  const accountLink = event.target.closest('a[href="#/account"], a[href^="#/my-bookings"]');
+  const accountLink = event.target.closest('a[href="#/account"], a[href^="#/my-bookings"], a[href^="#/my-tickets"]');
   if (accountLink && !getSession()) {
     event.preventDefault();
     const path = accountLink.getAttribute("href").slice(1).split("?")[0];
