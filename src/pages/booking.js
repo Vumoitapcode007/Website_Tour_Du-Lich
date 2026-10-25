@@ -395,6 +395,11 @@ document.addEventListener("route:changed", ({ detail }) => {
   const session = getSession();
   if (!session) return;
 
+  // Bảo đảm lựa chọn mặc định được áp dụng cả khi trình duyệt khôi phục
+  // trạng thái radio cũ (ví dụ đã chọn trả tiền mặt ở lần đặt trước).
+  const onlinePaymentOption = form.querySelector('input[name="payMethod"][value="online"]');
+  if (onlinePaymentOption) onlinePaymentOption.checked = true;
+
   const tourSelect = form.elements.tour;
   const dateSelect = form.elements.date;
   const adultsInput = form.elements.adults;
@@ -613,7 +618,7 @@ document.addEventListener("route:changed", ({ detail }) => {
     const isGroup = bookingType === "group";
     const limit = seatLimit(tour.seatsLeft, bookingType);
     const counts = normalizePassengers(data.get("adults"), data.get("children"), limit, bookingType);
-    const payMethodChoice = data.get("payMethod");
+    const payMethodChoice = form.querySelector('input[name="payMethod"]:checked')?.value || "online";
 
     const record = saveBooking({
       name: String(data.get("name")).trim(),
@@ -646,6 +651,7 @@ document.addEventListener("route:changed", ({ detail }) => {
         phone: record.phone,
         email: record.email,
         accountUsername: session.username,
+        bookingCode: record.code,
       });
     } else {
       saveNotification({
@@ -661,6 +667,7 @@ document.addEventListener("route:changed", ({ detail }) => {
         phone: record.phone,
         email: record.email,
         accountUsername: session.username,
+        bookingCode: record.code,
       });
     }
     syncNotificationBadge();
@@ -703,6 +710,9 @@ document.addEventListener("route:changed", ({ detail }) => {
           </div>
 
           <div class="success-actions" style="margin-top:24px;">
+            <a class="btn btn-primary btn-lg" href="#/my-bookings?code=${encodeURIComponent(record.code)}">
+              Xem chi tiết đơn ${escapeHtml(record.code)}
+            </a>
             <a class="btn btn-primary btn-lg" href="#/my-bookings">
               📋 Theo dõi đơn trong "Đơn của tôi"
             </a>
@@ -772,6 +782,12 @@ document.addEventListener("route:changed", ({ detail }) => {
             }
           </div>
         </div>`;
+    }
+
+    // Khách đặt cá nhân và chọn thanh toán online sẽ được đưa thẳng tới
+    // giao diện thanh toán MoMo giả lập sau khi tạo đơn thành công.
+    if (!isGroup && record.paymentIntent !== "cash") {
+      window.location.hash = `#/payment?code=${encodeURIComponent(record.code)}`;
     }
   });
 });

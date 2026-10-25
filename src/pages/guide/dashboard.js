@@ -10,7 +10,6 @@ import { guideGuard, refreshAdmin } from "../../components/admin-shell.js";
 import {
   emptyState,
   formatMoney,
-  openModal,
   statusBadge,
   toast,
 } from "../../components/admin-ui.js";
@@ -91,19 +90,6 @@ function bookingRow(booking) {
   </tr>`;
 }
 
-function guestRow(booking) {
-  return `
-  <tr>
-    <td><strong class="code">${escapeHtml(booking.code)}</strong></td>
-    <td>
-      <strong>${escapeHtml(booking.name)}</strong><br>
-      <small>${escapeHtml(booking.phone)}</small>
-    </td>
-    <td>${booking.people}</td>
-    <td>${statusBadge(booking.status, BOOKING_STATUS)}</td>
-  </tr>`;
-}
-
 export function GuideDashboard() {
   const denied = guideGuard("guide.dashboard.view");
   if (denied) return denied;
@@ -135,13 +121,6 @@ export function GuideDashboard() {
       <span>⚡ Nghiệp vụ hướng dẫn viên nhanh</span>
     </h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
-      <a href="#/guide/checkin" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; text-decoration: none; color: #1e3a8a; transition: all 0.2s;">
-        <span style="font-size: 1.6rem;">🎟️</span>
-        <div>
-          <strong style="display: block; font-size: 0.95rem;">Check-in vé</strong>
-          <small style="color: #64748b; font-size: 0.78rem;">Quét & Điểm danh</small>
-        </div>
-      </a>
       <a href="#/guide/diary" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; text-decoration: none; color: #14532d; transition: all 0.2s;">
         <span style="font-size: 1.6rem;">📖</span>
         <div>
@@ -199,7 +178,7 @@ export function GuideDashboard() {
   <section class="panel">
     <div class="panel-head">
       <div><h2>Cần xử lý hôm nay</h2><p class="panel-sub">Cập nhật tiến trình để khách và quản trị viên theo dõi được</p></div>
-      <a class="btn btn-sm btn-ghost-soft" href="#/guide/bookings">Xem tất cả khách</a>
+      <a class="btn btn-sm btn-ghost-soft" href="#/guide/tours">Mở tour và danh sách khách</a>
     </div>
     <div class="table-wrap">
       <table class="data-table">
@@ -220,7 +199,7 @@ export function GuideDashboard() {
                 .map((group) => {
                   const first = group.bookings[0];
                   const days = daysToDeparture(first.date);
-                  return `<li data-guide-trip="${escapeHtml(group.tourId)}" role="button" tabindex="0">
+                  return `<li>
                     <strong>${escapeHtml(group.tour?.name || tourName(first))}</strong>
                     <ul class="it-list">
                       <li>${escapeHtml(formatDate(first.date))} · ${days >= 0 ? `còn ${days} ngày` : `đã qua ${Math.abs(days)} ngày`}</li>
@@ -262,29 +241,4 @@ document.addEventListener("click", (event) => {
   const button = event.target.closest("[data-guide-advance]");
   if (!button) return;
   advanceGuide(button.dataset.guideAdvance, button.dataset.next);
-});
-
-/* Xem nhanh danh sách khách của một chuyến ngay trên dashboard */
-document.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-guide-trip]");
-  if (!button) return;
-  const session = getSession();
-  const bookings = guideBookings(session.username).filter(
-    (item) => String(item.tourId) === button.dataset.guideTrip
-  );
-  if (!bookings.length) return;
-
-  openModal({
-    title: "Danh sách khách",
-    subtitle: `${tourName(bookings[0])} · ${formatDate(bookings[0].date)}`,
-    size: "lg",
-    body: `
-      <div class="table-wrap">
-        <table class="data-table">
-          <thead><tr><th>Mã đơn</th><th>Khách</th><th>Số khách</th><th>Trạng thái</th></tr></thead>
-          <tbody>${bookings.map(guestRow).join("")}</tbody>
-        </table>
-      </div>`,
-    footer: `<button class="btn btn-light" type="button" data-modal-close>Đóng</button>`,
-  });
 });

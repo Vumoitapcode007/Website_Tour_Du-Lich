@@ -1384,6 +1384,83 @@ a {
   color: var(--muted);
 }
 
+.account-notif-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.account-bookings-link,
+.notifications-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.account-latest-booking {
+  margin-top: 0;
+  margin-bottom: 28px;
+}
+
+.account-latest-booking .track-all-link {
+  margin-top: 14px;
+}
+
+.booking-code-search {
+  max-width: 520px;
+  margin: 20px 0;
+}
+
+.booking-code-search label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.booking-code-search-row {
+  display: flex;
+  gap: 10px;
+}
+
+.booking-code-search-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .account-notif {
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+
+  .account-notif-body {
+    flex-basis: calc(100% - 52px);
+  }
+
+  .account-notif > button {
+    margin-left: 52px;
+  }
+
+  .purchased-tickets-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .purchased-ticket-top,
+  .purchased-ticket-bottom,
+  .booking-code-search-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .purchased-ticket-img {
+    width: 100%;
+    height: 150px;
+  }
+}
+
 .account-booking-list {
   list-style: none;
   display: grid;
@@ -5225,6 +5302,113 @@ body.modal-open {
 
 .history-list .btn {
   margin-left: auto;
+}
+
+.booking-progress-link {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.booking-progress-link:hover {
+  filter: brightness(.94);
+  text-decoration: underline;
+}
+
+.booking-progress-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.booking-progress-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.booking-progress-detail section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.booking-progress-detail h4 {
+  margin: 0 0 12px;
+  color: #1e293b;
+}
+
+.booking-progress-current {
+  margin: 0 0 12px;
+  color: #0369a1;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.booking-progress-stages {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.booking-progress-stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--admin-border);
+  border-radius: 9px;
+  color: #64748b;
+}
+
+.booking-progress-stage > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+
+.booking-progress-stage small {
+  color: var(--admin-muted);
+}
+
+.booking-progress-stage.is-complete {
+  color: #15803d;
+  background: #f0fdf4;
+}
+
+.booking-progress-stage.is-current {
+  color: #075985;
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+.booking-progress-dot {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f1f5f9;
+}
+
+.booking-progress-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  white-space: pre-wrap;
+}
+
+.booking-progress-detail .booking-itinerary-current {
+  border-color: #7dd3fc;
+  background: #f0f9ff;
+}
+
+@media (max-width: 700px) {
+  .booking-progress-detail { grid-template-columns: 1fr; }
 }
 
 /* ---------- Tin nhắn ---------- */
@@ -9090,6 +9274,10 @@ body.modal-open {
   margin-top: 16px;
 }
 
+.guide-tours-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .guide-trip-card {
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -9221,12 +9409,12 @@ body.modal-open {
 
 .guide-trip-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 0;
   margin-bottom: 8px;
 }
 
@@ -9290,6 +9478,24 @@ body.modal-open {
 
 .guide-trip-quick-actions .btn {
   font-weight: 600;
+}
+
+.guide-trip-collect {
+  color: #9a3412;
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.guide-trip-collect:hover {
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+
+@media (max-width: 600px) {
+  .guide-tours-summary { grid-template-columns: 1fr 1fr; }
+  .guide-trip-metrics-grid { grid-template-columns: 1fr 1fr; }
+  .guide-trip-bottom-bar { padding: 12px; }
+  .guide-trip-quick-actions { width: 100%; }
 }
 
 /* Quick Filter Tabs */

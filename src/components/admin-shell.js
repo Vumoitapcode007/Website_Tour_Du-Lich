@@ -32,9 +32,7 @@ export const ADMIN_SECTIONS = {
 /* Khu vực riêng của Tour Guide - dùng chung layout/CSS với khu vực quản trị */
 export const GUIDE_SECTIONS = {
   dashboard: { title: "Bảng điều khiển", desc: "Tour được phân công và tình trạng khách của bạn" },
-  tours: { title: "Tour của tôi", desc: "Lịch trình và danh sách khách của từng chuyến" },
-  bookings: { title: "Danh sách khách", desc: "Khách được phân công cùng trạng thái đơn" },
-  checkin: { title: "Check-in & Điểm danh vé", desc: "Tra cứu mã vé điện tử, quét mã và điểm danh khách nhanh" },
+  tours: { title: "Tour của tôi", desc: "Thu tiền, điểm danh khách và cập nhật trạng thái từng chuyến" },
   diary: { title: "Nhật ký hành trình", desc: "Ghi chép diễn biến tour, thời tiết, tâm trạng đoàn và báo cáo kết thúc" },
   expenses: { title: "Chi tiêu & Quyết toán", desc: "Quản lý các khoản chi phát sinh và quyết toán tạm ứng đoàn" },
   incidents: { title: "Báo cáo sự cố (SOS)", desc: "Ghi nhận sự cố y tế, thất lạc đồ, sự cố phương tiện và hỗ trợ khẩn cấp" },
@@ -84,8 +82,6 @@ export const GUIDE_NAV = [
     items: [
       { path: "dashboard", label: "Bảng điều khiển", icon: "◈", perm: "guide.dashboard.view" },
       { path: "tours", label: "Tour của tôi", icon: "◉", perm: "guide.tours.view", badge: "guideTours" },
-      { path: "bookings", label: "Danh sách khách", icon: "◍", perm: "guide.customers.view", badge: "guideGuests" },
-      { path: "checkin", label: "Check-in vé", icon: "🎟", perm: "guide.checkin.manage" },
     ],
   },
   {
@@ -210,8 +206,8 @@ export function renderAdminShell(path = "dashboard", params = {}) {
          <span>Chuyến đang chuẩn bị</span>
          <strong>${counts.guideTours}</strong>
        </a>
-       <a class="admin-quick" href="#/guide/bookings">
-         <span>Khách cần đón</span>
+       <a class="admin-quick" href="#/guide/tours">
+         <span>Khách trong chuyến</span>
          <strong>${counts.guideGuests}</strong>
        </a>`
     : `<a class="admin-quick" href="#/admin/bookings">

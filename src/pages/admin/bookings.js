@@ -32,7 +32,7 @@ import {
 import { imgFallback } from "../../components/tour-card.js";
 import { getSession, hasPermission, listGuides } from "../../auth.js";
 import { formatDate } from "../../data.js";
-import { getTourById, listTours } from "../../tour-repository.js";
+import { getTourById, listTours, TOUR_PROGRESS_STAGES } from "../../tour-repository.js";
 import { escapeHtml, searchKey } from "../../validate.js";
 import {
   MAX_PASSENGERS,
@@ -78,6 +78,7 @@ function notifyBooking(booking, status) {
     phone: booking.phone,
     email: booking.email,
     accountUsername: booking.accountUsername || "",
+    bookingCode: booking.code,
   });
 }
 
@@ -119,7 +120,10 @@ function row(booking) {
   if (booking.attendance === "present") attendanceHtml = `<small class="status-pill status-paid">Có mặt</small>`;
   if (booking.attendance === "absent") attendanceHtml = `<small class="status-pill status-cancelled">Vắng mặt</small>`;
 
-  const cashHtml = booking.cashCollected > 0 ? `<br><small>Tiền mặt: ${formatMoney(booking.cashCollected)}</small>` : "";
+  const collected = Number(booking.cashCollected) || 0;
+  const cashHtml = collected > 0
+    ? `<br><small>HDV đã thu: ${formatMoney(collected)}${collected < Number(booking.total) ? ` · Còn: ${formatMoney(Number(booking.total) - collected)}` : ""}</small>`
+    : "";
 
   return `
   <tr data-code="${escapeHtml(booking.code)}" data-search="${escapeHtml(
@@ -177,7 +181,6 @@ function row(booking) {
     </td>
     <td>
       <strong>${formatMoney(booking.total)}</strong>
-      ${cashHtml}
       ${
         isPayToGuide(booking) && booking.payment !== "paid"
           ? `<br><small style="color:#b45309;">💵 Thu qua HDV</small>`
@@ -185,9 +188,13 @@ function row(booking) {
       }
     </td>
     <td><span class="status-pill status-${escapeHtml(booking.payment || "unpaid")}">${
-      PAYMENT_STATUS[booking.payment || "unpaid"] || booking.payment
-    }</span></td>
-    <td>${statusBadge(booking.status, BOOKING_STATUS)}${
+      booking.payment === "deposit" && collected > 0
+        ? "Đã thu một phần"
+        : PAYMENT_STATUS[booking.payment || "unpaid"] || booking.payment
+    }</span>${cashHtml}</td>
+    <td>${booking.status === "ongoing"
+      ? `<button class="status-pill status-ongoing booking-progress-link" type="button" data-booking-progress aria-label="Xem tiến độ tour ${escapeHtml(booking.tourName)}">${escapeHtml(BOOKING_STATUS.ongoing)}</button>`
+      : statusBadge(booking.status, BOOKING_STATUS)}${
       booking.guideName ? `<br><small>${escapeHtml(booking.guideName)}</small>` : ""
     }</td>
     <td class="row-actions">
@@ -204,6 +211,55 @@ function row(booking) {
       }
     </td>
   </tr>`;
+}
+
+function bookingProgressModal(booking) {
+  const tour = getTourById(booking.tourId);
+  const progress = tour?.progress || {};
+  const stages = Object.values(TOUR_PROGRESS_STAGES);
+  const currentIndex = Math.max(0, stages.findIndex((stage) => stage.key === progress.stage));
+  const itinerary = tour?.itinerary || [];
+  const currentDay = Math.max(1, Number(progress.currentDay) || 1);
+  const currentPlan = itinerary.find((item, index) => (Number(item.day) || index + 1) === currentDay);
+  const stageHtml = stages.map((stage, index) => {
+    const complete = index < currentIndex;
+    const current = index === currentIndex;
+    return `<li class="booking-progress-stage ${complete ? "is-complete" : ""} ${current ? "is-current" : ""}">
+      <span class="booking-progress-dot">${complete ? "✓" : stage.icon}</span>
+      <span><strong>${escapeHtml(stage.label)}</strong><small>${escapeHtml(stage.desc)}</small></span>
+      ${current ? `<span class="soft-chip">Hiện tại</span>` : ""}
+    </li>`;
+  }).join("");
+  const itineraryHtml = itinerary.length
+    ? `<ul class="history-list">${itinerary.map((day, index) => {
+        const number = Number(day.day) || index + 1;
+        const active = number === currentDay;
+        const items = Array.isArray(day.items) ? day.items : [];
+        return `<li class="${active ? "booking-itinerary-current" : ""}"><strong>${escapeHtml(typeof day.day === "string" ? day.day : `Ngày ${number}`)}${day.title ? ` · ${escapeHtml(day.title)}` : ""}${active ? " · Đang diễn ra" : ""}</strong>${items.length ? `<ul class="it-list">${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</li>`;
+      }).join("")}</ul>`
+    : `<p class="form-hint">Tour chưa có lịch trình chi tiết.</p>`;
+
+  openModal({
+    title: `📍 Tiến độ tour: ${booking.tourName}`,
+    subtitle: `Đơn ${booking.code} · Khởi hành ${formatDate(booking.date)}`,
+    size: "lg",
+    body: tour ? `<div class="booking-progress-detail">
+      <section><h4>Giai đoạn chuyến đi</h4>
+        <p class="booking-progress-current">${escapeHtml((TOUR_PROGRESS_STAGES[progress.stage] || stages[0]).icon)} ${escapeHtml((TOUR_PROGRESS_STAGES[progress.stage] || stages[0]).label)}</p>
+        <ol class="booking-progress-stages">${stageHtml}</ol>
+      </section>
+      <section><h4>Tình hình hiện tại</h4>
+        <ul class="summary-list">
+          <li><span>Ngày trong hành trình</span><strong>Ngày ${currentDay}${currentPlan?.title ? ` · ${escapeHtml(currentPlan.title)}` : ""}</strong></li>
+          <li><span>Vị trí hiện tại</span><strong>${escapeHtml(progress.currentLocation || "Chưa cập nhật")}</strong></li>
+          <li><span>Cập nhật gần nhất</span><strong>${progress.updatedAt ? formatDateTime(progress.updatedAt) : "Chưa có cập nhật"}</strong></li>
+        </ul>
+        ${progress.note ? `<p class="booking-progress-note">${escapeHtml(progress.note)}</p>` : `<p class="form-hint">Chưa có ghi chú thực địa.</p>`}
+      </section>
+      <section class="detail-span"><h4>Các mốc lịch trình</h4>${itineraryHtml}</section>
+    </div>` : `<p>Không tìm thấy thông tin tour để hiển thị tiến độ.</p>`,
+    footer: `<button class="btn btn-light" type="button" data-modal-close>Đóng</button>`,
+  });
 }
 
 /* Popup xác nhận đơn - hiển thị đầy đủ để nhân viên không bỏ sót thông tin
@@ -904,6 +960,12 @@ document.addEventListener("route:changed", ({ detail }) => {
   };
 
   rowsBox.addEventListener("click", (event) => {
+    const progressButton = event.target.closest("[data-booking-progress]");
+    if (progressButton) {
+      const booking = getBooking(progressButton.closest("tr")?.dataset.code);
+      if (booking?.status === "ongoing") bookingProgressModal(booking);
+      return;
+    }
     const button = event.target.closest("[data-booking-action]");
     if (!button) return;
     const code = button.closest("tr").dataset.code;

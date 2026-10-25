@@ -6,16 +6,18 @@ import { syncNotificationBadge } from "../components/notification-bell.js";
 
 const FILTERS = [
   { key: "all", label: "Tất cả" },
+  { key: "upcoming", label: "Sắp khởi hành" },
+  { key: "completed", label: "Đã hoàn thành" },
+  { key: "cancelled", label: "Đã hủy" },
   { key: "pending", label: "Chờ xác nhận" },
   { key: "waiting", label: "Chờ thanh toán" },
-  { key: "trip", label: "Sắp đi / đang đi" },
-  { key: "completed", label: "Đã hoàn thành" },
-  { key: "cancelled", label: "Đã huỷ" },
+  { key: "trip", label: "Đang đi" },
 ];
 
 const GROUPS = {
   waiting: ["confirmed", "awaiting_payment", "paid"],
   trip: ["upcoming", "ongoing"],
+  upcoming: ["upcoming", "ongoing", "confirmed", "paid", "awaiting_payment"],
 };
 
 function matchGroup(key, status) {
@@ -58,8 +60,12 @@ export function MyBookings(path, params = {}, query = new URLSearchParams()) {
   const bookings = myBookings(session).sort((a, b) =>
     String(b.createdAt).localeCompare(String(a.createdAt))
   );
-  const visible =
-    status === "all" ? bookings : bookings.filter((item) => matchGroup(status, item.status));
+  const codeQuery = String(query.get("code") || "").trim().toLowerCase();
+  const visible = bookings.filter((item) => {
+    const statusMatch = status === "all" || matchGroup(status, item.status);
+    const codeMatch = !codeQuery || String(item.code).toLowerCase().includes(codeQuery);
+    return statusMatch && codeMatch;
+  });
   const total = bookings
     .filter((item) => !isCancelledBooking(item))
     .reduce((sum, item) => sum + (Number(item.total) || 0), 0);
@@ -94,6 +100,14 @@ export function MyBookings(path, params = {}, query = new URLSearchParams()) {
       <a class="btn btn-primary" href="#/tours">Đặt tour mới</a>
     </div>
 
+    <form class="booking-code-search" action="#/my-bookings" method="get">
+      <label for="booking-code-query">Tìm theo mã vé</label>
+      <div class="booking-code-search-row">
+        <input id="booking-code-query" name="code" value="${escapeHtml(query.get("code") || "")}" placeholder="Ví dụ: TG-123456">
+        <input type="hidden" name="status" value="${escapeHtml(status)}">
+        <button class="btn btn-outline" type="submit">Tìm vé</button>
+      </div>
+    </form>
     ${
       visible.length
         ? `<ul class="account-booking-list">${visible.map((item) => bookingTracker(item)).join("")}</ul>`
@@ -108,6 +122,16 @@ export function MyBookings(path, params = {}, query = new URLSearchParams()) {
 
 document.addEventListener("route:changed", ({ detail }) => {
   if (detail.path !== "my-bookings" || !getSession()) return;
+
+  document.querySelector(".booking-code-search")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const search = new URLSearchParams();
+    search.set("status", String(data.get("status") || "all"));
+    const code = String(data.get("code") || "").trim();
+    if (code) search.set("code", code);
+    window.location.hash = `#/my-bookings?${search.toString()}`;
+  });
 
   const list = document.querySelector(".account-booking-list");
   list?.addEventListener("click", (event) => {
